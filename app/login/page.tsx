@@ -5,6 +5,7 @@ import { useState } from "react";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
@@ -17,15 +18,22 @@ export default function LoginPage() {
     try {
       const endpoint = showSignup ? "/api/auth/sign-up/email" : "/api/auth/sign-in/email";
 
+      const body: any = {
+        email,
+        password,
+      };
+
+      // Include name for signup
+      if (showSignup) {
+        body.name = name || email.split("@")[0]; // Default to email username if name not provided
+      }
+
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+        body: JSON.stringify(body),
         credentials: "include", // Important: include cookies
       });
 
@@ -61,6 +69,24 @@ export default function LoginPage() {
           )}
 
           <div className="rounded-md shadow-sm -space-y-px">
+            {showSignup && (
+              <div>
+                <label htmlFor="name" className="sr-only">
+                  Full name
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                  placeholder="Full name (optional)"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+            )}
             <div>
               <label htmlFor="email-address" className="sr-only">
                 Email address
@@ -71,7 +97,7 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className={`appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 ${showSignup ? '' : 'rounded-t-md'} focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -140,6 +166,7 @@ export default function LoginPage() {
               onClick={() => {
                 setShowSignup(!showSignup);
                 setError("");
+                setName(""); // Clear name when switching modes
               }}
               className="text-sm text-indigo-600 hover:text-indigo-500"
               disabled={loading}
