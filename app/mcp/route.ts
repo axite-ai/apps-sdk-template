@@ -63,19 +63,13 @@ const handler = withMcpAuth(auth, async (req, session) => {
           openWorldHint: false,
           readOnlyHint: true,
         },
-        securitySchemes: [{ type: "oauth2" }],
-      } as any,
-      async (args, context) => {
-        try {
-          if (!session) {
-            return createLoginPromptResponse("account balances");
-          }
-
-          // Check 2: Active Subscription
-          const hasSubscription = await hasActiveSubscription(session.userId);
-          if (!hasSubscription) {
-            return createSubscriptionRequiredResponse("account balances");
-          }
+      securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["balances:read"] }],
+    } as any,
+    async (args, context) => {
+      try {
+        if (!session || !(await hasActiveSubscription(session.userId))) {
+          return createSubscriptionRequiredResponse("account balances");
+        }
 
           // Check 3: Plaid Connection
           const accessTokens = await UserService.getUserAccessTokens(session.userId);
@@ -153,17 +147,11 @@ const handler = withMcpAuth(auth, async (req, session) => {
         openWorldHint: false,
         readOnlyHint: true,
       },
-      securitySchemes: [{ type: "oauth2" }],
+      securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["transactions:read"] }],
     } as any,
     async ({ startDate, endDate, limit }, context) => {
       try {
-        if (!session) {
-          return createLoginPromptResponse("transactions");
-        }
-
-        // Check 2: Active Subscription
-        const hasSubscription = await hasActiveSubscription(session.userId);
-        if (!hasSubscription) {
+        if (!session || !(await hasActiveSubscription(session.userId))) {
           return createSubscriptionRequiredResponse("transactions");
         }
 
@@ -239,17 +227,11 @@ const handler = withMcpAuth(auth, async (req, session) => {
         openWorldHint: false,
         readOnlyHint: true,
       },
-      securitySchemes: [{ type: "oauth2" }],
+      securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["insights:read"] }],
     } as any,
     async ({ startDate, endDate }, context) => {
       try {
-        if (!session) {
-          return createLoginPromptResponse("spending insights");
-        }
-
-        // Check 2: Active Subscription
-        const hasSubscription = await hasActiveSubscription(session.userId);
-        if (!hasSubscription) {
+        if (!session || !(await hasActiveSubscription(session.userId))) {
           return createSubscriptionRequiredResponse("spending insights");
         }
 
@@ -332,12 +314,15 @@ const handler = withMcpAuth(auth, async (req, session) => {
       title: "Check Account Health",
       description: "Get account health information including balances, warnings, and status. Requires authentication.",
       inputSchema: {},
+      _meta: {
+        "openai/outputTemplate": "ui://widget/account-health.html",
+      },
       annotations: {
         destructiveHint: false,
         openWorldHint: false,
         readOnlyHint: true,
       },
-      securitySchemes: [{ type: "oauth2" }],
+      securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["health:read"] }],
     } as any,
     async (args, context) => {
       try {
@@ -360,7 +345,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
               error_message: 'Subscription required'
             },
             _meta: {
-              "openai/outputTemplate": "ui://widget/pricing.html",
+              "openai/outputTemplate": "ui://widget/account-health.html",
             },
           };
         }
