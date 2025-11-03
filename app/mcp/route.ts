@@ -15,6 +15,7 @@ import {
   createPlaidRequiredResponse,
 } from "@/lib/utils/auth-responses";
 import { withMcpAuth } from "better-auth/plugins";
+import Stripe from "stripe";
 
 console.log("Auth API methods at startup:", Object.keys(auth.api));
 
@@ -454,92 +455,43 @@ const handler = withMcpAuth(auth, async (req, session) => {
           }
 
           const plan = args.plan as string;
+          const baseUrl = process.env.BETTER_AUTH_URL || 'https://dev.askmymoney.ai';
 
-          // Get Stripe client and create checkout session directly
-          const Stripe = (await import('stripe')).default;
-          const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-            apiVersion: "2025-09-30.clover",
+          console.log('[Checkout Session] MCP Session userId:', session.userId);
+          console.log('[Checkout Session] Using Better Auth upgradeSubscription API with API Key');
+
+          // Use Better Auth's built-in subscription upgrade method with API Key authentication
+          // This ensures proper webhook handling and database record creation
+          const result = await auth.api.upgradeSubscription({
+            body: {
+              plan: plan.toLowerCase(),
+              referenceId: session.userId,
+              successUrl: `${baseUrl}/pricing/success`,
+              cancelUrl: `${baseUrl}/pricing`,
+            },
+            headers: new Headers({
+              'x-api-key': process.env.BETTER_AUTH_API_KEY || '',
+            }),
           });
 
-          // Get user's Stripe customer ID
-          const pool = auth.options.database as any;
-          const client = await pool.connect();
+          console.log('[Checkout Session] Better Auth API result:', result);
 
-          try {
-            // Get or create Stripe customer
-            const userResult = await client.query(
-              'SELECT "stripeCustomerId" FROM "user" WHERE id = $1',
-              [session.userId]
-            );
-
-            let customerId = userResult.rows[0]?.stripeCustomerId;
-
-            if (!customerId) {
-              // Get user email
-              const emailResult = await client.query(
-                'SELECT email FROM "user" WHERE id = $1',
-                [session.userId]
-              );
-              const userEmail = emailResult.rows[0]?.email;
-
-              // Create customer if doesn't exist
-              const customer = await stripeClient.customers.create({
-                email: userEmail,
-                metadata: { userId: session.userId },
-              });
-              customerId = customer.id;
-
-              // Update user with customer ID
-              await client.query(
-                'UPDATE "user" SET "stripeCustomerId" = $1 WHERE id = $2',
-                [customerId, session.userId]
-              );
-            }
-
-            // Get price ID from env
-            const priceId = plan === 'basic'
-              ? process.env.STRIPE_BASIC_PRICE_ID
-              : plan === 'pro'
-              ? process.env.STRIPE_PRO_PRICE_ID
-              : process.env.STRIPE_ENTERPRISE_PRICE_ID;
-
-            if (!priceId) {
-              throw new Error(`Price ID not configured for plan: ${plan}`);
-            }
-
-            const baseUrl = process.env.BETTER_AUTH_URL || 'https://dev.askmymoney.ai';
-
-            // Create Stripe Checkout Session
-            const checkoutSession = await stripeClient.checkout.sessions.create({
-              customer: customerId,
-              mode: 'subscription',
-              payment_method_types: ['card'],
-              line_items: [{
-                price: priceId,
-                quantity: 1,
-              }],
-              success_url: `${baseUrl}/pricing/success?session_id={CHECKOUT_SESSION_ID}`,
-              cancel_url: `${baseUrl}/pricing`,
-              client_reference_id: session.userId,
-              metadata: {
-                userId: session.userId,
-                plan,
-              },
-            });
-
-            return {
-              content: [{
-                type: "text",
-                text: `Checkout session created for ${plan} plan`,
-              }],
-              structuredContent: {
-                checkoutUrl: checkoutSession.url,
-                plan,
-              },
-            };
-          } finally {
-            client.release();
+          if (!result || !result.url) {
+            throw new Error('Failed to create checkout session via Better Auth - no URL returned');
           }
+
+          console.log('[Checkout Session] Created via Better Auth:', result.url);
+
+          return {
+            content: [{
+              type: "text",
+              text: `Checkout session created for ${plan} plan`,
+            }],
+            structuredContent: {
+              checkoutUrl: result.url,
+              plan,
+            },
+          };
         } catch (error) {
           console.error('[Tool] create_checkout_session error', { error });
           return {

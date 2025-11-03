@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { getPlaidClient } from '../config/plaid';
 import {
   CountryCode,
@@ -21,7 +23,7 @@ import {
  * @param redirectUri Optional redirect URI for OAuth flows
  * @returns Link token for client-side Plaid Link initialization
  */
-export async function createLinkToken(userId: string, redirectUri?: string) {
+export const createLinkToken = async (userId: string, redirectUri?: string) => {
   try {
     const request: LinkTokenCreateRequest = {
       user: {
@@ -31,7 +33,7 @@ export async function createLinkToken(userId: string, redirectUri?: string) {
       products: [Products.Transactions, Products.Auth, Products.Investments, Products.Liabilities],
       country_codes: [CountryCode.Us],
       language: 'en',
-      webhook: "https://api.discuno.com/api/plaid/webhook",
+      webhook: process.env.BETTER_AUTH_URL ? `${process.env.BETTER_AUTH_URL}/api/plaid/webhook` : undefined,
       ...(redirectUri && { redirect_uri: redirectUri }),
     };
 
@@ -41,14 +43,14 @@ export async function createLinkToken(userId: string, redirectUri?: string) {
     console.error('Error creating link token:', error);
     throw new Error(`Failed to create link token: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-}
+};
 
 /**
  * Exchange a public token for an access token
  * @param publicToken Public token from Plaid Link
  * @returns Access token and item ID
  */
-export async function exchangePublicToken(publicToken: string) {
+export const exchangePublicToken = async (publicToken: string) => {
   try {
     const request: ItemPublicTokenExchangeRequest = {
       public_token: publicToken,
@@ -63,7 +65,7 @@ export async function exchangePublicToken(publicToken: string) {
     console.error('Error exchanging public token:', error);
     throw new Error(`Failed to exchange public token: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-}
+};
 
 /**
  * Get account balances for a given access token
@@ -94,8 +96,27 @@ export async function getAccountBalances(accessToken: string) {
       })),
       item: response.data.item,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error getting account balances:', error);
+
+    // Handle Plaid-specific errors
+    if (error?.response?.data?.error_code) {
+      const plaidErrorCode = error.response.data.error_code;
+      const plaidErrorMessage = error.response.data.error_message;
+
+      // Item login required - user needs to reconnect
+      if (plaidErrorCode === 'ITEM_LOGIN_REQUIRED') {
+        throw new Error('Your bank connection has expired. Please reconnect your account.');
+      }
+
+      // Handle other common Plaid errors
+      if (plaidErrorCode === 'INVALID_ACCESS_TOKEN') {
+        throw new Error('Invalid bank connection. Please reconnect your account.');
+      }
+
+      throw new Error(`Plaid error (${plaidErrorCode}): ${plaidErrorMessage}`);
+    }
+
     throw new Error(`Failed to get account balances: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

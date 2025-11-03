@@ -127,6 +127,37 @@ When adding new tools to `app/mcp/route.ts`:
 4. For authenticated tools, add `securitySchemes: [{ type: "oauth2" }]` and implement the three-tier auth check
 5. Return structured content with `structuredContent` field for widget consumption
 
+### Creating Stripe Checkout Sessions from MCP Tools
+
+When creating Stripe checkout sessions from MCP tools, you can use the MCP session's `userId` directly without needing Better Auth session cookies. The key is to include proper metadata so Better Auth's webhook handlers can process the subscription:
+
+```typescript
+// MCP handler has access to session.userId via withMcpAuth
+const checkoutSession = await stripe.checkout.sessions.create({
+  customer: stripeCustomerId,
+  mode: 'subscription',
+  line_items: [{ price: priceId, quantity: 1 }],
+  success_url: `${baseUrl}/pricing/success?session_id={CHECKOUT_SESSION_ID}`,
+  cancel_url: `${baseUrl}/pricing`,
+  metadata: {
+    referenceId: session.userId, // Better Auth uses referenceId to link to user
+    plan: 'pro', // Checkout session metadata
+  },
+  subscription_data: {
+    metadata: {
+      referenceId: session.userId, // CRITICAL: Better Auth webhooks look for referenceId in subscription metadata
+      plan: 'pro', // CRITICAL: Better Auth webhooks look for plan in subscription metadata
+    },
+  },
+});
+```
+
+**CRITICAL:** Both `subscription_data.metadata.referenceId` and `subscription_data.metadata.plan` fields are **required** for Better Auth's Stripe plugin:
+- `referenceId`: Links the subscription to the user record (not `userId`)
+- `plan`: Matches the subscription to your configured plans in `lib/auth/index.ts`
+
+Without this metadata, webhooks will receive the events but fail silently when trying to create subscription records, resulting in subscriptions existing in Stripe but not in your database.
+
 ## Database Schema
 
 Key tables (created via migrations):
@@ -156,3 +187,5 @@ Designed for Vercel deployment. Base URL auto-detection via `baseUrl.ts` handles
    - Deploy to Vercel or use ngrok for local testing
    - In ChatGPT Settings → Connectors → Create, add `https://your-domain.com/mcp`
    - Requires ChatGPT developer mode access
+- use server actions over api routes whenever possible
+- use arrow function syntax whenever possible

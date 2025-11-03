@@ -12,14 +12,8 @@ export default function SubscriptionSuccessPage() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          // Redirect back to ChatGPT
-          // Check if we came from ChatGPT
-          if (document.referrer.includes('chatgpt.com') || document.referrer.includes('chat.openai.com')) {
-            window.location.href = document.referrer;
-          } else {
-            // Fallback to home page
-            window.location.href = "/";
-          }
+          // Close the window after countdown
+          window.close();
           return 0;
         }
         return prev - 1;
@@ -53,87 +47,46 @@ export default function SubscriptionSuccessPage() {
 
         {/* Success Message */}
         <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
-          Welcome to AskMyMoney!
+          Subscription Confirmed!
         </h1>
         <p className="text-xl text-gray-300 mb-8">
-          Your subscription is now active. You can start using all premium features right away.
+          Check your email for confirmation and next steps.
         </p>
 
-        {/* Features List */}
-        <div className="bg-gray-800/50 rounded-lg p-6 mb-8 text-left">
-          <h2 className="text-lg font-semibold mb-4 text-center">What's Next?</h2>
-          <ul className="space-y-3">
-            <li className="flex items-start">
-              <svg
-                className="w-5 h-5 text-green-400 mr-3 mt-0.5 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span className="text-gray-300">
-                Connect your bank accounts via Plaid
-              </span>
-            </li>
-            <li className="flex items-start">
-              <svg
-                className="w-5 h-5 text-green-400 mr-3 mt-0.5 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span className="text-gray-300">
-                Ask questions about your finances in ChatGPT
-              </span>
-            </li>
-            <li className="flex items-start">
-              <svg
-                className="w-5 h-5 text-green-400 mr-3 mt-0.5 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span className="text-gray-300">
-                Get AI-powered spending insights
-              </span>
-            </li>
-          </ul>
+        {/* Email Icon */}
+        <div className="bg-gray-800/50 rounded-lg p-8 mb-8">
+          <div className="flex justify-center mb-4">
+            <svg
+              className="w-16 h-16 text-blue-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <p className="text-gray-300 text-lg">
+            We've sent you a confirmation email with instructions on how to connect your bank account and start using AskMyMoney.
+          </p>
         </div>
 
         {/* Redirect Info */}
         <p className="text-gray-400 mb-6">
-          Redirecting you back in <span className="text-blue-400 font-semibold">{countdown}</span> seconds...
+          This window will close in <span className="text-blue-400 font-semibold">{countdown}</span> seconds...
         </p>
 
-        {/* Manual Navigation */}
-        <div className="space-x-4">
-          <Link
-            href="/"
-            className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold py-3 px-6 rounded-lg transition-all"
-          >
-            Go to Dashboard
-          </Link>
-        </div>
+        {/* Manual Close Button */}
+        <button
+          onClick={() => window.close()}
+          className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold py-3 px-6 rounded-lg transition-all"
+        >
+          Close Window
+        </button>
       </div>
     </div>
   );

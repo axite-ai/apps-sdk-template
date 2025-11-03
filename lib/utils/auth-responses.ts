@@ -83,13 +83,15 @@ export function createSubscriptionRequiredResponse(featureName?: string) {
 /**
  * Create a response prompting the user to connect their bank via Plaid Link
  *
- * @returns MCP tool response with Plaid Link widget reference
+ * @returns MCP tool response with Plaid connection widget
  */
 export function createPlaidRequiredResponse() {
+  const baseMessage = "Please connect your bank account to access your financial data.";
+
   const responseMeta: OpenAIResponseMetadata = {
     "openai/toolInvocation/invoking": "Checking bank connection",
     "openai/toolInvocation/invoked": "Bank connection required",
-    "openai/outputTemplate": "ui://widget/plaid-link.html",
+    "openai/outputTemplate": "ui://widget/plaid-required.html",
     "openai/widgetAccessible": false,
     "openai/resultCanProduceWidget": true,
   };
@@ -98,11 +100,14 @@ export function createPlaidRequiredResponse() {
     content: [
       {
         type: "text" as const,
-        text: "Please connect your bank account to access your financial data.",
+        text: baseMessage,
       } as { [x: string]: unknown; type: "text"; text: string },
     ],
-    // Don't include structuredContent - would conflict with tool's outputSchema validation
-    // Widget will handle Plaid Link flow
+    // Include structured content so widget can access baseUrl
+    structuredContent: {
+      baseUrl: baseURL,
+      message: "Bank connection required",
+    },
     isError: false,
     _meta: responseMeta,
   };

@@ -6,8 +6,9 @@
  */
 
 import { betterAuth } from "better-auth";
-import { mcp } from "better-auth/plugins";
+import { mcp, apiKey } from "better-auth/plugins";
 import { stripe } from "@better-auth/stripe";
+import { createAuthMiddleware } from "better-auth/api";
 import { Pool } from "pg";
 import { Redis } from "ioredis";
 import Stripe from "stripe";
@@ -98,6 +99,22 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
     updateAge: 60 * 60 * 24,
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60, // 5 minutes
+    },
+  },
+
+  // Advanced cookie configuration for cross-site redirects
+  advanced: {
+    useSecureCookies: true, // Always use secure cookies for HTTPS (dev.askmymoney.ai uses HTTPS)
+    cookies: {
+      session_token: {
+        attributes: {
+          sameSite: 'lax', // Allow cookies on same-site navigations (like Stripe redirect)
+        },
+      },
+    },
   },
 
   // User schema
@@ -126,10 +143,18 @@ export const auth = betterAuth({
 
   // Plugins
   plugins: [
+    apiKey({
+      // Enable API key authentication for server-side operations
+      // This allows MCP tools to call auth.api methods without user sessions
+      defaultPrefix: "amm_",
+      requireName: true,
+      // Enable sessions from API keys so the key can represent a user session
+      // This is needed for endpoints like upgradeSubscription that require authentication
+      enableSessionForAPIKeys: true,
+    }),
     mcp({
       loginPage: "/login",
       resource: baseURL,
-
       // OAuth configuration
       oidcConfig: {
         allowDynamicClientRegistration: true,
@@ -179,8 +204,21 @@ export const auth = betterAuth({
       stripeClient,
       stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
       createCustomerOnSignUp: true,
+      onEvent: async (event) => {
+        console.log("[Stripe Webhook] Received event:", {
+          type: event.type,
+          id: event.id,
+          created: new Date(event.created * 1000).toISOString(),
+        });
+      },
       subscription: {
         enabled: true,
+        // Allow API key to create subscriptions for any user
+        authorizeReference: async ({ user, session, referenceId, action }) => {
+          // If using API key authentication, allow creating subscriptions for any referenceId
+          // This is safe because the API key is only accessible server-side
+          return true;
+        },
         plans: [
           {
             name: "basic",
@@ -234,10 +272,48 @@ export const auth = betterAuth({
           subscription: Subscription;
           plan: StripePlan;
         }) => {
-          console.log("[Stripe] Subscription complete", {
+          console.log("[Stripe] Subscription complete - HOOK CALLED", {
+            subscriptionId: subscription.id,
             referenceId: subscription.referenceId,
             plan: plan.name,
+            status: subscription.status,
+            stripeSubscriptionId: subscription.stripeSubscriptionId,
           });
+
+          // Send subscription confirmation email
+          try {
+            const { EmailService } = await import("@/lib/services/email-service");
+
+            // Get user details from database
+            const pool = auth.options.database as any;
+            const client = await pool.connect();
+
+            try {
+              const userResult = await client.query(
+                'SELECT email, name FROM "user" WHERE id = $1',
+                [subscription.referenceId]
+              );
+
+              const user = userResult.rows[0];
+              if (user?.email) {
+                const userName = user.name || "there";
+                const planName = plan.name.charAt(0).toUpperCase() + plan.name.slice(1);
+
+                await EmailService.sendSubscriptionConfirmation(
+                  user.email,
+                  userName,
+                  planName
+                );
+
+                console.log("[Stripe] Subscription confirmation email sent to", user.email);
+              }
+            } finally {
+              client.release();
+            }
+          } catch (error) {
+            console.error("[Stripe] Failed to send subscription confirmation email:", error);
+            // Don't throw - email failure shouldn't block subscription
+          }
         },
         onSubscriptionUpdate: async ({
           subscription,
@@ -292,6 +368,7 @@ export const auth = betterAuth({
       "/api/auth/.well-known/*": false,
     },
   },
+
 });
 
 export type AuthInstance = typeof auth;

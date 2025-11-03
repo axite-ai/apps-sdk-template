@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Your Bank</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+</head>
+<body class="bg-transparent">
+    <div id="root" class="p-4 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 border border-green-500/30 text-white shadow-xl">
+        <!-- Content will be injected here -->
+    </div>
+    <script>
+        let isLoading = false;
+        let linkHandler = null;
+
+        function render() {
+            const root = document.getElementById('root');
+            root.innerHTML = `
+                <div>
+                    <!-- Header -->
+                    <div class="flex items-start mb-4">
+                        <svg class="w-6 h-6 text-green-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        <div class="flex-1">
+                            <h2 class="text-lg font-bold mb-1">Connect Your Bank Account</h2>
+                            <p class="text-sm text-gray-300">Securely link your bank to access your financial data</p>
+                        </div>
+                    </div>
+
+                    <!-- Error message -->
+                    <div id="error-message" class="hidden mb-3 p-2 bg-red-500/20 border border-red-500/50 rounded text-red-300 text-xs"></div>
+
+                    <!-- Benefits -->
+                    <div class="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                        <p class="text-sm font-semibold mb-2">Why connect your bank?</p>
+                        <ul class="space-y-1 text-xs text-gray-300">
+                            <li class="flex items-center">
+                                <svg class="w-3 h-3 text-green-400 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Real-time account balances and transactions</span>
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-3 h-3 text-green-400 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Automated spending insights and analytics</span>
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-3 h-3 text-green-400 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Bank-level security and encryption</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Connect button -->
+                    <button id="connect-btn" class="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold py-3 px-4 rounded-lg transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                        Connect Bank Account
+                    </button>
+
+                    <!-- Security notice -->
+                    <div class="mt-3 p-2 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-300">
+                        <div class="flex items-start">
+                            <svg class="w-3 h-3 mr-1.5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                            </svg>
+                            <p>Your credentials are encrypted and never stored. We use Plaid, a trusted financial data provider used by millions.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Add connect button handler
+            document.getElementById('connect-btn').addEventListener('click', handleConnect);
+        }
+
+        async function handleConnect() {
+            if (isLoading) return;
+
+            isLoading = true;
+            const btn = document.getElementById('connect-btn');
+            const errorDiv = document.getElementById('error-message');
+
+            btn.innerHTML = `
+                <span class="flex items-center justify-center">
+                    <svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    </svg>
+                    Initializing...
+                </span>
+            `;
+            btn.disabled = true;
+            errorDiv.classList.add('hidden');
+
+            try {
+                const toolOutput = window.openai?.toolOutput;
+                const baseUrl = toolOutput?.pricingUrl?.split('/pricing')[0] || 'https://dev.askmymoney.ai';
+
+                // Get link token from backend
+                const response = await fetch(`${baseUrl}/api/plaid/create-link-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                });
+
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    throw new Error(error.message || error.error || 'Failed to initialize Plaid Link');
+                }
+
+                const data = await response.json();
+
+                if (!data.linkToken) {
+                    throw new Error('No link token returned');
+                }
+
+                // Initialize Plaid Link
+                linkHandler = Plaid.create({
+                    token: data.linkToken,
+                    onSuccess: async (public_token, metadata) => {
+                        console.log('Plaid Link success:', metadata);
+
+                        btn.innerHTML = `
+                            <span class="flex items-center justify-center">
+                                <svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                                </svg>
+                                Connecting...
+                            </span>
+                        `;
+
+                        // Exchange public token for access token
+                        try {
+                            const exchangeResponse = await fetch(`${baseUrl}/api/plaid/exchange-token`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                credentials: 'include',
+                                body: JSON.stringify({
+                                    publicToken: public_token,
+                                    metadata: metadata,
+                                }),
+                            });
+
+                            if (!exchangeResponse.ok) {
+                                const error = await exchangeResponse.json().catch(() => ({}));
+                                throw new Error(error.message || error.error || 'Failed to connect bank account');
+                            }
+
+                            // Success! Show success message
+                            const root = document.getElementById('root');
+                            root.innerHTML = `
+                                <div class="text-center">
+                                    <div class="mb-4">
+                                        <svg class="w-16 h-16 text-green-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <h2 class="text-xl font-bold mb-2">Bank Connected!</h2>
+                                    <p class="text-sm text-gray-300 mb-4">Your bank account has been securely connected.</p>
+                                    <p class="text-xs text-gray-400">You can now access your financial data. Try asking about your account balances or recent transactions.</p>
+                                </div>
+                            `;
+                        } catch (error) {
+                            throw error;
+                        }
+                    },
+                    onExit: (err, metadata) => {
+                        console.log('Plaid Link exit:', err, metadata);
+
+                        if (err != null) {
+                            errorDiv.textContent = `Error: ${err.display_message || err.error_message || 'Connection failed'}`;
+                            errorDiv.classList.remove('hidden');
+                        }
+
+                        // Reset button
+                        btn.innerHTML = 'Connect Bank Account';
+                        btn.disabled = false;
+                        isLoading = false;
+                    },
+                    onEvent: (eventName, metadata) => {
+                        console.log('Plaid Link event:', eventName, metadata);
+                    },
+                });
+
+                // Open Plaid Link
+                linkHandler.open();
+
+            } catch (error) {
+                console.error('Plaid Link error:', error);
+                errorDiv.textContent = error.message || 'Failed to initialize Plaid Link. Please try again.';
+                errorDiv.classList.remove('hidden');
+
+                // Reset button
+                btn.innerHTML = 'Connect Bank Account';
+                btn.disabled = false;
+                isLoading = false;
+            }
+        }
+
+        // Initial render
+        render();
+
+        // Listen for updates
+        window.addEventListener('openai:set_globals', () => {
+            render();
+        });
+    </script>
+</body>
+</html>

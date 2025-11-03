@@ -163,36 +163,17 @@
             errorDiv.classList.add('hidden');
 
             try {
-                const toolOutput = window.openai?.toolOutput;
-                const baseUrl = toolOutput?.pricingUrl?.split('/pricing')[0] || 'https://dev.askmymoney.ai';
-
-                // Call the subscription upgrade endpoint
-                const response = await fetch(`${baseUrl}/api/auth/subscription/upgrade`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        plan: selectedPlan,
-                        successUrl: `${baseUrl}/pricing/success`,
-                        cancelUrl: window.location.href,
-                    }),
+                // Call the create_checkout_session MCP tool
+                const result = await window.openai.callTool('create_checkout_session', {
+                    plan: selectedPlan
                 });
 
-                if (!response.ok) {
-                    const error = await response.json().catch(() => ({}));
-                    throw new Error(error.message || error.error || 'Failed to create checkout session');
+                if (!result?.structuredContent?.checkoutUrl) {
+                    throw new Error('Failed to create checkout session');
                 }
 
-                const data = await response.json();
-
-                if (data.url) {
-                    // Redirect to Stripe Checkout
-                    window.openai.openExternal({ href: data.url });
-                } else {
-                    throw new Error('No checkout URL returned');
-                }
+                // Redirect to Stripe Checkout
+                window.openai.openExternal({ href: result.structuredContent.checkoutUrl });
             } catch (error) {
                 console.error('Subscription error:', error);
                 errorDiv.textContent = error.message || 'Failed to start subscription. Please try again.';
