@@ -883,6 +883,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
   registerWidget("spending-insights.html", "Spending Insights Widget");
   registerWidget("account-health.html", "Account Health Widget");
   registerWidget("subscription-required.html", "Subscription Required Widget");
+  registerWidget("plaid-required.html", "Plaid Link Widget");
   registerWidget("pricing.html", "Pricing Widget (Legacy)");
 })(req);
 });
