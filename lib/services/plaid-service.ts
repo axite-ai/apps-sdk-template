@@ -73,51 +73,15 @@ export const exchangePublicToken = async (publicToken: string) => {
  * @returns Account balances and details
  */
 export async function getAccountBalances(accessToken: string) {
+  const request: AccountsGetRequest = {
+    access_token: accessToken,
+  };
   try {
-    const request: AccountsGetRequest = {
-      access_token: accessToken,
-    };
-
     const response = await getPlaidClient().accountsGet(request);
-    return {
-      accounts: response.data.accounts.map(account => ({
-        id: account.account_id,
-        name: account.name,
-        officialName: account.official_name,
-        type: account.type,
-        subtype: account.subtype,
-        mask: account.mask,
-        balance: {
-          current: account.balances.current,
-          available: account.balances.available,
-          limit: account.balances.limit,
-          isoCurrencyCode: account.balances.iso_currency_code,
-        },
-      })),
-      item: response.data.item,
-    };
+    return response.data;
   } catch (error: any) {
-    console.error('Error getting account balances:', error);
-
-    // Handle Plaid-specific errors
-    if (error?.response?.data?.error_code) {
-      const plaidErrorCode = error.response.data.error_code;
-      const plaidErrorMessage = error.response.data.error_message;
-
-      // Item login required - user needs to reconnect
-      if (plaidErrorCode === 'ITEM_LOGIN_REQUIRED') {
-        throw new Error('Your bank connection has expired. Please reconnect your account.');
-      }
-
-      // Handle other common Plaid errors
-      if (plaidErrorCode === 'INVALID_ACCESS_TOKEN') {
-        throw new Error('Invalid bank connection. Please reconnect your account.');
-      }
-
-      throw new Error(`Plaid error (${plaidErrorCode}): ${plaidErrorMessage}`);
-    }
-
-    throw new Error(`Failed to get account balances: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Error getting account balances:', error.response.data);
+    throw new Error(`Failed to get account balances: ${error.response.data.error_message}`);
   }
 }
 
@@ -129,37 +93,21 @@ export async function getAccountBalances(accessToken: string) {
  * @returns Transactions and accounts
  */
 export async function getTransactions(accessToken: string, startDate: string, endDate: string) {
+  const request: TransactionsGetRequest = {
+    access_token: accessToken,
+    start_date: startDate,
+    end_date: endDate,
+    options: {
+      count: 100,
+      offset: 0,
+    },
+  };
   try {
-    const request: TransactionsGetRequest = {
-      access_token: accessToken,
-      start_date: startDate,
-      end_date: endDate,
-      options: {
-        count: 100, // Get up to 100 transactions
-        offset: 0,
-      },
-    };
-
     const response = await getPlaidClient().transactionsGet(request);
-    return {
-      transactions: response.data.transactions.map(tx => ({
-        id: tx.transaction_id,
-        accountId: tx.account_id,
-        amount: tx.amount,
-        isoCurrencyCode: tx.iso_currency_code,
-        date: tx.date,
-        name: tx.name,
-        merchantName: tx.merchant_name,
-        category: tx.category,
-        pending: tx.pending,
-        paymentChannel: tx.payment_channel,
-      })),
-      accounts: response.data.accounts,
-      totalTransactions: response.data.total_transactions,
-    };
-  } catch (error) {
-    console.error('Error getting transactions:', error);
-    throw new Error(`Failed to get transactions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error getting transactions:', error.response.data);
+    throw new Error(`Failed to get transactions: ${error.response.data.error_message}`);
   }
 }
 
@@ -218,8 +166,8 @@ export async function checkAccountHealth(accessToken: string) {
 
     const healthChecks = accounts.map(account => {
       const warnings: string[] = [];
-      const balance = account.balance.current || 0;
-      const available = account.balance.available || 0;
+      const balance = account.balances.current || 0;
+      const available = account.balances.available || 0;
 
       // Check for low balance
       if (balance < 100 && account.type === 'depository') {
@@ -232,8 +180,8 @@ export async function checkAccountHealth(accessToken: string) {
       }
 
       // Check for over-limit on credit accounts
-      if (account.type === 'credit' && account.balance.limit) {
-        const utilization = (Math.abs(balance) / account.balance.limit) * 100;
+      if (account.type === 'credit' && account.balances.limit) {
+        const utilization = (Math.abs(balance) / account.balances.limit) * 100;
         if (utilization > 90) {
           warnings.push('High credit utilization (>90%)');
         } else if (utilization > 70) {
@@ -242,7 +190,7 @@ export async function checkAccountHealth(accessToken: string) {
       }
 
       return {
-        accountId: account.id,
+        accountId: account.account_id,
         accountName: account.name,
         accountType: account.type,
         balance,

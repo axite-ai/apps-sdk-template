@@ -55,11 +55,30 @@ const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: "2025-09-30.clover",
 });
 
-// Get base URL from environment
+// Helper utilities for composing URLs without duplicate slashes
+const stripTrailingSlash = (value: string) =>
+  value.endsWith("/") ? value.slice(0, -1) : value;
+
+const ensureLeadingSlash = (value: string) =>
+  value.startsWith("/") ? value : `/${value}`;
+
+// Determine the application origin (used for user-facing URLs)
+const appOrigin =
+  process.env.APP_URL ||
+  (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
+  "https://dev.askmymoney.ai";
+
+const authBasePath = ensureLeadingSlash(
+  process.env.BETTER_AUTH_BASE_PATH || "/api/auth"
+);
+
+// Get base URL for Better Auth endpoints (should include `/api/auth`)
 const baseURL =
   process.env.BETTER_AUTH_URL ||
-  (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
-  'https://dev.askmymoney.ai';
+  `${stripTrailingSlash(appOrigin)}${authBasePath}`;
+
+// Resource URL advertised to OAuth clients (should remain the origin)
+const resourceURL = process.env.MCP_RESOURCE_URL || appOrigin;
 
 // Initialize Better Auth with MCP and Stripe plugins
 export const auth = betterAuth({
@@ -154,7 +173,7 @@ export const auth = betterAuth({
     }),
     mcp({
       loginPage: "/login",
-      resource: baseURL,
+      resource: resourceURL,
       // OAuth configuration
       oidcConfig: {
         allowDynamicClientRegistration: true,

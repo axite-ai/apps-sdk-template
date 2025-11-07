@@ -87,7 +87,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
 
         // Calculate total balance
         const totalBalance = allAccounts.reduce((sum, account) => {
-          return sum + (account.balance.current || 0);
+          return sum + (account.balances.current || 0);
         }, 0);
 
         const output = {
@@ -105,7 +105,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
           ],
           structuredContent: output,
           _meta: {
-            "openai/outputTemplate": "ui://widget/account-balances.html",
+            "openai/outputTemplate": "/widgets/account-balances",
             "openai/toolInvocation/invoked": `Retrieved ${allAccounts.length} account${allAccounts.length !== 1 ? "s" : ""}`,
             "openai/widgetAccessible": false,
             "openai/resultCanProduceWidget": true,
@@ -138,7 +138,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
         limit: z.number().optional().describe("Maximum number of transactions to return. Defaults to 100."),
       },
       _meta: {
-        "openai/outputTemplate": "ui://widget/transactions.html",
+        "openai/outputTemplate": "/widgets/transactions",
         "openai/toolInvocation/invoking": "Fetching transactions...",
         "openai/toolInvocation/invoked": "Transactions retrieved",
         "openai/widgetAccessible": true,
@@ -218,7 +218,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
         endDate: z.string().optional().describe("End date in YYYY-MM-DD format. Defaults to today."),
       },
       _meta: {
-        "openai/outputTemplate": "ui://widget/spending-insights.html",
+        "openai/outputTemplate": "/widgets/spending-insights",
         "openai/toolInvocation/invoking": "Analyzing spending...",
         "openai/toolInvocation/invoked": "Spending analysis ready",
         "openai/widgetAccessible": true,
@@ -316,7 +316,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
       description: "Get account health information including balances, warnings, and status. Requires authentication.",
       inputSchema: {},
       _meta: {
-        "openai/outputTemplate": "ui://widget/account-health.html",
+        "openai/outputTemplate": "/widgets/account-health",
       },
       annotations: {
         destructiveHint: false,
@@ -382,7 +382,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
           ],
           structuredContent: output,
           _meta: {
-            "openai/outputTemplate": "ui://widget/account-health.html",
+            "openai/outputTemplate": "/widgets/account-health",
           },
         };
       } catch (error) {
@@ -410,7 +410,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
         description: "A simple widget to test basic functionality.",
         inputSchema: {},
         _meta: {
-          "openai/outputTemplate": "ui://widget/test-widget.html",
+          "openai/outputTemplate": "/widgets/test-widget",
         },
         securitySchemes: [{ type: "noauth" }],
       } as any,
@@ -515,7 +515,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
         description: "A more complex widget to test state and tool calls.",
         inputSchema: {},
         _meta: {
-          "openai/outputTemplate": "ui://widget/advanced-test-widget.html",
+          "openai/outputTemplate": "/widgets/advanced-test-widget",
         },
         securitySchemes: [{ type: "noauth" }],
       } as any,
@@ -850,41 +850,6 @@ const handler = withMcpAuth(auth, async (req, session) => {
     }
   );
 
-  // ============================================================================
-  // WIDGET RESOURCES
-  // ============================================================================
-  const fs = await import('fs/promises');
-  const path = await import('path');
-
-  const registerWidget = (fileName: string, name: string) => {
-    const uri = `ui://widget/${fileName}`;
-    server.registerResource(fileName, uri, { name, mimeType: "text/html" }, async () => {
-      const filePath = path.join(process.cwd(), 'widgets', fileName);
-      try {
-        const content = await fs.readFile(filePath, 'utf-8');
-        return {
-          contents: [{
-            uri,
-            mimeType: "text/html",
-            text: content,
-          }],
-        };
-      } catch (error) {
-        console.error(`Failed to read widget file ${fileName}:`, error);
-        throw new Error(`Widget not found: ${fileName}`);
-      }
-    });
-  };
-
-  registerWidget("advanced-test-widget.html", "Advanced Test Widget");
-  registerWidget("test-widget.html", "Test Widget");
-  registerWidget("account-balances.html", "Account Balances Widget");
-  registerWidget("transactions.html", "Transactions Widget");
-  registerWidget("spending-insights.html", "Spending Insights Widget");
-  registerWidget("account-health.html", "Account Health Widget");
-  registerWidget("subscription-required.html", "Subscription Required Widget");
-  registerWidget("plaid-required.html", "Plaid Link Widget");
-  registerWidget("pricing.html", "Pricing Widget (Legacy)");
 })(req);
 });
 

@@ -96,7 +96,7 @@ export function createPlaidRequiredResponse() {
     "openai/resultCanProduceWidget": true,
   };
 
-  return {
+  const response = {
     content: [
       {
         type: "text" as const,
@@ -111,4 +111,12 @@ export function createPlaidRequiredResponse() {
     isError: false,
     _meta: responseMeta,
   };
+
+  console.log('[Plaid Required Response] Creating response:', {
+    baseUrl: baseURL,
+    widgetUri: responseMeta["openai/outputTemplate"],
+    fullResponse: JSON.stringify(response, null, 2),
+  });
+
+  return response;
 }
