@@ -260,12 +260,10 @@ export const auth = betterAuth({
                 });
               },
               onTrialEnd: async (
-                { subscription }: { subscription: Subscription },
-                ctx?: any
+                { subscription }: { subscription: Subscription }
               ) => {
                 console.log("[Stripe] Trial ended", {
                   referenceId: subscription.referenceId,
-                  userId: ctx?.user?.id,
                 });
               },
               onTrialExpired: async (subscription: Subscription) => {
@@ -304,7 +302,7 @@ export const auth = betterAuth({
             const { EmailService } = await import("@/lib/services/email-service");
 
             // Get user details from database
-            const pool = auth.options.database as any;
+            const pool = auth.options.database as Pool;
             const client = await pool.connect();
 
             try {

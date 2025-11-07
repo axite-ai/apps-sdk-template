@@ -25,8 +25,8 @@ export default function PlaidRequired() {
           throw new Error(exchangeResult.error);
         }
         setSuccess(`Successfully connected ${metadata.institution?.name}! You can now use all financial features.`);
-      } catch (error: any) {
-        setError(error.message || 'Failed to complete connection. Please try again.');
+      } catch (error: unknown) {
+        setError(error instanceof Error ? error.message : 'Failed to complete connection. Please try again.');
       } finally {
         setIsLoading(false);
       }
@@ -51,8 +51,8 @@ export default function PlaidRequired() {
         throw new Error(result.error || "Failed to create link token");
       }
       setLinkToken(result.linkToken);
-    } catch (error: any) {
-      setError(error.message || 'Failed to initialize connection. Please try again.');
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'Failed to initialize connection. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -81,7 +81,7 @@ export default function PlaidRequired() {
         {success && <div className="mb-3 p-2 bg-green-500/20 border border-green-500/50 rounded text-green-300 text-xs">{success}</div>}
 
         <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
-          <h3 className="font-semibold mb-3 text-sm">What You'll Get:</h3>
+          <h3 className="font-semibold mb-3 text-sm">What You&apos;ll Get:</h3>
           <ul className="space-y-2">
             <li className="flex items-start text-xs text-gray-300">
               <svg className="w-4 h-4 text-green-400 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

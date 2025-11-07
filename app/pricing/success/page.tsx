@@ -71,7 +71,7 @@ export default function SubscriptionSuccessPage() {
             </svg>
           </div>
           <p className="text-gray-300 text-lg">
-            We've sent you a confirmation email with instructions on how to connect your bank account and start using AskMyMoney.
+            We&apos;ve sent you a confirmation email with instructions on how to connect your bank account and start using AskMyMoney.
           </p>
         </div>
 
