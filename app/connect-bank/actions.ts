@@ -22,46 +22,38 @@ type PlaidMetadata = {
   } | null;
 };
 
-export const createPlaidLinkToken = async (): Promise<LinkTokenResult> => {
+export const createPlaidLinkToken = async (mcpToken?: string): Promise<LinkTokenResult> => {
   try {
     // Check 1: Authentication
     const headersList = await headers();
 
-    // Extract session token from cookie
-    const cookieHeader = headersList.get('cookie') || '';
-    const sessionTokenMatch = cookieHeader.match(/__Secure-better-auth\.session_token=([^;]+)/);
-    const sessionToken = sessionTokenMatch?.[1];
+    // If token provided (from popup URL), create headers with it
+    const authHeaders = new Headers(headersList);
+    if (mcpToken) {
+      console.log('[Server Action] Using MCP token from URL parameter');
+      authHeaders.set('Authorization', `Bearer ${mcpToken}`);
+    }
 
-    console.log('[Server Action] Cookie details:', {
-      hasCookie: !!cookieHeader,
-      hasSessionToken: !!sessionToken,
-      sessionTokenPreview: sessionToken?.substring(0, 30),
-      fullCookie: cookieHeader.substring(0, 200),
+    console.log('[Server Action] Authorization header:', authHeaders.get('authorization') ? 'present' : 'missing');
+
+    // Check for MCP session (required - users authenticate via ChatGPT OAuth)
+    const mcpSession = await auth.api.getMcpSession({ headers: authHeaders });
+    console.log('[Server Action] MCP Session result:', {
+      hasSession: !!mcpSession,
+      userId: mcpSession?.userId,
     });
 
-    const session = await auth.api.getSession({
-      headers: headersList,
-      query: {
-        disableCookieCache: true, // Force fresh session check
-      },
-    });
-
-    console.log('[Server Action] Session check:', {
-      hasSession: !!session,
-      userId: session?.user?.id,
-      sessionData: session,
-    });
-
-
-    if (!session?.user?.id) {
+    if (!mcpSession?.userId) {
       return {
         success: false,
-        error: 'Authentication required. Please sign in first.',
+        error: 'Authentication required. Please sign in first through ChatGPT.',
       };
     }
 
+    const userId = mcpSession.userId;
+
     // Check 2: Active Subscription
-    const hasSubscription = await hasActiveSubscription(session.user.id);
+    const hasSubscription = await hasActiveSubscription(userId);
     if (!hasSubscription) {
       return {
         success: false,
@@ -70,7 +62,7 @@ export const createPlaidLinkToken = async (): Promise<LinkTokenResult> => {
     }
 
     // Check 3: Account limits (based on subscription plan)
-    const existingItems = await UserService.getUserPlaidItems(session.user.id, true);
+    const existingItems = await UserService.getUserPlaidItems(userId, true);
 
     // Get user's subscription to check limits
     const client = await pool.connect();
@@ -82,7 +74,7 @@ export const createPlaidLinkToken = async (): Promise<LinkTokenResult> => {
          AND status IN ('active', 'trialing')
          ORDER BY period_start DESC
          LIMIT 1`,
-        [session.user.id]
+        [userId]
       );
 
       const subscription = subResult.rows[0];
@@ -104,7 +96,7 @@ export const createPlaidLinkToken = async (): Promise<LinkTokenResult> => {
       }
 
       // All checks passed - create link token
-      const linkTokenData = await createLinkToken(session.user.id);
+      const linkTokenData = await createLinkToken(userId);
 
       return {
         success: true,
@@ -125,22 +117,38 @@ export const createPlaidLinkToken = async (): Promise<LinkTokenResult> => {
 
 export const exchangePlaidPublicToken = async (
   publicToken: string,
-  metadata: PlaidMetadata
+  metadata: PlaidMetadata,
+  mcpToken?: string
 ): Promise<ExchangeTokenResult> => {
   try {
     // Check 1: Authentication
     const headersList = await headers();
-    const session = await auth.api.getSession({ headers: headersList });
 
-    if (!session?.user?.id) {
+    // If token provided (from popup URL), create headers with it
+    const authHeaders = new Headers(headersList);
+    if (mcpToken) {
+      console.log('[Server Action] Using MCP token from URL parameter');
+      authHeaders.set('Authorization', `Bearer ${mcpToken}`);
+    }
+
+    // Check for MCP session (required - users authenticate via ChatGPT OAuth)
+    const mcpSession = await auth.api.getMcpSession({ headers: authHeaders });
+    console.log('[Server Action] MCP Session result:', {
+      hasSession: !!mcpSession,
+      userId: mcpSession?.userId,
+    });
+
+    if (!mcpSession?.userId) {
       return {
         success: false,
-        error: 'Authentication required. Please sign in first.',
+        error: 'Authentication required. Please sign in first through ChatGPT.',
       };
     }
 
+    const userId = mcpSession.userId;
+
     // Check 2: Active Subscription
-    const hasSubscription = await hasActiveSubscription(session.user.id);
+    const hasSubscription = await hasActiveSubscription(userId);
     if (!hasSubscription) {
       return {
         success: false,
@@ -164,7 +172,7 @@ export const exchangePlaidPublicToken = async (
 
     // Save the Plaid item to database (access token will be encrypted)
     await UserService.savePlaidItem(
-      session.user.id,
+      userId,
       itemId,
       accessToken,
       institutionId,
@@ -172,7 +180,7 @@ export const exchangePlaidPublicToken = async (
     );
 
     console.log('[Server Action] Successfully connected Plaid item', {
-      userId: session.user.id,
+      userId,
       itemId,
       institutionName,
     });
@@ -187,12 +195,12 @@ export const exchangePlaidPublicToken = async (
       try {
         const userResult = await client.query(
           'SELECT email, name FROM "user" WHERE id = $1',
-          [session.user.id]
+          [userId]
         );
 
         const countResult = await client.query(
           'SELECT COUNT(*) FROM plaid_items WHERE user_id = $1 AND status = $2',
-          [session.user.id, 'active']
+          [userId, 'active']
         );
 
         const user = userResult.rows[0];

@@ -5,6 +5,7 @@ import {
   boolean,
   integer,
 } from "drizzle-orm/pg-core";
+import { createId } from "@paralleldrive/cuid2";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -146,7 +147,9 @@ export const subscription = pgTable("subscription", {
 // Custom application tables
 
 export const plaidItems = pgTable("plaid_items", {
-  id: text("id").primaryKey(),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
@@ -164,7 +167,9 @@ export const plaidItems = pgTable("plaid_items", {
 });
 
 export const plaidWebhooks = pgTable("plaid_webhooks", {
-  id: text("id").primaryKey(),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
   itemId: text("item_id"),
   webhookType: text("webhook_type").notNull(),
   webhookCode: text("webhook_code").notNull(),

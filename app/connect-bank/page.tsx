@@ -25,7 +25,12 @@ export default function ConnectBankPage() {
     const initializePage = async () => {
       try {
         console.log('[Connect Bank] Fetching Plaid link token...');
-        const linkTokenResult = await createPlaidLinkToken();
+
+        // Get the MCP token from URL if present
+        const token = searchParams.get('token');
+        console.log('[Connect Bank] Token from URL:', token ? 'present' : 'missing');
+
+        const linkTokenResult = await createPlaidLinkToken(token || undefined);
 
         if (!linkTokenResult.success) {
           // If authentication error, provide helpful message
@@ -47,7 +52,7 @@ export default function ConnectBankPage() {
     };
 
     initializePage();
-  }, []);
+  }, [searchParams]);
 
   const { open, ready } = usePlaidLink({
     token: pageData.linkToken || '',
@@ -56,7 +61,10 @@ export default function ConnectBankPage() {
       setIsExchanging(true);
 
       try {
-        const result = await exchangePlaidPublicToken(public_token, metadata);
+        // Get the MCP token from URL
+        const token = searchParams.get('token');
+
+        const result = await exchangePlaidPublicToken(public_token, metadata, token || undefined);
 
         if (!result.success) {
           throw new Error(result.error);

@@ -85,15 +85,22 @@ export function createSubscriptionRequiredResponse(featureName?: string, userId?
 /**
  * Create a response prompting the user to connect their bank via Plaid Link
  *
- * The widget will use the MCP session directly via server actions,
- * so no JWT token generation is needed.
+ * Extracts the MCP access token from headers and passes it to the widget
+ * so it can be used when opening the /connect-bank popup
  *
- * @param userId - The user ID (for logging/debugging)
- * @param headers - The headers from the MCP request (unused, kept for API compatibility)
+ * @param userId - The user ID from the MCP session
+ * @param headers - The headers from the MCP request (contains Authorization Bearer token)
  * @returns MCP tool response with Plaid connection widget
  */
 export async function createPlaidRequiredResponse(userId: string, headers: Headers) {
   console.log('[Plaid Required Response] Creating response for user:', userId);
+
+  // Extract the Bearer token from the Authorization header
+  const authHeader = headers.get('authorization');
+  const mcpToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined;
+
+  console.log('[Plaid Required Response] MCP token:', mcpToken ? 'present' : 'missing');
+
   const baseMessage = "Please connect your bank account to access your financial data.";
 
   const responseMeta: OpenAIResponseMetadata = {
@@ -111,17 +118,18 @@ export async function createPlaidRequiredResponse(userId: string, headers: Heade
         text: baseMessage,
       } as { [x: string]: unknown; type: "text"; text: string },
     ],
-    // Widget will use MCP session directly through server actions
+    // Pass the MCP access token to the widget so it can open /connect-bank with auth
     structuredContent: {
       baseUrl: baseURL,
-      userId, // User ID for logging/debugging
+      userId,
       message: "Bank connection required",
+      mcpToken, // MCP Bearer token for authenticating /connect-bank popup
     },
     isError: false,
     _meta: responseMeta,
   };
 
-  console.log('[Plaid Required Response] Widget will use MCP session for authentication');
+  console.log('[Plaid Required Response] Widget will receive MCP token in props');
 
   return response;
 }
