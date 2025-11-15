@@ -31,8 +31,12 @@ pnpm check
 # Linting
 pnpm lint
 
-# Database migrations
-pnpm migrate
+# Database operations
+pnpm db:generate      # Generate Drizzle migrations from schema
+pnpm db:migrate       # Apply pending migrations
+pnpm db:push         # Push schema without migrations (dev only)
+pnpm db:studio       # Launch Drizzle Studio GUI
+pnpm db:schema       # Regenerate schema from Better Auth config
 ```
 
 ## Architecture
@@ -77,7 +81,9 @@ Session data stored in PostgreSQL. Rate limiting and caching use Redis as second
 **Database:**
 - PostgreSQL for user data, sessions, Plaid items, subscriptions
 - Redis for rate limiting and caching
-- Migrations in `migrations/*.sql` run via `pnpm migrate`
+- Drizzle ORM for type-safe database operations
+- Schema defined in `lib/db/schema.ts`
+- Migrations managed via Drizzle Kit in `drizzle/` directory
 
 ### ChatGPT Widget Integration
 
@@ -127,46 +133,96 @@ When adding new tools to `app/mcp/route.ts`:
 4. For authenticated tools, add `securitySchemes: [{ type: "oauth2" }]` and implement the three-tier auth check
 5. Return structured content with `structuredContent` field for widget consumption
 
-### Creating Stripe Checkout Sessions from MCP Tools
+### Creating Stripe Checkout Sessions from MCP Tools or Server Actions
 
-When creating Stripe checkout sessions from MCP tools, you can use the MCP session's `userId` directly without needing Better Auth session cookies. The key is to include proper metadata so Better Auth's webhook handlers can process the subscription:
+When creating Stripe checkout sessions, you MUST follow the Better Auth Stripe plugin's expected flow. Better Auth's webhooks require THREE critical pieces of metadata to persist subscriptions:
+
+**CRITICAL REQUIREMENTS:**
+
+1. **Pre-create a database subscription record** with status `"incomplete"` BEFORE creating the Stripe checkout session
+2. **Pass the database subscription ID** as `subscriptionId` in checkout metadata
+3. **Include both `referenceId` fields** in metadata and `client_reference_id`
 
 ```typescript
-// MCP handler has access to session.userId via withMcpAuth
+// 1. Pre-create incomplete subscription in database
+const ctx = await auth.$context;
+const subscription = await ctx.adapter.create({
+  model: "subscription",
+  data: {
+    plan: planName.toLowerCase(),
+    stripeCustomerId: stripeCustomerId,
+    status: "incomplete",
+    referenceId: userId,
+    seats: 1,
+  },
+});
+
+// 2. Create checkout session with REQUIRED metadata
 const checkoutSession = await stripe.checkout.sessions.create({
   customer: stripeCustomerId,
   mode: 'subscription',
   line_items: [{ price: priceId, quantity: 1 }],
   success_url: `${baseUrl}/pricing/success?session_id={CHECKOUT_SESSION_ID}`,
   cancel_url: `${baseUrl}/pricing`,
+  client_reference_id: userId, // CRITICAL: Fallback for referenceId lookup
   metadata: {
-    referenceId: session.userId, // Better Auth uses referenceId to link to user
-    plan: 'pro', // Checkout session metadata
+    referenceId: userId,
+    subscriptionId: subscription.id, // CRITICAL: Database subscription ID (NOT Stripe subscription ID)
+    plan: planName.toLowerCase(),
   },
   subscription_data: {
     metadata: {
-      referenceId: session.userId, // CRITICAL: Better Auth webhooks look for referenceId in subscription metadata
-      plan: 'pro', // CRITICAL: Better Auth webhooks look for plan in subscription metadata
+      referenceId: userId,
+      plan: planName.toLowerCase(),
     },
   },
 });
 ```
 
-**CRITICAL:** Both `subscription_data.metadata.referenceId` and `subscription_data.metadata.plan` fields are **required** for Better Auth's Stripe plugin:
-- `referenceId`: Links the subscription to the user record (not `userId`)
-- `plan`: Matches the subscription to your configured plans in `lib/auth/index.ts`
+**Why This Is Required:**
 
-Without this metadata, webhooks will receive the events but fail silently when trying to create subscription records, resulting in subscriptions existing in Stripe but not in your database.
+Better Auth's webhook handler (`onCheckoutSessionCompleted` in the Stripe plugin) checks:
+```typescript
+if (referenceId && subscriptionId) {
+  // Update subscription...
+} else {
+  // Silently exits - subscription NOT persisted
+}
+```
+
+**Required Metadata Fields:**
+- `client_reference_id` - User/org ID (fallback for referenceId)
+- `metadata.referenceId` - User/org ID that owns the subscription
+- `metadata.subscriptionId` - **CRITICAL:** Your internal database subscription.id (created in step 1)
+- `metadata.plan` - Plan name matching your Better Auth config
+- `subscription_data.metadata.referenceId` - User/org ID for subscription object
+- `subscription_data.metadata.plan` - Plan name for subscription object
+
+Without `subscriptionId` in the metadata, webhooks will silently fail and subscriptions won't be persisted to your database, even though they exist in Stripe.
 
 ## Database Schema
 
-Key tables (created via migrations):
-- `user` - Better Auth users with OAuth identities
+**Using Drizzle ORM** - Schema defined in `lib/db/schema.ts` with snake_case column names:
+
+**Better Auth Core Tables:**
+- `user` - User accounts with OAuth identities and Stripe customer IDs
 - `session` - Active user sessions
+- `account` - OAuth provider accounts
+- `verification` - Email verification tokens
+
+**Better Auth Plugin Tables:**
+- `apikey` - API key authentication (from apiKey plugin)
+- `jwks` - JSON Web Key Set (from jwt plugin)
+- `oauth_application` - OAuth applications (from mcp plugin)
+- `oauth_access_token` - OAuth access tokens (from mcp plugin)
+- `oauth_consent` - OAuth user consents (from mcp plugin)
+- `subscription` - Stripe subscriptions with plan limits (from stripe plugin)
+
+**Custom Application Tables:**
 - `plaid_items` - User-to-Plaid account mappings (access tokens encrypted)
-- `subscription` - Stripe subscription records with plan limits
-- `account` - OAuth accounts (ChatGPT, Claude)
-- `migrations` - Migration tracking
+- `plaid_webhooks` - Plaid webhook event logs
+
+**Important:** Database columns use snake_case (e.g., `stripe_customer_id`, `reference_id`) while TypeScript properties use camelCase. When writing raw SQL queries, always use snake_case column names.
 
 ## Path Aliases
 

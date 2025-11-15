@@ -5,15 +5,20 @@ This guide helps agents contribute to AskMyMoney's ChatGPT-ready Next.js repo co
 ## Project Structure & Module Organization
 - `app/` holds Next.js routes; `app/mcp/route.ts` exposes MCP tools/resources consumed by ChatGPT.
 - `lib/` centralizes auth, config, services, and shared types; prefer importing from here over duplicating logic.
+  - `lib/db/` contains Drizzle ORM setup: `index.ts` exports db instance and pool, `schema.ts` defines all tables
 - `widgets/` serves static HTML widgets for iframe rendering; keep assets self-contained with inline styles only.
-- Operational scripts live in `scripts/`; database migrations sit in `migrations/` and `better-auth_migrations/`. Static assets belong in `public/`.
+- Operational scripts live in `scripts/`; Drizzle migrations are in `drizzle/`. Static assets belong in `public/`.
 
 ## Build, Test, and Development Commands
 - `pnpm dev` launches the Turbopack dev server at `http://localhost:3000`.
 - `pnpm build` followed by `pnpm start` produces and smoke-tests the production bundle.
 - `pnpm lint` runs Next.js ESLint rules; fix warnings before review.
 - `pnpm typecheck` (or `pnpm check`) enforces TypeScript contracts prior to CI.
-- `pnpm migrate` runs `scripts/migrate.ts`; ensure Postgres environment variables are configured first.
+- `pnpm db:generate` generates Drizzle migration files from schema changes.
+- `pnpm db:migrate` applies pending Drizzle migrations to the database.
+- `pnpm db:push` pushes schema directly without migrations (development only).
+- `pnpm db:studio` launches Drizzle Studio for visual database management.
+- `pnpm db:schema` regenerates `lib/db/schema.ts` from Better Auth config (run after changing auth plugins).
 
 ## Coding Style & Naming Conventions
 - Favor TypeScript with 2-space indentation; use async/await and typed helpers.
@@ -25,7 +30,8 @@ This guide helps agents contribute to AskMyMoney's ChatGPT-ready Next.js repo co
 - There is no bundled unit runner yet; always run `pnpm lint` and `pnpm typecheck` before committing.
 - Add targeted tests when introducing infrastructure; name files `*.test.ts` or `*.spec.ts`.
 - Capture manual verification notes for MCP endpoints (`/mcp`) and subscription flows inside the PR description.
-- For database or auth changes, run `pnpm migrate` against a disposable database and confirm schema diffs.
+- For database or auth changes, run `pnpm db:generate` then `pnpm db:migrate` against a disposable database and confirm schema diffs.
+- When modifying Better Auth config or adding plugins, run `pnpm db:schema` to regenerate the schema file.
 
 ## Commit & Pull Request Guidelines
 - Follow Conventional Commits (`feat(subscription): hook up stripe subscriptions`) as seen in the Git history.
