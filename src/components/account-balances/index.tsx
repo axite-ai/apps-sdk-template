@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useWidgetProps } from "@/app/hooks/use-widget-props";
-import PlaidConnectionPrompt from "@/src/components/plaid-connection-prompt";
+import PlaidRequired from "@/src/components/plaid-required";
 import SubscriptionRequired from "@/src/components/subscription-required";
 
 interface Account {
@@ -39,7 +39,7 @@ export default function AccountBalances() {
 
   // Check if bank connection is required
   if (toolOutput.message === 'Bank connection required') {
-    return <PlaidConnectionPrompt />;
+    return <PlaidRequired />;
   }
 
   if (toolOutput.error_message === 'Subscription required' || toolOutput.featureName) {

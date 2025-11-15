@@ -71,7 +71,12 @@ export default function PlaidRequired() {
       setSuccess(null);
       setError(null);
       try {
+        if (!props.userId) {
+          throw new Error("User ID not found in widget props");
+        }
+
         const exchangeResult = await exchangePlaidPublicToken(
+          props.userId,
           public_token,
           metadata.institution || {}
         );
@@ -118,7 +123,12 @@ export default function PlaidRequired() {
 
     try {
       addLog('Creating Plaid link token via server action (uses MCP session)...');
-      const result = await createPlaidLinkToken();
+
+      if (!props.userId) {
+        throw new Error("User ID not found in widget props");
+      }
+
+      const result = await createPlaidLinkToken(props.userId);
       if (!result.success || !result.linkToken) {
         throw new Error(result.error || "Failed to create link token");
       }

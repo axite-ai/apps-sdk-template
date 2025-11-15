@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useWidgetProps } from "@/app/hooks/use-widget-props";
-import PlaidConnectionPrompt from "@/src/components/plaid-connection-prompt";
+import PlaidRequired from "@/src/components/plaid-required";
 
 interface Transaction {
   transaction_id: string;
@@ -33,7 +33,7 @@ export default function Transactions() {
 
   // Check if bank connection is required
   if (toolOutput?.message === 'Bank connection required') {
-    return <PlaidConnectionPrompt />;
+    return <PlaidRequired />;
   }
 
   if (!toolOutput || !toolOutput.transactions) {
