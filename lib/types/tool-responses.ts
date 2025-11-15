@@ -20,9 +20,30 @@ export interface AccountBalancesContent {
 export interface TransactionsContent {
   transactions: Transaction[];
   totalTransactions: number;
+  displayedTransactions: number;
   dateRange: {
     start: string;
     end: string;
+  };
+  metadata?: {
+    categoryBreakdown: Array<{
+      category: string;
+      count: number;
+      total: number;
+    }>;
+    topMerchants: Array<{
+      merchantId: string;
+      name: string;
+      count: number;
+      total: number;
+    }>;
+    summary: {
+      totalSpending: number;
+      totalIncome: number;
+      netCashFlow: number;
+      pendingCount: number;
+      averageTransaction: number;
+    };
   };
 }
 

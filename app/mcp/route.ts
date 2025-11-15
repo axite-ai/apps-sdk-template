@@ -236,11 +236,14 @@ const handler = withMcpAuth(auth, async (req, session) => {
     "get_transactions",
     {
       title: "Get Transactions",
-      description: "Get recent transactions for all accounts. Shows an interactive transaction list. Requires authentication.",
+      description: "Get recent transactions for all accounts with rich details including merchant logos, categories, locations, and payment info. Shows an interactive transaction list with filtering and grouping. Requires authentication.",
       inputSchema: {
         startDate: z.string().optional().describe("Start date in YYYY-MM-DD format. Defaults to 30 days ago."),
         endDate: z.string().optional().describe("End date in YYYY-MM-DD format. Defaults to today."),
         limit: z.number().optional().describe("Maximum number of transactions to return. Defaults to 100."),
+        category: z.string().optional().describe("Filter by personal_finance_category primary category (e.g., 'FOOD_AND_DRINK', 'TRANSFER_IN')"),
+        paymentChannel: z.enum(["online", "in store", "other"]).optional().describe("Filter by payment channel"),
+        includePending: z.boolean().optional().describe("Include pending transactions. Defaults to true."),
       },
       _meta: {
         securitySchemes: [{ type: "oauth2" }], // Back-compat mirror for ChatGPT
@@ -256,7 +259,14 @@ const handler = withMcpAuth(auth, async (req, session) => {
       // @ts-expect-error - securitySchemes not yet in MCP SDK types
       securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["transactions:read"] }],
     },
-    async ({ startDate, endDate, limit }: { startDate?: string; endDate?: string; limit?: number }) => {
+    async ({ startDate, endDate, limit, category, paymentChannel, includePending = true }: {
+      startDate?: string;
+      endDate?: string;
+      limit?: number;
+      category?: string;
+      paymentChannel?: "online" | "in store" | "other";
+      includePending?: boolean;
+    }) => {
       try {
         if (!session || !(await hasActiveSubscription(session.userId))) {
           return createSubscriptionRequiredResponse("transactions", session?.userId);
@@ -279,16 +289,108 @@ const handler = withMcpAuth(auth, async (req, session) => {
           allTransactions.push(...result.transactions);
         }
 
+        // Apply filters
+        let filteredTransactions = allTransactions;
+
+        // Filter by pending status
+        if (!includePending) {
+          filteredTransactions = filteredTransactions.filter(tx => !tx.pending);
+        }
+
+        // Filter by category
+        if (category) {
+          filteredTransactions = filteredTransactions.filter(tx =>
+            tx.personal_finance_category?.primary === category
+          );
+        }
+
+        // Filter by payment channel
+        if (paymentChannel) {
+          filteredTransactions = filteredTransactions.filter(tx =>
+            tx.payment_channel === paymentChannel
+          );
+        }
+
         // Sort by date (most recent first) and limit
-        allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        const limitedTransactions = allTransactions.slice(0, limit || 100);
+        filteredTransactions.sort((a, b) => {
+          const dateA = new Date(a.authorized_date || a.date).getTime();
+          const dateB = new Date(b.authorized_date || b.date).getTime();
+          return dateB - dateA;
+        });
+        const limitedTransactions = filteredTransactions.slice(0, limit || 100);
+
+        // Calculate metadata
+        const categoryBreakdown = new Map<string, { count: number; total: number }>();
+        const merchantBreakdown = new Map<string, { name: string; count: number; total: number }>();
+        let totalSpending = 0;
+        let totalIncome = 0;
+        let pendingCount = 0;
+
+        for (const tx of limitedTransactions) {
+          // Category breakdown
+          const cat = tx.personal_finance_category?.primary || 'UNCATEGORIZED';
+          const catData = categoryBreakdown.get(cat) || { count: 0, total: 0 };
+          categoryBreakdown.set(cat, {
+            count: catData.count + 1,
+            total: catData.total + tx.amount
+          });
+
+          // Merchant breakdown
+          const merchantName = tx.merchant_name || tx.name || 'Unknown';
+          const merchantId = tx.merchant_entity_id || merchantName;
+          const merchData = merchantBreakdown.get(merchantId) || { name: merchantName, count: 0, total: 0 };
+          merchantBreakdown.set(merchantId, {
+            name: merchantName,
+            count: merchData.count + 1,
+            total: merchData.total + tx.amount
+          });
+
+          // Spending totals
+          if (tx.amount > 0) {
+            totalSpending += tx.amount;
+          } else {
+            totalIncome += Math.abs(tx.amount);
+          }
+
+          if (tx.pending) {
+            pendingCount++;
+          }
+        }
 
         return createSuccessResponse(
-          `Found ${allTransactions.length} transaction(s) from ${start} to ${end}`,
+          `Found ${limitedTransactions.length} transaction(s) from ${start} to ${end}` +
+          (category ? ` in category ${category}` : '') +
+          (paymentChannel ? ` via ${paymentChannel}` : ''),
           {
             transactions: limitedTransactions,
             totalTransactions: allTransactions.length,
+            displayedTransactions: limitedTransactions.length,
             dateRange: { start, end },
+            metadata: {
+              categoryBreakdown: Array.from(categoryBreakdown.entries()).map(([cat, data]) => ({
+                category: cat,
+                count: data.count,
+                total: data.total
+              })).sort((a, b) => b.total - a.total),
+              topMerchants: Array.from(merchantBreakdown.entries())
+                .map(([id, data]) => ({
+                  merchantId: id,
+                  name: data.name,
+                  count: data.count,
+                  total: data.total
+                }))
+                .sort((a, b) => b.total - a.total)
+                .slice(0, 10),
+              summary: {
+                totalSpending,
+                totalIncome,
+                netCashFlow: totalIncome - totalSpending,
+                pendingCount,
+                averageTransaction: limitedTransactions.length > 0
+                  ? limitedTransactions.reduce((sum, tx) => sum + tx.amount, 0) / limitedTransactions.length
+                  : 0
+              }
+            }
           }
         );
       } catch (error) {
