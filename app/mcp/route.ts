@@ -27,6 +27,7 @@ import type {
   FinancialTipsResponse,
   BudgetCalculationResponse,
   MessageResponse,
+  SubscriptionManagementResponse,
 } from "@/lib/types/tool-responses";
 import { withMcpAuth } from "better-auth/plugins";
 import { baseURL } from "@/baseUrl";
@@ -93,6 +94,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
       { id: 'account-health', title: 'Account Health Widget', description: 'Account health status and warnings', path: '/widgets/account-health' },
       { id: 'plaid-required', title: 'Connect Bank Account', description: 'Prompts user to connect their bank account via Plaid', path: '/widgets/plaid-required' },
       { id: 'subscription-required', title: 'Choose Subscription Plan', description: 'Select and subscribe to a plan to unlock features', path: '/widgets/subscription-required' },
+      { id: 'manage-subscription', title: 'Manage Subscription', description: 'Update or cancel your subscription', path: '/widgets/manage-subscription' },
     ];
 
     for (const widget of widgets) {
@@ -463,6 +465,71 @@ const handler = withMcpAuth(auth, async (req, session) => {
       }
     }
   );
+
+    // Manage Subscription
+    server.registerTool(
+      "manage_subscription",
+      {
+        title: "Manage Subscription",
+        description: "Access the billing portal to update or cancel your subscription. Shows an interactive widget with subscription management options. Requires authentication and active subscription.",
+        inputSchema: {},
+        _meta: {
+          "openai/outputTemplate": "ui://widget/manage-subscription.html",
+          "openai/toolInvocation/invoking": "Loading subscription management...",
+          "openai/toolInvocation/invoked": "Subscription management ready",
+          "openai/widgetAccessible": true,
+        },
+        annotations: {
+          destructiveHint: false,
+          openWorldHint: false,
+          readOnlyHint: true,
+        },
+        // @ts-expect-error - securitySchemes not yet in MCP SDK types
+        securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["subscription:manage"] }],
+      },
+      async () => {
+        try {
+          if (!session) {
+            return createLoginPromptResponse("subscription management");
+          }
+
+          // Check if user has active subscription
+          const hasSubscription = await hasActiveSubscription(session.userId);
+          if (!hasSubscription) {
+            return createSubscriptionRequiredResponse("subscription management", session.userId);
+          }
+
+          // Get billing portal URL from environment
+          const billingPortalUrl = process.env.STRIPE_BILLING_PORTAL_URL;
+          if (!billingPortalUrl) {
+            return createErrorResponse("Billing portal URL not configured. Please contact support.");
+          }
+
+          // Get user's current plan (optional - for display purposes)
+          const ctx = await auth.$context;
+          const subscriptions = await ctx.adapter.findMany({
+            model: "subscription",
+            where: [{ field: "referenceId", value: session.userId }],
+          }) as Array<{ plan: string }>;
+
+          const currentPlan = subscriptions?.[0]?.plan || "unknown";
+
+          return createSuccessResponse(
+            "Click the link below to manage your subscription, update payment methods, or view billing history.",
+            {
+              billingPortalUrl,
+              currentPlan,
+              message: "Manage your subscription through the Stripe billing portal.",
+            }
+          );
+        } catch (error) {
+          console.error("[Tool] manage_subscription error", { error });
+          return createErrorResponse(
+            error instanceof Error ? error.message : "Failed to access subscription management"
+          );
+        }
+      }
+    );
 
     // ============================================================================
     // TEST WIDGET

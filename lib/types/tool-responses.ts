@@ -119,6 +119,15 @@ export interface MessageContent {
 }
 
 /**
+ * Structured content for subscription management
+ */
+export interface SubscriptionManagementContent {
+  billingPortalUrl: string;
+  currentPlan?: string;
+  message: string;
+}
+
+/**
  * Type-safe response helpers for each tool
  */
 export type AccountBalancesResponse = MCPToolResponse<
@@ -158,5 +167,10 @@ export type BudgetCalculationResponse = MCPToolResponse<
 
 export type MessageResponse = MCPToolResponse<
   MessageContent,
+  OpenAIResponseMetadata
+>;
+
+export type SubscriptionManagementResponse = MCPToolResponse<
+  SubscriptionManagementContent,
   OpenAIResponseMetadata
 >;
