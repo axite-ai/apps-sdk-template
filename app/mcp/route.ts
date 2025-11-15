@@ -1,10 +1,13 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
+import type { AccountBase, LiabilitiesObject } from "plaid";
 import {
   getAccountBalances,
   getTransactions,
   getSpendingInsights,
   checkAccountHealth,
+  getInvestmentHoldings,
+  getLiabilities,
 } from "@/lib/services/plaid-service";
 import { UserService } from "@/lib/services/user-service";
 import { auth } from "@/lib/auth";
@@ -28,6 +31,8 @@ import type {
   BudgetCalculationResponse,
   MessageResponse,
   SubscriptionManagementResponse,
+  InvestmentHoldingsResponse,
+  LiabilitiesResponse,
 } from "@/lib/types/tool-responses";
 import { withMcpAuth } from "better-auth/plugins";
 import { baseURL } from "@/baseUrl";
@@ -92,6 +97,8 @@ const handler = withMcpAuth(auth, async (req, session) => {
       { id: 'transactions', title: 'Transactions Widget', description: 'Transaction list with details', path: '/widgets/transactions' },
       { id: 'spending-insights', title: 'Spending Insights Widget', description: 'Category-based spending breakdown', path: '/widgets/spending-insights' },
       { id: 'account-health', title: 'Account Health Widget', description: 'Account health status and warnings', path: '/widgets/account-health' },
+      { id: 'investments', title: 'Investment Holdings Widget', description: 'Investment holdings and securities details', path: '/widgets/investments' },
+      { id: 'liabilities', title: 'Liabilities Widget', description: 'Detailed view of credit cards, loans, and mortgages', path: '/widgets/liabilities' },
       { id: 'plaid-required', title: 'Connect Bank Account', description: 'Prompts user to connect their bank account via Plaid', path: '/widgets/plaid-required' },
       { id: 'subscription-required', title: 'Choose Subscription Plan', description: 'Select and subscribe to a plan to unlock features', path: '/widgets/subscription-required' },
       { id: 'manage-subscription', title: 'Manage Subscription', description: 'Update or cancel your subscription', path: '/widgets/manage-subscription' },
@@ -461,6 +468,248 @@ const handler = withMcpAuth(auth, async (req, session) => {
         console.error("[Tool] check_account_health error", { error });
         return createErrorResponse(
           error instanceof Error ? error.message : "Failed to check account health"
+        );
+      }
+    }
+  );
+
+  // Get Investment Holdings
+  server.registerTool(
+    "get_investment_holdings",
+    {
+      title: "Get Investment Holdings",
+      description: "Get investment holdings, securities details, and portfolio value for all investment accounts. Shows an interactive portfolio view. Requires authentication.",
+      inputSchema: {},
+      _meta: {
+        "openai/outputTemplate": "ui://widget/investments.html",
+        "openai/toolInvocation/invoking": "Fetching investment holdings...",
+        "openai/toolInvocation/invoked": "Investment holdings retrieved",
+      },
+      annotations: {
+        destructiveHint: false,
+        openWorldHint: false,
+        readOnlyHint: true,
+      },
+      // @ts-expect-error - securitySchemes not yet in MCP SDK types
+      securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["investments:read"] }],
+    },
+    async () => {
+      try {
+        if (!session || !(await hasActiveSubscription(session.userId))) {
+          return createSubscriptionRequiredResponse("investment holdings", session?.userId);
+        }
+
+        // Check Plaid Connection
+        const accessTokens = await UserService.getUserAccessTokens(session.userId);
+        if (accessTokens.length === 0) {
+          return await createPlaidRequiredResponse(session.userId, req.headers);
+        }
+
+        // Fetch holdings from all connected accounts
+        const allAccounts = [];
+        const allHoldings = [];
+        const allSecurities = [];
+        const securitiesMap = new Map<string, unknown>();
+
+        for (const accessToken of accessTokens) {
+          const data = await getInvestmentHoldings(accessToken);
+          allAccounts.push(...data.accounts);
+          allHoldings.push(...data.holdings);
+
+          // Deduplicate securities by security_id
+          for (const security of data.securities) {
+            if (!securitiesMap.has(security.security_id)) {
+              securitiesMap.set(security.security_id, security);
+              allSecurities.push(security);
+            }
+          }
+        }
+
+        // Calculate total portfolio value
+        const totalValue = allHoldings.reduce((sum, holding) => {
+          return sum + (holding.institution_value || 0);
+        }, 0);
+
+        return createSuccessResponse(
+          `Found ${allHoldings.length} holding(s) across ${allAccounts.length} investment account(s) with a total value of $${totalValue.toFixed(2)}`,
+          {
+            accounts: allAccounts,
+            holdings: allHoldings,
+            securities: allSecurities,
+            totalValue,
+            lastUpdated: new Date().toISOString(),
+          }
+        );
+      } catch (error) {
+        console.error("[Tool] get_investment_holdings error", { error });
+        return createErrorResponse(
+          error instanceof Error ? error.message : "Failed to fetch investment holdings"
+        );
+      }
+    }
+  );
+
+  // Get Liabilities
+  server.registerTool(
+    "get_liabilities",
+    {
+      title: "Get Liabilities",
+      description: "Get detailed information about all liabilities including credit cards, student loans, and mortgages. Shows payment schedules, interest rates, and debt summary. Requires authentication.",
+      inputSchema: {},
+      _meta: {
+        "openai/outputTemplate": "ui://widget/liabilities.html",
+        "openai/toolInvocation/invoking": "Fetching liability information...",
+        "openai/toolInvocation/invoked": "Liabilities retrieved",
+      },
+      annotations: {
+        destructiveHint: false,
+        openWorldHint: false,
+        readOnlyHint: true,
+      },
+      // @ts-expect-error - securitySchemes not yet in MCP SDK types
+      securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["liabilities:read"] }],
+    },
+    async () => {
+      try {
+        if (!session || !(await hasActiveSubscription(session.userId))) {
+          return createSubscriptionRequiredResponse("liabilities", session?.userId);
+        }
+
+        // Check Plaid Connection
+        const accessTokens = await UserService.getUserAccessTokens(session.userId);
+        if (accessTokens.length === 0) {
+          return await createPlaidRequiredResponse(session.userId, req.headers);
+        }
+
+        // Fetch liabilities from all connected accounts
+        const allAccounts: AccountBase[] = [];
+        const allCredit: NonNullable<LiabilitiesObject['credit']> = [];
+        const allStudent: NonNullable<LiabilitiesObject['student']> = [];
+        const allMortgage: NonNullable<LiabilitiesObject['mortgage']> = [];
+
+        for (const accessToken of accessTokens) {
+          const { accounts, liabilities } = await getLiabilities(accessToken);
+          allAccounts.push(...accounts);
+
+          if (liabilities.credit) {
+            allCredit.push(...liabilities.credit);
+          }
+          if (liabilities.student) {
+            allStudent.push(...liabilities.student);
+          }
+          if (liabilities.mortgage) {
+            allMortgage.push(...liabilities.mortgage);
+          }
+        }
+
+        // Calculate summary statistics
+        let totalDebt = 0;
+        let totalMinimumPayment = 0;
+        let accountsOverdue = 0;
+        let earliestPaymentDue: string | null = null;
+
+        // Calculate from credit cards
+        for (const credit of allCredit) {
+          const account = allAccounts.find(a => a.account_id === credit.account_id);
+          if (account?.balances?.current) {
+            totalDebt += Math.abs(account.balances.current);
+          }
+          if (credit.minimum_payment_amount) {
+            totalMinimumPayment += credit.minimum_payment_amount;
+          }
+          if (credit.is_overdue) {
+            accountsOverdue++;
+          }
+          if (credit.next_payment_due_date) {
+            if (!earliestPaymentDue || credit.next_payment_due_date < earliestPaymentDue) {
+              earliestPaymentDue = credit.next_payment_due_date;
+            }
+          }
+        }
+
+        // Calculate from student loans
+        for (const student of allStudent) {
+          const account = allAccounts.find(a => a.account_id === student.account_id);
+          if (account?.balances?.current) {
+            totalDebt += account.balances.current;
+          }
+          if (student.minimum_payment_amount) {
+            totalMinimumPayment += student.minimum_payment_amount;
+          }
+          if (student.is_overdue) {
+            accountsOverdue++;
+          }
+          if (student.next_payment_due_date) {
+            if (!earliestPaymentDue || student.next_payment_due_date < earliestPaymentDue) {
+              earliestPaymentDue = student.next_payment_due_date;
+            }
+          }
+        }
+
+        // Calculate from mortgages
+        for (const mortgage of allMortgage) {
+          const account = allAccounts.find(a => a.account_id === mortgage.account_id);
+          if (account?.balances?.current) {
+            totalDebt += account.balances.current;
+          }
+          if (mortgage.next_monthly_payment) {
+            totalMinimumPayment += mortgage.next_monthly_payment;
+          }
+          if (mortgage.past_due_amount && mortgage.past_due_amount > 0) {
+            accountsOverdue++;
+          }
+          if (mortgage.next_payment_due_date) {
+            if (!earliestPaymentDue || mortgage.next_payment_due_date < earliestPaymentDue) {
+              earliestPaymentDue = mortgage.next_payment_due_date;
+            }
+          }
+        }
+
+        const output = {
+          accounts: allAccounts.map(account => ({
+            account_id: account.account_id,
+            name: account.name,
+            official_name: account.official_name,
+            type: account.type,
+            subtype: account.subtype,
+            mask: account.mask,
+            balances: {
+              current: account.balances.current,
+              available: account.balances.available,
+              limit: account.balances.limit,
+              iso_currency_code: account.balances.iso_currency_code || 'USD',
+            },
+          })),
+          credit: allCredit,
+          student: allStudent,
+          mortgage: allMortgage,
+          summary: {
+            totalDebt,
+            totalMinimumPayment,
+            accountsOverdue,
+            nextPaymentDue: earliestPaymentDue,
+          },
+          lastUpdated: new Date().toISOString(),
+        };
+
+        const totalLiabilities = allCredit.length + allStudent.length + allMortgage.length;
+        const liabilityBreakdown = [
+          allCredit.length > 0 && `${allCredit.length} credit card(s)`,
+          allStudent.length > 0 && `${allStudent.length} student loan(s)`,
+          allMortgage.length > 0 && `${allMortgage.length} mortgage(s)`,
+        ].filter(Boolean).join(', ');
+
+        return createSuccessResponse(
+          `Found ${totalLiabilities} liabilities: ${liabilityBreakdown}.\n\n` +
+          `Total debt: $${totalDebt.toFixed(2)}\n` +
+          `Minimum payments due: $${totalMinimumPayment.toFixed(2)}` +
+          (accountsOverdue > 0 ? `\n⚠️ ${accountsOverdue} account(s) overdue` : ''),
+          output
+        );
+      } catch (error) {
+        console.error("[Tool] get_liabilities error", { error });
+        return createErrorResponse(
+          error instanceof Error ? error.message : "Failed to fetch liabilities"
         );
       }
     }
