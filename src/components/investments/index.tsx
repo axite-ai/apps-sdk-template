@@ -1,7 +1,14 @@
 "use client";
 
-import React from "react";
-import { useWidgetProps } from "@/app/hooks/use-widget-props";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Maximize2, TrendingUp, TrendingDown, Wallet, PieChart } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
+import { useWidgetProps } from "@/src/use-widget-props";
+import { useDisplayMode } from "@/src/use-display-mode";
+import { useMaxHeight } from "@/src/use-max-height";
+import { useTheme } from "@/src/use-theme";
+import { formatCurrency, formatPercent } from "@/src/utils/format";
 import PlaidRequired from "@/src/components/plaid-required";
 import SubscriptionRequired from "@/src/components/subscription-required";
 
@@ -58,41 +65,60 @@ interface ToolOutput {
   error_message?: string;
 }
 
-function formatCurrency(amount: number, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency
-  }).format(amount);
-}
-
-function formatPercent(value: number) {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-}
-
 export default function Investments() {
-  const toolOutput = useWidgetProps();
+  const toolOutput = useWidgetProps<ToolOutput>();
+  const displayMode = useDisplayMode();
+  const maxHeight = useMaxHeight();
+  const theme = useTheme();
+  const isFullscreen = displayMode === "fullscreen";
+  const isDark = theme === "dark";
+  const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
 
   if (!toolOutput) {
-    return <p>No investment data available</p>;
+    return (
+      <div
+        className={cn(
+          "antialiased w-full relative flex items-center justify-center",
+          isDark ? "bg-gray-900 text-white" : "bg-gray-50 text-black"
+        )}
+        style={{ maxHeight: maxHeight ?? undefined }}
+      >
+        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+          No investment data available
+        </p>
+      </div>
+    );
   }
 
   // Check if bank connection is required
-  if (toolOutput.message === 'Bank connection required') {
+  if (toolOutput.message === "Bank connection required") {
     return <PlaidRequired />;
   }
 
-  if (toolOutput.error_message === 'Subscription required' || toolOutput.featureName) {
+  if (toolOutput.error_message === "Subscription required" || toolOutput.featureName) {
     return <SubscriptionRequired />;
   }
 
   if (!toolOutput.holdings || !toolOutput.securities) {
-    return <p>No investment holdings available</p>;
+    return (
+      <div
+        className={cn(
+          "antialiased w-full relative flex items-center justify-center",
+          isDark ? "bg-gray-900 text-white" : "bg-gray-50 text-black"
+        )}
+        style={{ maxHeight: maxHeight ?? undefined }}
+      >
+        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+          No investment holdings available
+        </p>
+      </div>
+    );
   }
 
-  const accounts: Account[] = (toolOutput.accounts || []) as Account[];
-  const holdings: Holding[] = (toolOutput.holdings || []) as Holding[];
-  const securities: Security[] = (toolOutput.securities || []) as Security[];
-  const totalValue: number = (toolOutput.totalValue || 0) as number;
+  const accounts: Account[] = toolOutput.accounts || [];
+  const holdings: Holding[] = toolOutput.holdings || [];
+  const securities: Security[] = toolOutput.securities || [];
+  const totalValue: number = toolOutput.totalValue || 0;
 
   // Create a map of securities for quick lookup
   const securitiesMap = new Map<string, Security>(
@@ -100,298 +126,343 @@ export default function Investments() {
   );
 
   // Group holdings by account
-  const holdingsByAccount = holdings.reduce((acc: Record<string, Holding[]>, holding: Holding) => {
-    if (!acc[holding.account_id]) {
-      acc[holding.account_id] = [];
-    }
-    acc[holding.account_id].push(holding);
-    return acc;
-  }, {} as Record<string, Holding[]>);
+  const holdingsByAccount = holdings.reduce(
+    (acc: Record<string, Holding[]>, holding: Holding) => {
+      if (!acc[holding.account_id]) {
+        acc[holding.account_id] = [];
+      }
+      acc[holding.account_id].push(holding);
+      return acc;
+    },
+    {} as Record<string, Holding[]>
+  );
 
   return (
-    <div className="investments-container">
-      <div className="portfolio-summary">
-        <div className="summary-card">
-          <div className="summary-label">Total Portfolio Value</div>
-          <div className="summary-value">{formatCurrency(totalValue)}</div>
-        </div>
-        <div className="summary-stats">
-          <div className="stat-item">
-            <div className="stat-label">Accounts</div>
-            <div className="stat-value">{accounts.length}</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-label">Holdings</div>
-            <div className="stat-value">{holdings.length}</div>
-          </div>
-        </div>
-      </div>
+    <div
+      className={cn(
+        "antialiased w-full relative",
+        isDark ? "bg-gray-900" : "bg-gray-50",
+        !isFullscreen && "overflow-hidden"
+      )}
+      style={{
+        maxHeight: maxHeight ?? undefined,
+        height: isFullscreen ? maxHeight ?? undefined : undefined,
+      }}
+    >
+      {/* Expand button (inline mode only) */}
+      {!isFullscreen && (
+        <button
+          onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
+          className={cn(
+            "absolute top-4 right-4 z-20 p-2 rounded-full shadow-lg transition-all ring-1",
+            isDark
+              ? "bg-gray-800 text-white hover:bg-gray-700 ring-white/10"
+              : "bg-white text-black hover:bg-gray-100 ring-black/5"
+          )}
+          aria-label="Expand to fullscreen"
+        >
+          <Maximize2 strokeWidth={1.5} className="h-4 w-4" />
+        </button>
+      )}
 
-      <div className="accounts-list">
-        {accounts.map((account: Account) => {
-          const accountHoldings: Holding[] = holdingsByAccount[account.account_id] || [];
-          const accountValue = accountHoldings.reduce((sum: number, h: Holding) => sum + h.institution_value, 0);
+      {/* Content */}
+      <div className={cn("w-full h-full overflow-y-auto", isFullscreen ? "p-8" : "p-5")}>
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className={cn("text-2xl font-semibold mb-2", isDark ? "text-white" : "text-black")}>
+            Investments
+          </h1>
+          <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+            Your investment portfolio overview
+          </p>
+        </div>
 
-          return (
-            <div key={account.account_id} className="investment-account">
-              <div className="account-header">
-                <div className="account-info">
-                  <div className="account-name">{account.name}</div>
-                  <div className="account-type">
-                    {account.subtype || account.type} • {account.mask ? `****${account.mask}` : ''}
-                  </div>
-                </div>
-                <div className="account-value">
-                  {formatCurrency(accountValue, account.balances.iso_currency_code)}
-                </div>
+        {/* Portfolio Summary Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            "rounded-2xl border p-6 shadow-[0px_2px_6px_rgba(0,0,0,0.06)] mb-6",
+            isDark
+              ? "bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border-purple-500/20"
+              : "bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200"
+          )}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div
+              className={cn(
+                "p-3 rounded-xl",
+                isDark ? "bg-purple-500/30" : "bg-purple-100"
+              )}
+            >
+              <PieChart strokeWidth={1.5} className="h-6 w-6 text-purple-600" />
+            </div>
+            <div>
+              <div className={cn("text-sm font-medium mb-1", isDark ? "text-purple-300" : "text-purple-700")}>
+                Total Portfolio Value
               </div>
-
-              <div className="holdings-list">
-                {accountHoldings.map((holding: Holding, idx: number) => {
-                  const security: Security | undefined = securitiesMap.get(holding.security_id);
-                  if (!security) return null;
-
-                  const gainLoss = holding.cost_basis
-                    ? holding.institution_value - (holding.cost_basis * holding.quantity)
-                    : null;
-                  const gainLossPercent = holding.cost_basis && holding.cost_basis > 0
-                    ? ((holding.institution_price - holding.cost_basis) / holding.cost_basis) * 100
-                    : null;
-
-                  return (
-                    <div key={`${holding.account_id}-${holding.security_id}-${idx}`} className="holding-item">
-                      <div className="holding-main">
-                        <div className="security-info">
-                          <div className="security-name">{security.name}</div>
-                          <div className="security-details">
-                            {security.ticker_symbol && (
-                              <span className="ticker">{security.ticker_symbol}</span>
-                            )}
-                            <span className="security-type">{security.type}</span>
-                            <span className="quantity">{holding.quantity} shares</span>
-                          </div>
-                        </div>
-                        <div className="holding-value">
-                          <div className="current-value">
-                            {formatCurrency(holding.institution_value, holding.iso_currency_code)}
-                          </div>
-                          {gainLoss !== null && (
-                            <div className={`gain-loss ${gainLoss >= 0 ? 'positive' : 'negative'}`}>
-                              {formatCurrency(Math.abs(gainLoss), holding.iso_currency_code)}
-                              {gainLossPercent !== null && ` (${formatPercent(gainLossPercent)})`}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="holding-details">
-                        <div className="detail-item">
-                          <span className="detail-label">Price:</span>
-                          <span className="detail-value">
-                            {formatCurrency(holding.institution_price, holding.iso_currency_code)}
-                          </span>
-                        </div>
-                        {holding.cost_basis && (
-                          <div className="detail-item">
-                            <span className="detail-label">Cost Basis:</span>
-                            <span className="detail-value">
-                              {formatCurrency(holding.cost_basis, holding.iso_currency_code)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className={cn("text-3xl font-bold", isDark ? "text-white" : "text-black")}>
+                {formatCurrency(totalValue)}
               </div>
             </div>
-          );
-        })}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div
+              className={cn(
+                "rounded-xl p-3",
+                isDark ? "bg-purple-500/10" : "bg-white"
+              )}
+            >
+              <div className={cn("text-xs font-medium mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                Accounts
+              </div>
+              <div className={cn("text-xl font-semibold", isDark ? "text-white" : "text-black")}>
+                {accounts.length}
+              </div>
+            </div>
+            <div
+              className={cn(
+                "rounded-xl p-3",
+                isDark ? "bg-purple-500/10" : "bg-white"
+              )}
+            >
+              <div className={cn("text-xs font-medium mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                Holdings
+              </div>
+              <div className={cn("text-xl font-semibold", isDark ? "text-white" : "text-black")}>
+                {holdings.length}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Investment Accounts */}
+        <div className="space-y-4">
+          {accounts.map((account: Account, index: number) => {
+            const accountHoldings: Holding[] = holdingsByAccount[account.account_id] || [];
+            const accountValue = accountHoldings.reduce(
+              (sum: number, h: Holding) => sum + h.institution_value,
+              0
+            );
+            const isExpanded = expandedAccount === account.account_id;
+
+            return (
+              <motion.div
+                key={account.account_id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className={cn(
+                  "rounded-2xl border shadow-[0px_2px_6px_rgba(0,0,0,0.06)] overflow-hidden",
+                  isDark ? "bg-gray-800 border-white/10" : "bg-white border-black/5"
+                )}
+              >
+                {/* Account Header */}
+                <div
+                  className={cn(
+                    "p-4 cursor-pointer transition-colors",
+                    isDark ? "hover:bg-gray-750" : "hover:bg-gray-50"
+                  )}
+                  onClick={() =>
+                    setExpandedAccount(isExpanded ? null : account.account_id)
+                  }
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          "p-2 rounded-lg",
+                          isDark ? "bg-blue-500/20" : "bg-blue-100"
+                        )}
+                      >
+                        <Wallet strokeWidth={1.5} className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                          {account.name}
+                        </h3>
+                        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+                          {account.subtype || account.type}
+                          {account.mask && ` • ****${account.mask}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={cn("text-lg font-bold", isDark ? "text-white" : "text-black")}>
+                        {formatCurrency(accountValue, account.balances.iso_currency_code)}
+                      </div>
+                      <div className={cn("text-xs", isDark ? "text-white/60" : "text-black/60")}>
+                        {accountHoldings.length} holdings
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Holdings List (Expanded) */}
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div
+                        className={cn(
+                          "border-t",
+                          isDark ? "border-white/10" : "border-black/5"
+                        )}
+                      >
+                        {accountHoldings.map((holding: Holding, idx: number) => {
+                          const security: Security | undefined = securitiesMap.get(
+                            holding.security_id
+                          );
+                          if (!security) return null;
+
+                          const gainLoss = holding.cost_basis
+                            ? holding.institution_value - holding.cost_basis * holding.quantity
+                            : null;
+                          const gainLossPercent =
+                            holding.cost_basis && holding.cost_basis > 0
+                              ? ((holding.institution_price - holding.cost_basis) /
+                                  holding.cost_basis) *
+                                100
+                              : null;
+
+                          return (
+                            <div
+                              key={`${holding.account_id}-${holding.security_id}-${idx}`}
+                              className={cn(
+                                "p-4 border-b last:border-b-0",
+                                isDark ? "border-white/10" : "border-black/5"
+                              )}
+                            >
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1">
+                                  <h4
+                                    className={cn(
+                                      "font-semibold mb-1",
+                                      isDark ? "text-white" : "text-black"
+                                    )}
+                                  >
+                                    {security.name}
+                                  </h4>
+                                  <div className="flex items-center gap-2 text-xs">
+                                    {security.ticker_symbol && (
+                                      <span
+                                        className={cn(
+                                          "font-semibold px-2 py-0.5 rounded",
+                                          isDark
+                                            ? "bg-indigo-500/20 text-indigo-400"
+                                            : "bg-indigo-100 text-indigo-700"
+                                        )}
+                                      >
+                                        {security.ticker_symbol}
+                                      </span>
+                                    )}
+                                    <span className={cn(isDark ? "text-white/60" : "text-black/60")}>
+                                      {security.type}
+                                    </span>
+                                    <span className={cn(isDark ? "text-white/60" : "text-black/60")}>
+                                      {holding.quantity} shares
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div
+                                    className={cn(
+                                      "text-lg font-bold mb-1",
+                                      isDark ? "text-white" : "text-black"
+                                    )}
+                                  >
+                                    {formatCurrency(
+                                      holding.institution_value,
+                                      holding.iso_currency_code
+                                    )}
+                                  </div>
+                                  {gainLoss !== null && (
+                                    <div
+                                      className={cn(
+                                        "text-xs font-semibold flex items-center gap-1 justify-end",
+                                        gainLoss >= 0
+                                          ? "text-green-600 dark:text-green-400"
+                                          : "text-red-600 dark:text-red-400"
+                                      )}
+                                    >
+                                      {gainLoss >= 0 ? (
+                                        <TrendingUp strokeWidth={1.5} className="h-3 w-3" />
+                                      ) : (
+                                        <TrendingDown strokeWidth={1.5} className="h-3 w-3" />
+                                      )}
+                                      <span>
+                                        {formatCurrency(
+                                          Math.abs(gainLoss),
+                                          holding.iso_currency_code
+                                        )}
+                                        {gainLossPercent !== null &&
+                                          ` (${formatPercent(gainLossPercent / 100)})`}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Details Grid */}
+                              <div
+                                className={cn(
+                                  "grid grid-cols-2 gap-3 pt-3 border-t text-xs",
+                                  isDark ? "border-white/10" : "border-black/5"
+                                )}
+                              >
+                                <div>
+                                  <div
+                                    className={cn(
+                                      "font-medium mb-1",
+                                      isDark ? "text-white/60" : "text-black/60"
+                                    )}
+                                  >
+                                    Current Price
+                                  </div>
+                                  <div className={cn(isDark ? "text-white" : "text-black")}>
+                                    {formatCurrency(
+                                      holding.institution_price,
+                                      holding.iso_currency_code
+                                    )}
+                                  </div>
+                                </div>
+                                {holding.cost_basis && (
+                                  <div>
+                                    <div
+                                      className={cn(
+                                        "font-medium mb-1",
+                                        isDark ? "text-white/60" : "text-black/60"
+                                      )}
+                                    >
+                                      Cost Basis
+                                    </div>
+                                    <div className={cn(isDark ? "text-white" : "text-black")}>
+                                      {formatCurrency(
+                                        holding.cost_basis,
+                                        holding.iso_currency_code
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
-
-      <style jsx>{`
-        .investments-container {
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          padding: 16px;
-          max-width: 800px;
-        }
-
-        .portfolio-summary {
-          margin-bottom: 24px;
-          padding: 20px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 12px;
-          color: white;
-        }
-
-        .summary-card {
-          margin-bottom: 16px;
-        }
-
-        .summary-label {
-          font-size: 14px;
-          opacity: 0.9;
-          margin-bottom: 4px;
-        }
-
-        .summary-value {
-          font-size: 32px;
-          font-weight: 700;
-        }
-
-        .summary-stats {
-          display: flex;
-          gap: 24px;
-        }
-
-        .stat-item {
-          flex: 1;
-        }
-
-        .stat-label {
-          font-size: 12px;
-          opacity: 0.8;
-          margin-bottom: 4px;
-        }
-
-        .stat-value {
-          font-size: 24px;
-          font-weight: 600;
-        }
-
-        .accounts-list {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .investment-account {
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
-          overflow: hidden;
-          background: white;
-        }
-
-        .account-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 16px;
-          background: #f9fafb;
-          border-bottom: 1px solid #e5e7eb;
-        }
-
-        .account-info {
-          flex: 1;
-        }
-
-        .account-name {
-          font-size: 16px;
-          font-weight: 600;
-          color: #111827;
-          margin-bottom: 4px;
-        }
-
-        .account-type {
-          font-size: 13px;
-          color: #6b7280;
-        }
-
-        .account-value {
-          font-size: 18px;
-          font-weight: 700;
-          color: #111827;
-        }
-
-        .holdings-list {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .holding-item {
-          padding: 16px;
-          border-bottom: 1px solid #f3f4f6;
-        }
-
-        .holding-item:last-child {
-          border-bottom: none;
-        }
-
-        .holding-main {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 8px;
-        }
-
-        .security-info {
-          flex: 1;
-        }
-
-        .security-name {
-          font-size: 14px;
-          font-weight: 600;
-          color: #111827;
-          margin-bottom: 4px;
-        }
-
-        .security-details {
-          display: flex;
-          gap: 12px;
-          font-size: 12px;
-          color: #6b7280;
-        }
-
-        .ticker {
-          font-weight: 600;
-          color: #4f46e5;
-        }
-
-        .holding-value {
-          text-align: right;
-        }
-
-        .current-value {
-          font-size: 16px;
-          font-weight: 700;
-          color: #111827;
-          margin-bottom: 4px;
-        }
-
-        .gain-loss {
-          font-size: 12px;
-          font-weight: 600;
-        }
-
-        .gain-loss.positive {
-          color: #059669;
-        }
-
-        .gain-loss.negative {
-          color: #dc2626;
-        }
-
-        .holding-details {
-          display: flex;
-          gap: 16px;
-          margin-top: 8px;
-          padding-top: 8px;
-          border-top: 1px solid #f3f4f6;
-        }
-
-        .detail-item {
-          display: flex;
-          gap: 4px;
-          font-size: 12px;
-        }
-
-        .detail-label {
-          color: #6b7280;
-        }
-
-        .detail-value {
-          color: #111827;
-          font-weight: 500;
-        }
-      `}</style>
     </div>
   );
 }

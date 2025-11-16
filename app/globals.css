@@ -1,10 +1,40 @@
 @import "tailwindcss";
 
+/* -------------------------------------- */
+/* Root Variables */
+/* -------------------------------------- */
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --widget-primary: #FF5100;
+  --widget-primary-hover: #ff6a26;
+  --widget-success: #10b981;
+  --widget-warning: #f59e0b;
+  --widget-error: #ef4444;
+
+  --widget-bg: #ffffff;
+  --widget-surface: #f9fafb;
+  --widget-border: rgba(0, 0, 0, 0.1);
+  --widget-border-subtle: rgba(0, 0, 0, 0.05);
+  --widget-text: rgba(0, 0, 0, 0.87);
+  --widget-text-secondary: rgba(0, 0, 0, 0.6);
+  --widget-text-muted: rgba(0, 0, 0, 0.4);
+
+  --widget-auth-bg: #0f172a;
+  --widget-auth-surface: #1e293b;
+  --widget-auth-border: rgba(255, 255, 255, 0.1);
+  --widget-auth-text: #ffffff;
+  --widget-auth-text-secondary: rgba(255, 255, 255, 0.7);
+
+  --widget-shadow-sm: 0px 2px 6px rgba(0, 0, 0, 0.06);
+  --widget-shadow-md: 0px 6px 14px rgba(0, 0, 0, 0.06);
+  --widget-shadow-lg: 0px 10px 24px rgba(0, 0, 0, 0.1);
+  --widget-shadow-xl: 0px 16px 32px rgba(0, 0, 0, 0.12);
 }
 
+/* Tailwind v4 theme tokens */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -16,6 +46,14 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    --widget-bg: #1a1a1a;
+    --widget-surface: #262626;
+    --widget-border: rgba(255, 255, 255, 0.1);
+    --widget-border-subtle: rgba(255, 255, 255, 0.05);
+    --widget-text: rgba(255, 255, 255, 0.87);
+    --widget-text-secondary: rgba(255, 255, 255, 0.6);
+    --widget-text-muted: rgba(255, 255, 255, 0.4);
   }
 }
 
@@ -24,3 +62,66 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* -------------------------------------- */
+/* Custom Scroll Utilities */
+/* -------------------------------------- */
+
+.overflow-auto > *,
+.overflow-scroll > *,
+.overflow-x-auto > *,
+.overflow-y-auto > * {
+  scrollbar-color: auto;
+}
+
+.overflow-auto,
+.overflow-scroll,
+.overflow-x-auto,
+.overflow-y-auto,
+.overflow-x-scroll,
+.overflow-y-scroll {
+  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  .overflow-auto,
+  .overflow-scroll,
+  .overflow-x-auto,
+  .overflow-y-auto,
+  .overflow-x-scroll,
+  .overflow-y-scroll {
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
+}
+
+.overflow-auto:hover,
+.overflow-scroll:hover,
+.overflow-x-auto:hover,
+.overflow-y-auto:hover {
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  .overflow-auto:hover,
+  .overflow-scroll:hover,
+  .overflow-x-auto:hover,
+  .overflow-y-auto:hover {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+}
+
+/* -------------------------------------- */
+/* Tailwind best practice reminder */
+/* -------------------------------------- */
+
+/*
+  Tailwind's core guidance (see docs/Tailwind "Styling with utility classes")
+  is to compose UI directly in markup using primitives like `rounded-2xl`,
+  `bg-white`, `hover:bg-black/5`, etc. We intentionally avoid defining extra
+  component-level utilities in this file so that widgets stay portable and
+  only rely on Tailwind classes declared next to the JSX.
+
+  If you need to share structure, create React components/hooks instead of
+  new CSS. Reserve this file for theme tokens, base typography, and the
+  cross-cutting scrollbar overrides above.
+*/

@@ -130,7 +130,10 @@ const handler = withMcpAuth(auth, async (req, session) => {
                 'openai/widgetPrefersBorder': true,
                 'openai/widgetCSP': {
                   connect_domains: [baseURL],
-                  resource_domains: [baseURL],
+                  resource_domains: [
+                    baseURL,
+                    'https://*.plaid.com',
+                  ],
                 },
               },
             }],

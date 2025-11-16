@@ -1,33 +1,56 @@
 "use client";
 
-import React from "react";
-import { useWidgetProps } from "@/app/hooks/use-widget-props";
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Lock, Check, Maximize2, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
+import { useWidgetProps } from "@/src/use-widget-props";
+import { useDisplayMode } from "@/src/use-display-mode";
+import { useMaxHeight } from "@/src/use-max-height";
+import { useTheme } from "@/src/use-theme";
 import { upgradeSubscription } from "@/app/widgets/subscription-required/actions";
 
 const PLANS = [
   {
-    id: 'basic',
-    name: 'Basic',
-    price: '$9.99',
-    interval: 'month',
-    features: ['Up to 3 bank accounts', 'Transaction history', 'Spending insights', 'Email support']
+    id: "basic",
+    name: "Basic",
+    price: "$9.99",
+    interval: "month",
+    features: [
+      "Up to 3 bank accounts",
+      "Transaction history",
+      "Spending insights",
+      "Email support",
+    ],
   },
   {
-    id: 'pro',
-    name: 'Pro',
-    price: '$19.99',
-    interval: 'month',
+    id: "pro",
+    name: "Pro",
+    price: "$19.99",
+    interval: "month",
     popular: true,
-    trial: '14-day free trial',
-    features: ['Up to 10 bank accounts', 'All Basic features', 'Account health monitoring', 'Advanced analytics', 'Priority support']
+    trial: "14-day free trial",
+    features: [
+      "Up to 10 bank accounts",
+      "All Basic features",
+      "Account health monitoring",
+      "Advanced analytics",
+      "Priority support",
+    ],
   },
   {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: '$49.99',
-    interval: 'month',
-    features: ['Unlimited bank accounts', 'All Pro features', 'Custom reporting', 'API access', 'Dedicated support']
-  }
+    id: "enterprise",
+    name: "Enterprise",
+    price: "$49.99",
+    interval: "month",
+    features: [
+      "Unlimited bank accounts",
+      "All Pro features",
+      "Custom reporting",
+      "API access",
+      "Dedicated support",
+    ],
+  },
 ];
 
 interface SubscriptionRequiredProps extends Record<string, unknown> {
@@ -39,11 +62,17 @@ interface SubscriptionRequiredProps extends Record<string, unknown> {
 
 export default function SubscriptionRequired() {
   const toolOutput = useWidgetProps<SubscriptionRequiredProps>();
-  const [selectedPlan, setSelectedPlan] = React.useState<string | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const displayMode = useDisplayMode();
+  const maxHeight = useMaxHeight();
+  const theme = useTheme();
+  const isFullscreen = displayMode === "fullscreen";
+  const isDark = theme === "dark";
 
-  const featureName = toolOutput?.featureName || 'this feature';
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const featureName = toolOutput?.featureName || "this feature";
   const userId = toolOutput?.userId;
 
   const handleSelectPlan = (planId: string) => {
@@ -56,7 +85,7 @@ export default function SubscriptionRequired() {
 
     // Validate we have userId from the authenticated MCP session
     if (!userId) {
-      setError('Authentication error. Please refresh and try again.');
+      setError("Authentication error. Please refresh and try again.");
       return;
     }
 
@@ -64,24 +93,29 @@ export default function SubscriptionRequired() {
     setError(null);
 
     try {
-      console.log('[Subscription Widget] Calling server action for plan:', selectedPlan, 'userId:', userId);
+      console.log(
+        "[Subscription Widget] Calling server action for plan:",
+        selectedPlan,
+        "userId:",
+        userId
+      );
 
       const result = await upgradeSubscription(userId, selectedPlan);
 
-      console.log('[Subscription Widget] Server action result:', result);
+      console.log("[Subscription Widget] Server action result:", result);
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to create checkout session');
+        throw new Error(result.error || "Failed to create checkout session");
       }
 
       if (!result.checkoutUrl) {
-        throw new Error('No checkout URL returned from server');
+        throw new Error("No checkout URL returned from server");
       }
 
-      console.log('[Subscription Widget] Opening checkout URL:', result.checkoutUrl);
+      console.log("[Subscription Widget] Opening checkout URL:", result.checkoutUrl);
 
       // Check if we're in ChatGPT MCP context
-      if (typeof window !== 'undefined' && window.openai?.openExternal) {
+      if (typeof window !== "undefined" && window.openai?.openExternal) {
         // In ChatGPT iframe - use openExternal
         window.openai.openExternal({ href: result.checkoutUrl });
       } else {
@@ -89,82 +123,201 @@ export default function SubscriptionRequired() {
         window.location.href = result.checkoutUrl;
       }
     } catch (error: unknown) {
-      console.error('Subscription error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to start subscription. Please try again.');
+      console.error("Subscription error:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to start subscription. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="p-4 rounded-lg bg-linear-to-br from-gray-800 to-gray-900 border border-blue-500/30 text-white shadow-xl">
-      <div>
-        <div className="flex items-start mb-4">
-          <svg className="w-6 h-6 text-blue-400 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-          <div className="flex-1">
-            <h2 className="text-lg font-bold mb-1">Choose Your Plan</h2>
-            <p className="text-sm text-gray-300">Upgrade to access {String(featureName)}</p>
+    <div
+      className={cn(
+        "antialiased w-full relative",
+        isDark ? "bg-gray-900" : "bg-gray-50",
+        !isFullscreen && "overflow-hidden"
+      )}
+      style={{
+        maxHeight: maxHeight ?? undefined,
+        height: isFullscreen ? maxHeight ?? undefined : undefined,
+      }}
+    >
+      {/* Expand button (inline mode only) */}
+      {!isFullscreen && (
+        <button
+          onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
+          className={cn(
+            "absolute top-4 right-4 z-20 p-2 rounded-full shadow-lg transition-all ring-1",
+            isDark
+              ? "bg-gray-800 text-white hover:bg-gray-700 ring-white/10"
+              : "bg-white text-black hover:bg-gray-100 ring-black/5"
+          )}
+          aria-label="Expand to fullscreen"
+        >
+          <Maximize2 strokeWidth={1.5} className="h-4 w-4" />
+        </button>
+      )}
+
+      {/* Content */}
+      <div className={cn("w-full h-full overflow-y-auto", isFullscreen ? "p-8" : "p-5")}>
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Lock strokeWidth={1.5} className={cn("h-5 w-5", isDark ? "text-blue-400" : "text-blue-600")} />
+            <h1 className={cn("text-2xl font-semibold", isDark ? "text-white" : "text-black")}>
+              Choose Your Plan
+            </h1>
           </div>
+          <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+            Upgrade to access {String(featureName)}
+          </p>
         </div>
 
+        {/* Error Message */}
         {error && (
-          <div className="mb-3 p-2 bg-red-500/20 border border-red-500/50 rounded text-red-300 text-xs">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn(
+              "mb-4 p-3 rounded-xl border text-sm",
+              isDark
+                ? "bg-red-500/20 border-red-500/30 text-red-300"
+                : "bg-red-50 border-red-200 text-red-700"
+            )}
+          >
             {error}
-          </div>
+          </motion.div>
         )}
 
-        <div className="space-y-2 mb-3">
-          {PLANS.map(plan => (
-            <div
-              key={plan.id}
-              className={`plan-card ${plan.popular ? 'border-blue-400' : 'border-gray-600'} border rounded-lg p-3 cursor-pointer relative ${selectedPlan === plan.id ? 'selected' : ''}`}
-              onClick={() => handleSelectPlan(plan.id)}
-            >
-              {plan.popular && <div className="absolute -top-2 right-2 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">Popular</div>}
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h3 className="font-bold text-base">{plan.name}</h3>
-                  {plan.trial && <p className="text-xs text-blue-400">{plan.trial}</p>}
+        {/* Plan Cards */}
+        <div className="space-y-3">
+          {PLANS.map((plan, index) => {
+            const isSelected = selectedPlan === plan.id;
+
+            return (
+              <motion.div
+                key={plan.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className={cn(
+                  "relative cursor-pointer rounded-2xl border p-4 transition-all shadow-[0px_2px_6px_rgba(0,0,0,0.06)]",
+                  isSelected
+                    ? isDark
+                      ? "bg-blue-500/10 border-blue-500/30 ring-2 ring-blue-500/50"
+                      : "bg-blue-50 border-blue-300 ring-2 ring-blue-400/50"
+                    : isDark
+                    ? "bg-gray-800 border-white/10 hover:bg-gray-750"
+                    : "bg-white border-black/5 hover:bg-gray-50",
+                  plan.popular && "border-blue-500/50"
+                )}
+                onClick={() => handleSelectPlan(plan.id)}
+              >
+                {/* Popular Badge */}
+                {plan.popular && (
+                  <div className="absolute -top-2 right-4 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-semibold flex items-center gap-1 shadow-lg">
+                    <Sparkles strokeWidth={1.5} className="h-3 w-3" />
+                    Popular
+                  </div>
+                )}
+
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className={cn("text-lg font-bold", isDark ? "text-white" : "text-black")}>
+                      {plan.name}
+                    </h3>
+                    {plan.trial && (
+                      <p className={cn("text-xs font-medium", isDark ? "text-blue-400" : "text-blue-600")}>
+                        {plan.trial}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className={cn("text-2xl font-bold", isDark ? "text-white" : "text-black")}>
+                      {plan.price}
+                    </div>
+                    <div className={cn("text-xs", isDark ? "text-white/60" : "text-black/60")}>
+                      /{plan.interval}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold">{plan.price}</div>
-                  <div className="text-xs text-gray-400">/{plan.interval}</div>
-                </div>
-              </div>
-              <ul className="space-y-1">
-                {plan.features.map(feature => (
-                  <li key={feature} className="flex items-center text-xs text-gray-300">
-                    <svg className="w-3 h-3 text-green-400 mr-1.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+
+                {/* Features List */}
+                <ul className="space-y-2">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-center gap-2 text-sm">
+                      <div
+                        className={cn(
+                          "p-0.5 rounded-full flex-shrink-0",
+                          isDark ? "bg-green-500/20" : "bg-green-100"
+                        )}
+                      >
+                        <Check
+                          strokeWidth={2}
+                          className={cn(
+                            "h-3 w-3",
+                            isDark ? "text-green-400" : "text-green-600"
+                          )}
+                        />
+                      </div>
+                      <span className={cn(isDark ? "text-white/80" : "text-black/80")}>
+                        {feature}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            );
+          })}
         </div>
 
-        <button
+        {/* Subscribe Button */}
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
           id="subscribe-btn"
           disabled={!selectedPlan || isLoading}
           onClick={handleSubscribe}
-          className="w-full bg-linear-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold py-3 px-4 rounded-lg transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          className={cn(
+            "w-full mt-6 rounded-xl px-6 py-3.5 font-semibold text-white transition-all shadow-lg",
+            "bg-gradient-to-r from-blue-500 to-purple-500",
+            "hover:from-blue-600 hover:to-purple-600 hover:shadow-xl",
+            "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg",
+            "flex items-center justify-center gap-2"
+          )}
         >
           {isLoading ? (
-            <span className="flex items-center justify-center">
-              <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            <>
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
               </svg>
               Processing...
-            </span>
-          ) : (selectedPlan ? `Subscribe to ${PLANS.find(p => p.id === selectedPlan)?.name}` : 'Select a plan to continue')}
-        </button>
+            </>
+          ) : selectedPlan ? (
+            <>Subscribe to {PLANS.find((p) => p.id === selectedPlan)?.name}</>
+          ) : (
+            <>Select a plan to continue</>
+          )}
+        </motion.button>
 
-        <p className="text-xs text-gray-500 text-center mt-2">
+        {/* Footer */}
+        <p className={cn("text-xs text-center mt-4", isDark ? "text-white/40" : "text-black/40")}>
           Secure checkout powered by Stripe
         </p>
       </div>

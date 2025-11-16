@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { useWidgetProps } from "@/app/hooks/use-widget-props";
+import { motion, AnimatePresence } from "framer-motion";
+import { Maximize2, CreditCard, GraduationCap, Home, AlertTriangle, DollarSign, Calendar } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
+import { useWidgetProps } from "@/src/use-widget-props";
+import { useDisplayMode } from "@/src/use-display-mode";
+import { useMaxHeight } from "@/src/use-max-height";
+import { useTheme } from "@/src/use-theme";
+import { formatCurrency, formatDate, formatPercent } from "@/src/utils/format";
 import PlaidRequired from "@/src/components/plaid-required";
 import SubscriptionRequired from "@/src/components/subscription-required";
 
@@ -130,26 +137,6 @@ interface ToolOutput {
   error_message?: string;
 }
 
-function formatCurrency(amount: number, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency
-  }).format(amount);
-}
-
-function formatDate(dateString: string | null) {
-  if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-}
-
-function formatPercent(value: number) {
-  return `${value.toFixed(2)}%`;
-}
-
 function getDaysUntil(dateString: string | null) {
   if (!dateString) return null;
   const today = new Date();
@@ -160,26 +147,43 @@ function getDaysUntil(dateString: string | null) {
 }
 
 export default function Liabilities() {
-  const toolOutput = useWidgetProps();
-  const [activeTab, setActiveTab] = useState<'overview' | 'credit' | 'student' | 'mortgage'>('overview');
+  const toolOutput = useWidgetProps<ToolOutput>();
+  const displayMode = useDisplayMode();
+  const maxHeight = useMaxHeight();
+  const theme = useTheme();
+  const isFullscreen = displayMode === "fullscreen";
+  const isDark = theme === "dark";
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (!toolOutput) {
-    return <p>No liability data available</p>;
+    return (
+      <div
+        className={cn(
+          "antialiased w-full relative flex items-center justify-center",
+          isDark ? "bg-gray-900 text-white" : "bg-gray-50 text-black"
+        )}
+        style={{ maxHeight: maxHeight ?? undefined }}
+      >
+        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+          No liability data available
+        </p>
+      </div>
+    );
   }
 
   // Check for auth/subscription requirements
-  if (toolOutput.message === 'Bank connection required') {
+  if (toolOutput.message === "Bank connection required") {
     return <PlaidRequired />;
   }
 
-  if (toolOutput.error_message === 'Subscription required' || toolOutput.featureName) {
+  if (toolOutput.error_message === "Subscription required" || toolOutput.featureName) {
     return <SubscriptionRequired />;
   }
 
-  const accounts: Account[] = (toolOutput.accounts || []) as Account[];
-  const credit: CreditCard[] = (toolOutput.credit || []) as CreditCard[];
-  const student: StudentLoan[] = (toolOutput.student || []) as StudentLoan[];
-  const mortgage: Mortgage[] = (toolOutput.mortgage || []) as Mortgage[];
+  const accounts: Account[] = toolOutput.accounts || [];
+  const credit: CreditCard[] = toolOutput.credit || [];
+  const student: StudentLoan[] = toolOutput.student || [];
+  const mortgage: Mortgage[] = toolOutput.mortgage || [];
   const summary = toolOutput.summary;
 
   // Create account lookup
@@ -191,1108 +195,517 @@ export default function Liabilities() {
 
   if (totalLiabilities === 0) {
     return (
-      <div className="liabilities-container">
-        <div className="no-data">
-          <div className="no-data-icon">💳</div>
-          <div className="no-data-text">No liabilities found</div>
-          <div className="no-data-subtext">No credit cards, loans, or mortgages detected in your linked accounts.</div>
+      <div
+        className={cn(
+          "antialiased w-full relative flex items-center justify-center",
+          isDark ? "bg-gray-900 text-white" : "bg-gray-50 text-black"
+        )}
+        style={{ maxHeight: maxHeight ?? undefined }}
+      >
+        <div className="text-center p-8">
+          <div className="text-5xl mb-4">💳</div>
+          <div className={cn("text-lg font-semibold mb-2", isDark ? "text-white" : "text-black")}>
+            No liabilities found
+          </div>
+          <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+            No credit cards, loans, or mortgages detected
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="liabilities-container">
-      {/* Summary Header */}
-      <div className="summary-header">
-        <div className="summary-main">
-          <div className="summary-label">Total Debt</div>
-          <div className="summary-amount">{formatCurrency(summary?.totalDebt || 0)}</div>
-        </div>
-        <div className="summary-grid">
-          <div className="summary-stat">
-            <div className="stat-label">Minimum Payment</div>
-            <div className="stat-value">{formatCurrency(summary?.totalMinimumPayment || 0)}</div>
-          </div>
-          <div className="summary-stat">
-            <div className="stat-label">Total Accounts</div>
-            <div className="stat-value">{totalLiabilities}</div>
-          </div>
-          {summary?.accountsOverdue && summary.accountsOverdue > 0 ? (
-            <div className="summary-stat warning">
-              <div className="stat-label">⚠️ Overdue</div>
-              <div className="stat-value">{summary.accountsOverdue}</div>
-            </div>
-          ) : (
-            <div className="summary-stat success">
-              <div className="stat-label">✓ On Track</div>
-              <div className="stat-value">All Current</div>
-            </div>
-          )}
-        </div>
-        {summary?.nextPaymentDue && (
-          <div className="next-payment">
-            Next payment due: <strong>{formatDate(summary.nextPaymentDue)}</strong>
-            {(() => {
-              const days = getDaysUntil(summary.nextPaymentDue);
-              if (days !== null) {
-                return days < 0
-                  ? ` (${Math.abs(days)} days overdue)`
-                  : days === 0
-                  ? ' (due today)'
-                  : ` (in ${days} days)`;
-              }
-              return '';
-            })()}
-          </div>
-        )}
-      </div>
-
-      {/* Tabs */}
-      <div className="tabs">
+    <div
+      className={cn(
+        "antialiased w-full relative",
+        isDark ? "bg-gray-900" : "bg-gray-50",
+        !isFullscreen && "overflow-hidden"
+      )}
+      style={{
+        maxHeight: maxHeight ?? undefined,
+        height: isFullscreen ? maxHeight ?? undefined : undefined,
+      }}
+    >
+      {/* Expand button (inline mode only) */}
+      {!isFullscreen && (
         <button
-          className={`tab ${activeTab === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overview')}
+          onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
+          className={cn(
+            "absolute top-4 right-4 z-20 p-2 rounded-full shadow-lg transition-all ring-1",
+            isDark
+              ? "bg-gray-800 text-white hover:bg-gray-700 ring-white/10"
+              : "bg-white text-black hover:bg-gray-100 ring-black/5"
+          )}
+          aria-label="Expand to fullscreen"
         >
-          Overview
+          <Maximize2 strokeWidth={1.5} className="h-4 w-4" />
         </button>
-        {credit.length > 0 && (
-          <button
-            className={`tab ${activeTab === 'credit' ? 'active' : ''}`}
-            onClick={() => setActiveTab('credit')}
-          >
-            Credit Cards ({credit.length})
-          </button>
-        )}
-        {student.length > 0 && (
-          <button
-            className={`tab ${activeTab === 'student' ? 'active' : ''}`}
-            onClick={() => setActiveTab('student')}
-          >
-            Student Loans ({student.length})
-          </button>
-        )}
-        {mortgage.length > 0 && (
-          <button
-            className={`tab ${activeTab === 'mortgage' ? 'active' : ''}`}
-            onClick={() => setActiveTab('mortgage')}
-          >
-            Mortgages ({mortgage.length})
-          </button>
-        )}
-      </div>
+      )}
 
       {/* Content */}
-      <div className="tab-content">
-        {activeTab === 'overview' && (
-          <div className="overview-grid">
-            {credit.map((card: CreditCard) => {
-              const account = accountMap.get(card.account_id);
-              if (!account) return null;
+      <div className={cn("w-full h-full overflow-y-auto", isFullscreen ? "p-8" : "p-5")}>
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className={cn("text-2xl font-semibold mb-2", isDark ? "text-white" : "text-black")}>
+            Liabilities
+          </h1>
+          <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+            Your debts and credit overview
+          </p>
+        </div>
 
-              const balance = Math.abs(account.balances.current || 0);
-              const limit = account.balances.limit || 0;
-              const utilization = limit > 0 ? (balance / limit) * 100 : 0;
-              const daysUntilDue = getDaysUntil(card.next_payment_due_date);
+        {/* Summary Header */}
+        {summary && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn(
+              "rounded-2xl border p-6 shadow-[0px_2px_6px_rgba(0,0,0,0.06)] mb-6",
+              isDark
+                ? "bg-gradient-to-br from-red-500/20 to-rose-500/20 border-red-500/20"
+                : "bg-gradient-to-br from-red-50 to-rose-50 border-red-200"
+            )}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className={cn(
+                  "p-3 rounded-xl",
+                  isDark ? "bg-red-500/30" : "bg-red-100"
+                )}
+              >
+                <DollarSign strokeWidth={1.5} className="h-6 w-6 text-red-600" />
+              </div>
+              <div>
+                <div className={cn("text-sm font-medium mb-1", isDark ? "text-red-300" : "text-red-700")}>
+                  Total Debt
+                </div>
+                <div className={cn("text-3xl font-bold", isDark ? "text-white" : "text-black")}>
+                  {formatCurrency(summary.totalDebt)}
+                </div>
+              </div>
+            </div>
 
-              return (
-                <div key={card.account_id} className="liability-card credit-card">
-                  <div className="card-header">
-                    <div className="card-icon">💳</div>
-                    <div className="card-info">
-                      <div className="card-name">{account.name}</div>
-                      <div className="card-type">Credit Card {account.mask && `• ****${account.mask}`}</div>
-                    </div>
-                    {card.is_overdue && <div className="overdue-badge">OVERDUE</div>}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div
+                className={cn(
+                  "rounded-xl p-3",
+                  isDark ? "bg-red-500/10" : "bg-white"
+                )}
+              >
+                <div className={cn("text-xs font-medium mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                  Min Payment
+                </div>
+                <div className={cn("text-lg font-semibold", isDark ? "text-white" : "text-black")}>
+                  {formatCurrency(summary.totalMinimumPayment)}
+                </div>
+              </div>
+              <div
+                className={cn(
+                  "rounded-xl p-3",
+                  isDark ? "bg-red-500/10" : "bg-white"
+                )}
+              >
+                <div className={cn("text-xs font-medium mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                  Total Accounts
+                </div>
+                <div className={cn("text-lg font-semibold", isDark ? "text-white" : "text-black")}>
+                  {totalLiabilities}
+                </div>
+              </div>
+              {summary.accountsOverdue > 0 ? (
+                <div
+                  className={cn(
+                    "rounded-xl p-3",
+                    isDark ? "bg-yellow-500/20 border border-yellow-500/30" : "bg-yellow-50 border border-yellow-200"
+                  )}
+                >
+                  <div className={cn("text-xs font-medium mb-1", isDark ? "text-yellow-400" : "text-yellow-700")}>
+                    ⚠️ Overdue
                   </div>
-                  <div className="card-body">
-                    <div className="balance-row">
-                      <div className="balance-label">Balance</div>
-                      <div className="balance-amount">{formatCurrency(balance)}</div>
-                    </div>
-                    {limit > 0 && (
-                      <div className="utilization-bar">
-                        <div className="utilization-fill" style={{ width: `${Math.min(utilization, 100)}%` }}></div>
-                      </div>
-                    )}
-                    <div className="card-details">
-                      <div className="detail-row">
-                        <span>Credit Limit:</span>
-                        <span>{formatCurrency(limit)}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span>Utilization:</span>
-                        <span className={utilization > 80 ? 'warning' : ''}>{formatPercent(utilization)}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span>Min Payment:</span>
-                        <span>{formatCurrency(card.minimum_payment_amount || 0)}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span>Due Date:</span>
-                        <span className={daysUntilDue !== null && daysUntilDue < 7 ? 'warning' : ''}>
-                          {formatDate(card.next_payment_due_date)}
-                        </span>
-                      </div>
-                    </div>
+                  <div className={cn("text-lg font-semibold", isDark ? "text-yellow-300" : "text-yellow-900")}>
+                    {summary.accountsOverdue}
                   </div>
                 </div>
-              );
-            })}
-
-            {student.map((loan: StudentLoan) => {
-              const account = accountMap.get(loan.account_id);
-              if (!account) return null;
-
-              const balance = account.balances.current || 0;
-              const daysUntilDue = getDaysUntil(loan.next_payment_due_date);
-
-              return (
-                <div key={loan.account_id} className="liability-card student-loan">
-                  <div className="card-header">
-                    <div className="card-icon">🎓</div>
-                    <div className="card-info">
-                      <div className="card-name">{loan.loan_name || account.name}</div>
-                      <div className="card-type">Student Loan</div>
-                    </div>
-                    {loan.is_overdue && <div className="overdue-badge">OVERDUE</div>}
+              ) : (
+                <div
+                  className={cn(
+                    "rounded-xl p-3",
+                    isDark ? "bg-green-500/20 border border-green-500/30" : "bg-green-50 border border-green-200"
+                  )}
+                >
+                  <div className={cn("text-xs font-medium mb-1", isDark ? "text-green-400" : "text-green-700")}>
+                    ✓ Status
                   </div>
-                  <div className="card-body">
-                    <div className="balance-row">
-                      <div className="balance-label">Remaining Balance</div>
-                      <div className="balance-amount">{formatCurrency(balance)}</div>
-                    </div>
-                    <div className="card-details">
-                      <div className="detail-row">
-                        <span>Interest Rate:</span>
-                        <span>{formatPercent(loan.interest_rate_percentage)}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span>Min Payment:</span>
-                        <span>{formatCurrency(loan.minimum_payment_amount || 0)}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span>Due Date:</span>
-                        <span className={daysUntilDue !== null && daysUntilDue < 7 ? 'warning' : ''}>
-                          {formatDate(loan.next_payment_due_date)}
-                        </span>
-                      </div>
-                      {loan.loan_status?.type && (
-                        <div className="detail-row">
-                          <span>Status:</span>
-                          <span className="capitalize">{loan.loan_status.type.replace(/_/g, ' ')}</span>
-                        </div>
-                      )}
-                    </div>
+                  <div className={cn("text-sm font-semibold", isDark ? "text-green-300" : "text-green-900")}>
+                    All Current
                   </div>
                 </div>
-              );
-            })}
+              )}
+            </div>
 
-            {mortgage.map((mtg: Mortgage) => {
-              const account = accountMap.get(mtg.account_id);
-              if (!account) return null;
-
-              const balance = account.balances.current || 0;
-              const daysUntilDue = getDaysUntil(mtg.next_payment_due_date);
-
-              return (
-                <div key={mtg.account_id} className="liability-card mortgage">
-                  <div className="card-header">
-                    <div className="card-icon">🏠</div>
-                    <div className="card-info">
-                      <div className="card-name">{account.name}</div>
-                      <div className="card-type">Mortgage</div>
-                    </div>
-                    {mtg.past_due_amount && mtg.past_due_amount > 0 && (
-                      <div className="overdue-badge">PAST DUE</div>
-                    )}
-                  </div>
-                  <div className="card-body">
-                    <div className="balance-row">
-                      <div className="balance-label">Principal Balance</div>
-                      <div className="balance-amount">{formatCurrency(balance)}</div>
-                    </div>
-                    <div className="card-details">
-                      <div className="detail-row">
-                        <span>Interest Rate:</span>
-                        <span>
-                          {formatPercent(mtg.interest_rate.percentage || 0)}
-                          {mtg.interest_rate.type && ` (${mtg.interest_rate.type})`}
-                        </span>
-                      </div>
-                      <div className="detail-row">
-                        <span>Monthly Payment:</span>
-                        <span>{formatCurrency(mtg.next_monthly_payment || 0)}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span>Due Date:</span>
-                        <span className={daysUntilDue !== null && daysUntilDue < 7 ? 'warning' : ''}>
-                          {formatDate(mtg.next_payment_due_date)}
-                        </span>
-                      </div>
-                      {mtg.loan_term && (
-                        <div className="detail-row">
-                          <span>Term:</span>
-                          <span>{mtg.loan_term}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+            {summary.nextPaymentDue && (
+              <div className={cn("mt-4 text-sm", isDark ? "text-white/80" : "text-black/80")}>
+                Next payment due:{" "}
+                <strong>{formatDate(summary.nextPaymentDue)}</strong>
+                {(() => {
+                  const days = getDaysUntil(summary.nextPaymentDue);
+                  if (days !== null) {
+                    return days < 0
+                      ? ` (${Math.abs(days)} days overdue)`
+                      : days === 0
+                      ? " (due today)"
+                      : ` (in ${days} days)`;
+                  }
+                  return "";
+                })()}
+              </div>
+            )}
+          </motion.div>
         )}
 
-        {activeTab === 'credit' && credit.length > 0 && (
-          <div className="detail-view">
-            {credit.map((card: CreditCard) => {
-              const account = accountMap.get(card.account_id);
-              if (!account) return null;
+        {/* Liabilities List */}
+        <div className="space-y-4">
+          {/* Credit Cards */}
+          {credit.map((card: CreditCard, index: number) => {
+            const account = accountMap.get(card.account_id);
+            if (!account) return null;
 
-              const balance = Math.abs(account.balances.current || 0);
-              const limit = account.balances.limit || 0;
-              const utilization = limit > 0 ? (balance / limit) * 100 : 0;
+            const balance = Math.abs(account.balances.current || 0);
+            const limit = account.balances.limit || 0;
+            const utilization = limit > 0 ? (balance / limit) * 100 : 0;
+            const daysUntilDue = getDaysUntil(card.next_payment_due_date);
+            const isExpanded = expandedId === card.account_id;
 
-              return (
-                <div key={card.account_id} className="detail-card">
-                  <div className="detail-header">
-                    <div>
-                      <h3>{account.name}</h3>
-                      <p className="detail-subtitle">{account.official_name || `Credit Card ${account.mask ? `• ****${account.mask}` : ''}`}</p>
+            return (
+              <motion.div
+                key={card.account_id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className={cn(
+                  "rounded-2xl border shadow-[0px_2px_6px_rgba(0,0,0,0.06)] overflow-hidden",
+                  isDark ? "bg-gray-800 border-white/10" : "bg-white border-black/5"
+                )}
+              >
+                <div
+                  className={cn(
+                    "p-4 cursor-pointer transition-colors",
+                    isDark ? "hover:bg-gray-750" : "hover:bg-gray-50"
+                  )}
+                  onClick={() => setExpandedId(isExpanded ? null : card.account_id)}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          "p-2 rounded-lg",
+                          isDark ? "bg-blue-500/20" : "bg-blue-100"
+                        )}
+                      >
+                        <CreditCard strokeWidth={1.5} className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                          {account.name}
+                        </h3>
+                        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+                          Credit Card{account.mask && ` • ****${account.mask}`}
+                        </p>
+                      </div>
                     </div>
-                    {card.is_overdue && <div className="overdue-badge large">OVERDUE</div>}
+                    {card.is_overdue && (
+                      <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded">
+                        OVERDUE
+                      </span>
+                    )}
                   </div>
 
-                  <div className="detail-section">
-                    <h4>Balance & Utilization</h4>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <div className="item-label">Current Balance</div>
-                        <div className="item-value large">{formatCurrency(balance)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Credit Limit</div>
-                        <div className="item-value">{formatCurrency(limit)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Available Credit</div>
-                        <div className="item-value">{formatCurrency(Math.max(0, limit - balance))}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Utilization</div>
-                        <div className={`item-value ${utilization > 80 ? 'warning' : ''}`}>
-                          {formatPercent(utilization)}
+                  <div className="mb-2">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className={cn(isDark ? "text-white/60" : "text-black/60")}>Balance</span>
+                      <span className={cn("font-bold", isDark ? "text-white" : "text-black")}>
+                        {formatCurrency(balance)}
+                      </span>
+                    </div>
+                    {limit > 0 && (
+                      <>
+                        <div
+                          className={cn(
+                            "h-2 rounded-full overflow-hidden",
+                            isDark ? "bg-gray-700" : "bg-gray-200"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "h-full transition-all",
+                              utilization > 80
+                                ? "bg-gradient-to-r from-red-500 to-red-600"
+                                : utilization > 50
+                                ? "bg-gradient-to-r from-yellow-500 to-yellow-600"
+                                : "bg-gradient-to-r from-green-500 to-green-600"
+                            )}
+                            style={{ width: `${Math.min(utilization, 100)}%` }}
+                          />
                         </div>
-                      </div>
-                    </div>
+                        <div className={cn("text-xs mt-1", isDark ? "text-white/60" : "text-black/60")}>
+                          {formatPercent(utilization / 100)} of {formatCurrency(limit)} limit
+                        </div>
+                      </>
+                    )}
                   </div>
 
-                  <div className="detail-section">
-                    <h4>Payment Information</h4>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <div className="item-label">Minimum Payment</div>
-                        <div className="item-value large">{formatCurrency(card.minimum_payment_amount || 0)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Due Date</div>
-                        <div className="item-value">{formatDate(card.next_payment_due_date)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Last Payment</div>
-                        <div className="item-value">{formatCurrency(card.last_payment_amount || 0)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Last Payment Date</div>
-                        <div className="item-value">{formatDate(card.last_payment_date)}</div>
-                      </div>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className={cn("block", isDark ? "text-white/60" : "text-black/60")}>
+                        Min Payment
+                      </span>
+                      <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                        {formatCurrency(card.minimum_payment_amount || 0)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className={cn("block", isDark ? "text-white/60" : "text-black/60")}>Due Date</span>
+                      <span
+                        className={cn(
+                          "font-semibold",
+                          daysUntilDue !== null && daysUntilDue < 7
+                            ? "text-red-500"
+                            : isDark
+                            ? "text-white"
+                            : "text-black"
+                        )}
+                      >
+                        {formatDate(card.next_payment_due_date)}
+                      </span>
                     </div>
                   </div>
+                </div>
 
-                  {card.aprs && card.aprs.length > 0 && (
-                    <div className="detail-section">
-                      <h4>APR Breakdown</h4>
-                      <div className="apr-list">
+                {/* Expanded Details */}
+                <AnimatePresence>
+                  {isExpanded && card.aprs && card.aprs.length > 0 && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div
+                        className={cn(
+                          "px-4 pb-4 border-t space-y-2",
+                          isDark ? "border-white/10" : "border-black/5"
+                        )}
+                      >
+                        <div className={cn("text-xs font-semibold uppercase pt-3", isDark ? "text-white/60" : "text-black/60")}>
+                          APR Breakdown
+                        </div>
                         {card.aprs.map((apr, idx) => (
-                          <div key={idx} className="apr-item">
-                            <div className="apr-type capitalize">{apr.apr_type.replace(/_/g, ' ')}</div>
-                            <div className="apr-details">
-                              <div className="apr-rate">{formatPercent(apr.apr_percentage)}</div>
-                              {apr.balance_subject_to_apr !== null && (
-                                <div className="apr-balance">on {formatCurrency(apr.balance_subject_to_apr)}</div>
-                              )}
-                              {apr.interest_charge_amount !== null && apr.interest_charge_amount > 0 && (
-                                <div className="apr-charge">Interest: {formatCurrency(apr.interest_charge_amount)}</div>
-                              )}
-                            </div>
+                          <div
+                            key={idx}
+                            className={cn(
+                              "flex justify-between items-center p-2 rounded-lg text-xs",
+                              isDark ? "bg-gray-700/50" : "bg-gray-100"
+                            )}
+                          >
+                            <span className={cn("capitalize", isDark ? "text-white" : "text-black")}>
+                              {apr.apr_type.replace(/_/g, " ")}
+                            </span>
+                            <span className={cn("font-bold", isDark ? "text-white" : "text-black")}>
+                              {formatPercent(apr.apr_percentage / 100)}
+                            </span>
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </motion.div>
                   )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
 
-                  {card.last_statement_balance !== null && (
-                    <div className="detail-section">
-                      <h4>Statement Information</h4>
-                      <div className="detail-grid">
-                        <div className="detail-item">
-                          <div className="item-label">Last Statement Balance</div>
-                          <div className="item-value">{formatCurrency(card.last_statement_balance)}</div>
-                        </div>
-                        <div className="detail-item">
-                          <div className="item-label">Statement Date</div>
-                          <div className="item-value">{formatDate(card.last_statement_issue_date)}</div>
-                        </div>
+          {/* Student Loans */}
+          {student.map((loan: StudentLoan, index: number) => {
+            const account = accountMap.get(loan.account_id);
+            if (!account) return null;
+
+            const balance = account.balances.current || 0;
+            const isExpanded = expandedId === loan.account_id;
+
+            return (
+              <motion.div
+                key={loan.account_id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: (credit.length + index) * 0.05 }}
+                className={cn(
+                  "rounded-2xl border shadow-[0px_2px_6px_rgba(0,0,0,0.06)]",
+                  isDark ? "bg-gray-800 border-white/10" : "bg-white border-black/5"
+                )}
+              >
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          "p-2 rounded-lg",
+                          isDark ? "bg-purple-500/20" : "bg-purple-100"
+                        )}
+                      >
+                        <GraduationCap strokeWidth={1.5} className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <h3 className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                          {loan.loan_name || account.name}
+                        </h3>
+                        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+                          Student Loan
+                        </p>
                       </div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {activeTab === 'student' && student.length > 0 && (
-          <div className="detail-view">
-            {student.map((loan: StudentLoan) => {
-              const account = accountMap.get(loan.account_id);
-              if (!account) return null;
-
-              const balance = account.balances.current || 0;
-              const originalAmount = loan.origination_principal_amount || 0;
-              const paidOff = originalAmount > 0 ? ((originalAmount - balance) / originalAmount) * 100 : 0;
-
-              return (
-                <div key={loan.account_id} className="detail-card">
-                  <div className="detail-header">
-                    <div>
-                      <h3>{loan.loan_name || account.name}</h3>
-                      <p className="detail-subtitle">
-                        Student Loan {loan.account_number && `• ${loan.account_number}`}
-                      </p>
-                    </div>
-                    {loan.is_overdue && <div className="overdue-badge large">OVERDUE</div>}
-                  </div>
-
-                  <div className="detail-section">
-                    <h4>Loan Balance</h4>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <div className="item-label">Current Balance</div>
-                        <div className="item-value large">{formatCurrency(balance)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Original Principal</div>
-                        <div className="item-value">{formatCurrency(originalAmount)}</div>
-                      </div>
-                      {loan.outstanding_interest_amount !== null && (
-                        <div className="detail-item">
-                          <div className="item-label">Outstanding Interest</div>
-                          <div className="item-value">{formatCurrency(loan.outstanding_interest_amount)}</div>
-                        </div>
-                      )}
-                      {originalAmount > 0 && (
-                        <div className="detail-item">
-                          <div className="item-label">Paid Off</div>
-                          <div className="item-value">{formatPercent(paidOff)}</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="detail-section">
-                    <h4>Payment Information</h4>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <div className="item-label">Interest Rate</div>
-                        <div className="item-value large">{formatPercent(loan.interest_rate_percentage)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Minimum Payment</div>
-                        <div className="item-value">{formatCurrency(loan.minimum_payment_amount || 0)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Next Due Date</div>
-                        <div className="item-value">{formatDate(loan.next_payment_due_date)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Expected Payoff</div>
-                        <div className="item-value">{formatDate(loan.expected_payoff_date)}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {loan.repayment_plan && (
-                    <div className="detail-section">
-                      <h4>Repayment Plan</h4>
-                      <div className="detail-grid">
-                        {loan.repayment_plan.description && (
-                          <div className="detail-item">
-                            <div className="item-label">Plan Type</div>
-                            <div className="item-value">{loan.repayment_plan.description}</div>
-                          </div>
-                        )}
-                        {loan.loan_status?.type && (
-                          <div className="detail-item">
-                            <div className="item-label">Loan Status</div>
-                            <div className="item-value capitalize">{loan.loan_status.type.replace(/_/g, ' ')}</div>
-                          </div>
-                        )}
-                        {loan.guarantor && (
-                          <div className="detail-item">
-                            <div className="item-label">Guarantor</div>
-                            <div className="item-value">{loan.guarantor}</div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {loan.pslf_status && (
-                    <div className="detail-section">
-                      <h4>PSLF Status</h4>
-                      <div className="detail-grid">
-                        {loan.pslf_status.payments_made !== null && (
-                          <div className="detail-item">
-                            <div className="item-label">Payments Made</div>
-                            <div className="item-value">{loan.pslf_status.payments_made}</div>
-                          </div>
-                        )}
-                        {loan.pslf_status.payments_remaining !== null && (
-                          <div className="detail-item">
-                            <div className="item-label">Payments Remaining</div>
-                            <div className="item-value">{loan.pslf_status.payments_remaining}</div>
-                          </div>
-                        )}
-                        {loan.pslf_status.estimated_eligibility_date && (
-                          <div className="detail-item">
-                            <div className="item-label">Estimated Eligibility</div>
-                            <div className="item-value">{formatDate(loan.pslf_status.estimated_eligibility_date)}</div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {(loan.ytd_interest_paid !== null || loan.ytd_principal_paid !== null) && (
-                    <div className="detail-section">
-                      <h4>Year-to-Date Payments</h4>
-                      <div className="detail-grid">
-                        {loan.ytd_principal_paid !== null && (
-                          <div className="detail-item">
-                            <div className="item-label">Principal Paid (YTD)</div>
-                            <div className="item-value">{formatCurrency(loan.ytd_principal_paid)}</div>
-                          </div>
-                        )}
-                        {loan.ytd_interest_paid !== null && (
-                          <div className="detail-item">
-                            <div className="item-label">Interest Paid (YTD)</div>
-                            <div className="item-value">{formatCurrency(loan.ytd_interest_paid)}</div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {loan.servicer_address && (
-                    <div className="detail-section">
-                      <h4>Servicer Information</h4>
-                      <div className="servicer-address">
-                        {loan.servicer_address.street && <div>{loan.servicer_address.street}</div>}
-                        <div>
-                          {[
-                            loan.servicer_address.city,
-                            loan.servicer_address.region,
-                            loan.servicer_address.postal_code,
-                          ].filter(Boolean).join(', ')}
-                        </div>
-                        {loan.payment_reference_number && (
-                          <div className="reference-number">
-                            Reference: {loan.payment_reference_number}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {activeTab === 'mortgage' && mortgage.length > 0 && (
-          <div className="detail-view">
-            {mortgage.map((mtg: Mortgage) => {
-              const account = accountMap.get(mtg.account_id);
-              if (!account) return null;
-
-              const balance = account.balances.current || 0;
-              const originalAmount = mtg.origination_principal_amount || 0;
-              const paidOff = originalAmount > 0 ? ((originalAmount - balance) / originalAmount) * 100 : 0;
-
-              return (
-                <div key={mtg.account_id} className="detail-card">
-                  <div className="detail-header">
-                    <div>
-                      <h3>{account.name}</h3>
-                      <p className="detail-subtitle">
-                        {mtg.loan_type_description || 'Mortgage'} {mtg.account_number && `• ${mtg.account_number}`}
-                      </p>
-                    </div>
-                    {mtg.past_due_amount && mtg.past_due_amount > 0 && (
-                      <div className="overdue-badge large">PAST DUE: {formatCurrency(mtg.past_due_amount)}</div>
+                    {loan.is_overdue && (
+                      <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded">
+                        OVERDUE
+                      </span>
                     )}
                   </div>
 
-                  {mtg.property_address && (
-                    <div className="property-address">
-                      <strong>Property:</strong>{' '}
-                      {[
-                        mtg.property_address.street,
-                        mtg.property_address.city,
-                        mtg.property_address.region,
-                        mtg.property_address.postal_code,
-                      ].filter(Boolean).join(', ')}
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                        Balance
+                      </span>
+                      <span className={cn("font-bold text-base", isDark ? "text-white" : "text-black")}>
+                        {formatCurrency(balance)}
+                      </span>
                     </div>
-                  )}
-
-                  <div className="detail-section">
-                    <h4>Loan Balance</h4>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <div className="item-label">Current Balance</div>
-                        <div className="item-value large">{formatCurrency(balance)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Original Amount</div>
-                        <div className="item-value">{formatCurrency(originalAmount)}</div>
-                      </div>
-                      {mtg.escrow_balance !== null && (
-                        <div className="detail-item">
-                          <div className="item-label">Escrow Balance</div>
-                          <div className="item-value">{formatCurrency(mtg.escrow_balance)}</div>
-                        </div>
-                      )}
-                      {originalAmount > 0 && (
-                        <div className="detail-item">
-                          <div className="item-label">Paid Off</div>
-                          <div className="item-value">{formatPercent(paidOff)}</div>
-                        </div>
-                      )}
+                    <div>
+                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                        Interest Rate
+                      </span>
+                      <span className={cn("font-bold text-base", isDark ? "text-white" : "text-black")}>
+                        {formatPercent(loan.interest_rate_percentage / 100)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                        Min Payment
+                      </span>
+                      <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                        {formatCurrency(loan.minimum_payment_amount || 0)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                        Due Date
+                      </span>
+                      <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                        {formatDate(loan.next_payment_due_date)}
+                      </span>
                     </div>
                   </div>
+                </div>
+              </motion.div>
+            );
+          })}
 
-                  <div className="detail-section">
-                    <h4>Loan Terms</h4>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <div className="item-label">Interest Rate</div>
-                        <div className="item-value large">
-                          {formatPercent(mtg.interest_rate.percentage || 0)}
-                          {mtg.interest_rate.type && ` (${mtg.interest_rate.type})`}
-                        </div>
-                      </div>
-                      {mtg.loan_term && (
-                        <div className="detail-item">
-                          <div className="item-label">Loan Term</div>
-                          <div className="item-value">{mtg.loan_term}</div>
-                        </div>
-                      )}
-                      <div className="detail-item">
-                        <div className="item-label">Origination Date</div>
-                        <div className="item-value">{formatDate(mtg.origination_date)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Maturity Date</div>
-                        <div className="item-value">{formatDate(mtg.maturity_date)}</div>
-                      </div>
-                    </div>
-                  </div>
+          {/* Mortgages */}
+          {mortgage.map((mtg: Mortgage, index: number) => {
+            const account = accountMap.get(mtg.account_id);
+            if (!account) return null;
 
-                  <div className="detail-section">
-                    <h4>Payment Information</h4>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <div className="item-label">Monthly Payment</div>
-                        <div className="item-value large">{formatCurrency(mtg.next_monthly_payment || 0)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Next Due Date</div>
-                        <div className="item-value">{formatDate(mtg.next_payment_due_date)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Last Payment</div>
-                        <div className="item-value">{formatCurrency(mtg.last_payment_amount || 0)}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Last Payment Date</div>
-                        <div className="item-value">{formatDate(mtg.last_payment_date)}</div>
-                      </div>
-                    </div>
-                  </div>
+            const balance = account.balances.current || 0;
 
-                  <div className="detail-section">
-                    <h4>Additional Information</h4>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <div className="item-label">PMI</div>
-                        <div className="item-value">{mtg.has_pmi ? 'Yes' : 'No'}</div>
-                      </div>
-                      <div className="detail-item">
-                        <div className="item-label">Prepayment Penalty</div>
-                        <div className="item-value">{mtg.has_prepayment_penalty ? 'Yes' : 'No'}</div>
-                      </div>
-                      {mtg.current_late_fee !== null && mtg.current_late_fee > 0 && (
-                        <div className="detail-item">
-                          <div className="item-label">Current Late Fee</div>
-                          <div className="item-value warning">{formatCurrency(mtg.current_late_fee)}</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {(mtg.ytd_interest_paid !== null || mtg.ytd_principal_paid !== null) && (
-                    <div className="detail-section">
-                      <h4>Year-to-Date Payments</h4>
-                      <div className="detail-grid">
-                        {mtg.ytd_principal_paid !== null && (
-                          <div className="detail-item">
-                            <div className="item-label">Principal Paid (YTD)</div>
-                            <div className="item-value">{formatCurrency(mtg.ytd_principal_paid)}</div>
-                          </div>
+            return (
+              <motion.div
+                key={mtg.account_id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: (credit.length + student.length + index) * 0.05 }}
+                className={cn(
+                  "rounded-2xl border shadow-[0px_2px_6px_rgba(0,0,0,0.06)]",
+                  isDark ? "bg-gray-800 border-white/10" : "bg-white border-black/5"
+                )}
+              >
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          "p-2 rounded-lg",
+                          isDark ? "bg-green-500/20" : "bg-green-100"
                         )}
-                        {mtg.ytd_interest_paid !== null && (
-                          <div className="detail-item">
-                            <div className="item-label">Interest Paid (YTD)</div>
-                            <div className="item-value">{formatCurrency(mtg.ytd_interest_paid)}</div>
-                          </div>
-                        )}
+                      >
+                        <Home strokeWidth={1.5} className="h-5 w-5 text-green-600" />
                       </div>
+                      <div>
+                        <h3 className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                          {account.name}
+                        </h3>
+                        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+                          Mortgage
+                        </p>
+                      </div>
+                    </div>
+                    {mtg.past_due_amount && mtg.past_due_amount > 0 && (
+                      <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded">
+                        PAST DUE
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                        Balance
+                      </span>
+                      <span className={cn("font-bold text-base", isDark ? "text-white" : "text-black")}>
+                        {formatCurrency(balance)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                        Interest Rate
+                      </span>
+                      <span className={cn("font-bold text-base", isDark ? "text-white" : "text-black")}>
+                        {formatPercent((mtg.interest_rate.percentage || 0) / 100)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                        Monthly Payment
+                      </span>
+                      <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                        {formatCurrency(mtg.next_monthly_payment || 0)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                        Due Date
+                      </span>
+                      <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                        {formatDate(mtg.next_payment_due_date)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {mtg.loan_term && (
+                    <div className={cn("mt-3 pt-3 border-t text-xs", isDark ? "border-white/10" : "border-black/5")}>
+                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                        Loan Term
+                      </span>
+                      <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                        {mtg.loan_term}
+                      </span>
                     </div>
                   )}
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
-
-      <style jsx>{`
-        .liabilities-container {
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          padding: 16px;
-          max-width: 1000px;
-          margin: 0 auto;
-        }
-
-        .summary-header {
-          background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-          color: white;
-          padding: 24px;
-          border-radius: 12px;
-          margin-bottom: 24px;
-        }
-
-        .summary-main {
-          margin-bottom: 16px;
-        }
-
-        .summary-label {
-          font-size: 14px;
-          opacity: 0.9;
-          margin-bottom: 4px;
-        }
-
-        .summary-amount {
-          font-size: 36px;
-          font-weight: 700;
-        }
-
-        .summary-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-          gap: 16px;
-          margin-bottom: 12px;
-        }
-
-        .summary-stat {
-          background: rgba(255, 255, 255, 0.1);
-          padding: 12px;
-          border-radius: 8px;
-        }
-
-        .summary-stat.warning {
-          background: rgba(251, 191, 36, 0.2);
-        }
-
-        .summary-stat.success {
-          background: rgba(34, 197, 94, 0.2);
-        }
-
-        .stat-label {
-          font-size: 12px;
-          opacity: 0.9;
-          margin-bottom: 4px;
-        }
-
-        .stat-value {
-          font-size: 20px;
-          font-weight: 600;
-        }
-
-        .next-payment {
-          font-size: 13px;
-          opacity: 0.9;
-          margin-top: 12px;
-        }
-
-        .tabs {
-          display: flex;
-          gap: 8px;
-          margin-bottom: 20px;
-          border-bottom: 2px solid #e5e7eb;
-          overflow-x: auto;
-        }
-
-        .tab {
-          padding: 12px 20px;
-          background: none;
-          border: none;
-          border-bottom: 3px solid transparent;
-          color: #6b7280;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          white-space: nowrap;
-          transition: all 0.2s;
-        }
-
-        .tab:hover {
-          color: #111827;
-        }
-
-        .tab.active {
-          color: #dc2626;
-          border-bottom-color: #dc2626;
-        }
-
-        .overview-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-          gap: 16px;
-        }
-
-        .liability-card {
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
-          overflow: hidden;
-          transition: box-shadow 0.2s;
-        }
-
-        .liability-card:hover {
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .card-header {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 16px;
-          background: #f9fafb;
-          border-bottom: 1px solid #e5e7eb;
-        }
-
-        .card-icon {
-          font-size: 24px;
-          width: 40px;
-          height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: white;
-          border-radius: 8px;
-        }
-
-        .card-info {
-          flex: 1;
-        }
-
-        .card-name {
-          font-size: 15px;
-          font-weight: 600;
-          color: #111827;
-          margin-bottom: 2px;
-        }
-
-        .card-type {
-          font-size: 12px;
-          color: #6b7280;
-        }
-
-        .overdue-badge {
-          background: #dc2626;
-          color: white;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 10px;
-          font-weight: 700;
-        }
-
-        .overdue-badge.large {
-          font-size: 12px;
-          padding: 6px 12px;
-        }
-
-        .card-body {
-          padding: 16px;
-        }
-
-        .balance-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: baseline;
-          margin-bottom: 12px;
-        }
-
-        .balance-label {
-          font-size: 13px;
-          color: #6b7280;
-        }
-
-        .balance-amount {
-          font-size: 22px;
-          font-weight: 700;
-          color: #111827;
-        }
-
-        .utilization-bar {
-          height: 6px;
-          background: #e5e7eb;
-          border-radius: 3px;
-          overflow: hidden;
-          margin-bottom: 12px;
-        }
-
-        .utilization-fill {
-          height: 100%;
-          background: linear-gradient(90deg, #fbbf24, #dc2626);
-          transition: width 0.3s;
-        }
-
-        .card-details {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .detail-row {
-          display: flex;
-          justify-content: space-between;
-          font-size: 13px;
-        }
-
-        .detail-row span:first-child {
-          color: #6b7280;
-        }
-
-        .detail-row span:last-child {
-          color: #111827;
-          font-weight: 500;
-        }
-
-        .detail-row .warning {
-          color: #dc2626;
-          font-weight: 600;
-        }
-
-        .detail-view {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .detail-card {
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
-          overflow: hidden;
-        }
-
-        .detail-header {
-          padding: 20px;
-          background: #f9fafb;
-          border-bottom: 1px solid #e5e7eb;
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-        }
-
-        .detail-header h3 {
-          margin: 0 0 4px 0;
-          font-size: 18px;
-          color: #111827;
-        }
-
-        .detail-subtitle {
-          margin: 0;
-          font-size: 13px;
-          color: #6b7280;
-        }
-
-        .property-address {
-          padding: 12px 20px;
-          background: #fef3c7;
-          border-bottom: 1px solid #fde68a;
-          font-size: 13px;
-          color: #92400e;
-        }
-
-        .detail-section {
-          padding: 20px;
-          border-bottom: 1px solid #f3f4f6;
-        }
-
-        .detail-section:last-child {
-          border-bottom: none;
-        }
-
-        .detail-section h4 {
-          margin: 0 0 16px 0;
-          font-size: 14px;
-          font-weight: 600;
-          color: #6b7280;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
-        .detail-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-          gap: 16px;
-        }
-
-        .detail-item {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-
-        .item-label {
-          font-size: 12px;
-          color: #6b7280;
-          font-weight: 500;
-        }
-
-        .item-value {
-          font-size: 15px;
-          color: #111827;
-          font-weight: 600;
-        }
-
-        .item-value.large {
-          font-size: 20px;
-        }
-
-        .item-value.warning {
-          color: #dc2626;
-        }
-
-        .apr-list {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .apr-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 12px;
-          background: #f9fafb;
-          border-radius: 8px;
-        }
-
-        .apr-type {
-          font-size: 13px;
-          font-weight: 600;
-          color: #111827;
-        }
-
-        .apr-details {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          font-size: 13px;
-        }
-
-        .apr-rate {
-          font-size: 15px;
-          font-weight: 700;
-          color: #dc2626;
-        }
-
-        .apr-balance,
-        .apr-charge {
-          color: #6b7280;
-        }
-
-        .servicer-address {
-          font-size: 13px;
-          color: #111827;
-          line-height: 1.6;
-        }
-
-        .reference-number {
-          margin-top: 8px;
-          padding-top: 8px;
-          border-top: 1px solid #e5e7eb;
-          font-weight: 600;
-          color: #6b7280;
-        }
-
-        .capitalize {
-          text-transform: capitalize;
-        }
-
-        .no-data {
-          text-align: center;
-          padding: 60px 20px;
-          color: #6b7280;
-        }
-
-        .no-data-icon {
-          font-size: 48px;
-          margin-bottom: 16px;
-        }
-
-        .no-data-text {
-          font-size: 18px;
-          font-weight: 600;
-          color: #111827;
-          margin-bottom: 8px;
-        }
-
-        .no-data-subtext {
-          font-size: 14px;
-        }
-
-        @media (max-width: 640px) {
-          .overview-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .summary-amount {
-            font-size: 28px;
-          }
-
-          .detail-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
     </div>
   );
 }
