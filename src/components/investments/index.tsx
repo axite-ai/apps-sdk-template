@@ -74,6 +74,9 @@ export default function Investments() {
   const isDark = theme === "dark";
   const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
 
+  // Max visible accounts in inline mode
+  const MAX_VISIBLE_INLINE = 3;
+
   if (!toolOutput) {
     return (
       <div
@@ -239,7 +242,7 @@ export default function Investments() {
 
         {/* Investment Accounts */}
         <div className="space-y-4">
-          {accounts.map((account: Account, index: number) => {
+          {(isFullscreen ? accounts : accounts.slice(0, MAX_VISIBLE_INLINE)).map((account: Account, index: number) => {
             const accountHoldings: Holding[] = holdingsByAccount[account.account_id] || [];
             const accountValue = accountHoldings.reduce(
               (sum: number, h: Holding) => sum + h.institution_value,
@@ -461,6 +464,24 @@ export default function Investments() {
               </motion.div>
             );
           })}
+
+          {/* "+# more" indicator for inline mode */}
+          {!isFullscreen && accounts.length > MAX_VISIBLE_INLINE && (
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: MAX_VISIBLE_INLINE * 0.05 }}
+              onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
+              className={cn(
+                "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
+                isDark
+                  ? "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
+                  : "border-black/10 bg-white/40 text-black/60 hover:bg-white/50"
+              )}
+            >
+              +{accounts.length - MAX_VISIBLE_INLINE} more
+            </motion.button>
+          )}
         </div>
       </div>
     </div>

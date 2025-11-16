@@ -155,6 +155,9 @@ export default function Liabilities() {
   const isDark = theme === "dark";
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Max visible items per category in inline mode
+  const MAX_VISIBLE_INLINE = 3;
+
   if (!toolOutput) {
     return (
       <div
@@ -367,7 +370,7 @@ export default function Liabilities() {
         {/* Liabilities List */}
         <div className="space-y-4">
           {/* Credit Cards */}
-          {credit.map((card: CreditCard, index: number) => {
+          {(isFullscreen ? credit : credit.slice(0, MAX_VISIBLE_INLINE)).map((card: CreditCard, index: number) => {
             const account = accountMap.get(card.account_id);
             if (!account) return null;
 
@@ -525,8 +528,26 @@ export default function Liabilities() {
             );
           })}
 
+          {/* "+# more" for credit cards in inline mode */}
+          {!isFullscreen && credit.length > MAX_VISIBLE_INLINE && (
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: MAX_VISIBLE_INLINE * 0.05 }}
+              onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
+              className={cn(
+                "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
+                isDark
+                  ? "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
+                  : "border-black/10 bg-white/40 text-black/60 hover:bg-white/50"
+              )}
+            >
+              +{credit.length - MAX_VISIBLE_INLINE} more credit cards
+            </motion.button>
+          )}
+
           {/* Student Loans */}
-          {student.map((loan: StudentLoan, index: number) => {
+          {(isFullscreen ? student : student.slice(0, MAX_VISIBLE_INLINE)).map((loan: StudentLoan, index: number) => {
             const account = accountMap.get(loan.account_id);
             if (!account) return null;
 
@@ -610,8 +631,26 @@ export default function Liabilities() {
             );
           })}
 
+          {/* "+# more" for student loans in inline mode */}
+          {!isFullscreen && student.length > MAX_VISIBLE_INLINE && (
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: (credit.length + MAX_VISIBLE_INLINE) * 0.05 }}
+              onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
+              className={cn(
+                "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
+                isDark
+                  ? "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
+                  : "border-black/10 bg-white/40 text-black/60 hover:bg-white/50"
+              )}
+            >
+              +{student.length - MAX_VISIBLE_INLINE} more student loans
+            </motion.button>
+          )}
+
           {/* Mortgages */}
-          {mortgage.map((mtg: Mortgage, index: number) => {
+          {(isFullscreen ? mortgage : mortgage.slice(0, MAX_VISIBLE_INLINE)).map((mtg: Mortgage, index: number) => {
             const account = accountMap.get(mtg.account_id);
             if (!account) return null;
 
@@ -704,6 +743,24 @@ export default function Liabilities() {
               </motion.div>
             );
           })}
+
+          {/* "+# more" for mortgages in inline mode */}
+          {!isFullscreen && mortgage.length > MAX_VISIBLE_INLINE && (
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: (credit.length + student.length + MAX_VISIBLE_INLINE) * 0.05 }}
+              onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
+              className={cn(
+                "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
+                isDark
+                  ? "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
+                  : "border-black/10 bg-white/40 text-black/60 hover:bg-white/50"
+              )}
+            >
+              +{mortgage.length - MAX_VISIBLE_INLINE} more mortgages
+            </motion.button>
+          )}
         </div>
       </div>
     </div>

@@ -87,11 +87,17 @@ export default function Transactions() {
   const isFullscreen = displayMode === "fullscreen";
   const isDark = theme === "dark";
 
+  // Max visible transactions per date group in inline mode
+  const MAX_VISIBLE_INLINE = 3;
+  // Max visible date groups in inline mode
+  const MAX_DATE_GROUPS_INLINE = 3;
+
   // All hooks must be called before any conditional returns
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showPendingOnly, setShowPendingOnly] = useState(false);
   const [expandedTx, setExpandedTx] = useState<string | null>(null);
+  const [showAllDates, setShowAllDates] = useState(false);
 
   // Type guard for TransactionsData
   const toolOutput = rawOutput as unknown as TransactionsData | null | undefined;
@@ -422,7 +428,10 @@ export default function Transactions() {
           </div>
         ) : (
           <div className="space-y-6">
-            {groupedTransactions.map(([date, txs], groupIndex) => (
+            {(isFullscreen || showAllDates
+              ? groupedTransactions
+              : groupedTransactions.slice(0, MAX_DATE_GROUPS_INLINE)
+            ).map(([date, txs], groupIndex) => (
               <div key={date}>
                 {/* Date Header */}
                 <div className="mb-3">
@@ -434,7 +443,7 @@ export default function Transactions() {
                 {/* Transaction Cards */}
                 <div className="space-y-2">
                   <AnimatePresence mode="popLayout">
-                    {txs.map((tx, txIndex) => {
+                    {(isFullscreen ? txs : txs.slice(0, MAX_VISIBLE_INLINE)).map((tx, txIndex) => {
                       const isExpanded = expandedTx === tx.transaction_id;
                       const merchantName = tx.merchant_name || tx.name || "Unknown";
                       const category = tx.personal_finance_category?.primary || "UNCATEGORIZED";
@@ -533,8 +542,10 @@ export default function Transactions() {
                                       : "text-black"
                                   )}
                                 >
-                                  {tx.amount < 0 ? "+" : "-"}
-                                  {formatCurrency(tx.amount, tx.iso_currency_code || "USD")}
+                                  {tx.amount < 0
+                                    ? `+${formatCurrency(Math.abs(tx.amount), tx.iso_currency_code || "USD")}`
+                                    : `-${formatCurrency(tx.amount, tx.iso_currency_code || "USD")}`
+                                  }
                                 </div>
                               </div>
                             </div>
@@ -682,9 +693,43 @@ export default function Transactions() {
                       );
                     })}
                   </AnimatePresence>
+
+                  {/* "+# more" indicator for inline mode */}
+                  {!isFullscreen && txs.length > MAX_VISIBLE_INLINE && (
+                    <motion.button
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
+                      className={cn(
+                        "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
+                        isDark
+                          ? "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
+                          : "border-black/10 bg-white/40 text-black/60 hover:bg-white/50"
+                      )}
+                    >
+                      +{txs.length - MAX_VISIBLE_INLINE} more
+                    </motion.button>
+                  )}
                 </div>
               </div>
             ))}
+
+            {/* Show More Date Groups Button */}
+            {!isFullscreen && !showAllDates && groupedTransactions.length > MAX_DATE_GROUPS_INLINE && (
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                onClick={() => setShowAllDates(true)}
+                className={cn(
+                  "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
+                  isDark
+                    ? "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
+                    : "border-black/10 bg-white/40 text-black/60 hover:bg-white/50"
+                )}
+              >
+                +{groupedTransactions.length - MAX_DATE_GROUPS_INLINE} more dates
+              </motion.button>
+            )}
           </div>
         )}
 
