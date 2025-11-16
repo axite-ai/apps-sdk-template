@@ -9,9 +9,14 @@ This guide helps agents contribute to AskMyMoney's ChatGPT-ready Next.js repo co
   - `lib/types/` contains TypeScript type definitions:
     - `mcp-responses.ts` - Core MCP response types (MCPContent, MCPToolResponse, OpenAIResponseMetadata)
     - `tool-responses.ts` - Application-specific structured content types for each tool
-  - `lib/utils/mcp-response-helpers.ts` - Type-safe helper functions for creating MCP tool responses
+  - `lib/utils/` contains utility functions:
+    - `mcp-response-helpers.ts` - Type-safe response creation helpers
+    - `mcp-auth-helpers.ts` - DRY auth check helper for MCP tools (`requireAuth()`)
+    - `auth-responses.ts` - Auth-specific response builders
+- `src/utils/widget-auth-check.tsx` - DRY auth helper for widgets (`checkWidgetAuth()`)
 - `widgets/` serves static HTML widgets for iframe rendering; keep assets self-contained with inline styles only.
 - Operational scripts live in `scripts/`; Drizzle migrations are in `drizzle/`. Static assets belong in `public/`.
+- `docs/TRANSACTION_SYNC.md` documents the Plaid `/transactions/sync` flow, webhook triggers, and how MCP tools consume the cached transaction data—review it before touching Plaid-related services.
 
 ## Build, Test, and Development Commands
 - `pnpm dev` launches the Turbopack dev server at `http://localhost:3000`.
@@ -31,20 +36,23 @@ This guide helps agents contribute to AskMyMoney's ChatGPT-ready Next.js repo co
 - Run `pnpm lint` to auto-fix formatting and keep Tailwind classes aligned with existing patterns.
 
 ### MCP Tool Response Pattern
-When creating MCP tool handlers, always use the type-safe response helpers:
+When creating MCP tool handlers, always use the DRY auth and response helpers:
 
 ```typescript
 // Import helpers
 import { createSuccessResponse, createErrorResponse } from "@/lib/utils/mcp-response-helpers";
-import { createSubscriptionRequiredResponse } from "@/lib/utils/auth-responses";
+import { requireAuth } from "@/lib/utils/mcp-auth-helpers";
 
 // Define structured content type in lib/types/tool-responses.ts first
 server.registerTool("tool_name", config, async ({ param }) => {
   try {
-    // Auth checks
-    if (!session || !(await hasActiveSubscription(session.userId))) {
-      return createSubscriptionRequiredResponse("feature name", session?.userId);
-    }
+    // DRY auth check (handles session → subscription → Plaid)
+    const authCheck = await requireAuth(session, "feature name", {
+      requireSubscription: true,  // Default: true
+      requirePlaid: true,         // Default: true (set false for non-Plaid tools)
+      headers: req.headers,       // Required when requirePlaid: true
+    });
+    if (authCheck) return authCheck;
 
     // Business logic
     const data = await fetchData(param);
@@ -63,10 +71,28 @@ server.registerTool("tool_name", config, async ({ param }) => {
 ```
 
 **Key principles:**
+- Use `requireAuth()` for all auth checks - eliminates boilerplate and ensures consistency
 - Never manually construct `{ type: "text", text: "..." }` objects - use `createTextContent()` or response helpers
 - Always define structured content types in `lib/types/tool-responses.ts` before implementing tools
 - Use literal types (`type: "text"` not `type: string`) - helpers handle this automatically
-- Follow three-tier auth: session → subscription → Plaid (if needed)
+- Set `requirePlaid: false` for tools that don't need bank connections (e.g., subscription management)
+
+**Widget Auth Pattern:**
+In widgets, use `checkWidgetAuth()` for consistent auth state detection:
+
+```typescript
+import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
+
+export default function MyWidget() {
+  const toolOutput = useWidgetProps<ToolOutput>();
+
+  // DRY auth check - returns <SubscriptionRequired /> or <PlaidRequired /> if needed
+  const authComponent = checkWidgetAuth(toolOutput);
+  if (authComponent) return authComponent;
+
+  // Render widget content...
+}
+```
 
 ## Testing Guidelines
 
@@ -82,7 +108,7 @@ pnpm test:coverage     # Generate coverage report
 ```
 
 **Test Environment:**
-- Test config in `vitest.config.ts` loads `.env.test` for environment variables
+- Test config in `vitest.config.ts` uses Vitest's [`test.env`](https://vitest.dev/config/#test-env) option plus a `testEnvDefaults` map to provide deterministic dummy values for Plaid, Stripe, and encryption secrets—real env vars still override them when set.
 - Dedicated test database (`askmymoney_test`) created/dropped automatically via `tests/global-setup.ts`
 - Uses Drizzle ORM consistently (import `testDb` from `tests/test-db.ts`)
 - Integration tests in `tests/integration/`, mocks in `tests/mocks/`
@@ -132,6 +158,7 @@ it('should create and query user', async () => {
 
 ## Environment & Configuration
 - Copy `.env.example` to `.env.local` and populate Plaid, Stripe, Redis, Better Auth, and database secrets.
+- For test runs, you usually don't need to export Plaid/Stripe secrets thanks to `testEnvDefaults` (see `vitest.config.ts`), but real credentials will override those dummy values when present.
 - `baseUrl.ts` sets Vercel-aware asset prefixes; do not hardcode origins in components.
 - Store secrets through Vercel environment variables; never commit `.env` files.
 - Utility scripts (`scripts/clear-local-dbs.ts`, `scripts/clear-production-dbs.sh`) are destructive—double-check targets before running.

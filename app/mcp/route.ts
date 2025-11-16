@@ -20,6 +20,7 @@ import {
   createSubscriptionRequiredResponse,
   createPlaidRequiredResponse,
 } from "@/lib/utils/auth-responses";
+import { requireAuth } from "@/lib/utils/mcp-auth-helpers";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -185,6 +186,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
           _meta: z.any().optional().describe("OpenAI Apps SDK metadata"),
         },
         _meta: {
+          "openai/outputTemplate": "ui://widget/account-balances.html",
           "openai/toolInvocation/invoking": "Fetching your account balances",
           "openai/toolInvocation/invoked": "Retrieved account balances",
         },
@@ -198,17 +200,16 @@ const handler = withMcpAuth(auth, async (req, session) => {
       },
     async () => {
       try {
-        if (!session || !(await hasActiveSubscription(session.userId))) {
-          return createSubscriptionRequiredResponse("account balances", session?.userId);
-        }
-
-          // Check 3: Plaid Connection
-          const accessTokens = await UserService.getUserAccessTokens(session.userId);
-          if (accessTokens.length === 0) {
-            return await createPlaidRequiredResponse(session.userId, req.headers);
-          }
+        // Check authentication requirements
+        const authCheck = await requireAuth(session, "account balances", {
+          requireSubscription: true,
+          requirePlaid: true,
+          headers: req.headers,
+        });
+        if (authCheck) return authCheck;
 
         // Fetch balances from all connected accounts
+        const accessTokens = await UserService.getUserAccessTokens(session.userId);
         const allAccounts = [];
         for (const accessToken of accessTokens) {
           const balances = await getAccountBalances(accessToken);
@@ -274,15 +275,13 @@ const handler = withMcpAuth(auth, async (req, session) => {
       includePending?: boolean;
     }) => {
       try {
-        if (!session || !(await hasActiveSubscription(session.userId))) {
-          return createSubscriptionRequiredResponse("transactions", session?.userId);
-        }
-
-        // Check 3: Plaid Connection
-        const accessTokens = await UserService.getUserAccessTokens(session.userId);
-        if (accessTokens.length === 0) {
-          return await createPlaidRequiredResponse(session.userId, req.headers);
-        }
+        // Check authentication requirements
+        const authCheck = await requireAuth(session, "transactions", {
+          requireSubscription: true,
+          requirePlaid: true,
+          headers: req.headers,
+        });
+        if (authCheck) return authCheck;
 
         // Default date range: last 30 days
         const end = endDate || new Date().toISOString().split("T")[0];
@@ -448,15 +447,13 @@ const handler = withMcpAuth(auth, async (req, session) => {
     },
     async ({ startDate, endDate }: { startDate?: string; endDate?: string }) => {
       try {
-        if (!session || !(await hasActiveSubscription(session.userId))) {
-          return createSubscriptionRequiredResponse("spending insights", session?.userId);
-        }
-
-        // Check 3: Plaid Connection
-        const accessTokens = await UserService.getUserAccessTokens(session.userId);
-        if (accessTokens.length === 0) {
-          return await createPlaidRequiredResponse(session.userId, req.headers);
-        }
+        // Check authentication requirements
+        const authCheck = await requireAuth(session, "spending insights", {
+          requireSubscription: true,
+          requirePlaid: true,
+          headers: req.headers,
+        });
+        if (authCheck) return authCheck;
 
         const end = endDate || new Date().toISOString().split("T")[0];
         const start = startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
@@ -509,23 +506,16 @@ const handler = withMcpAuth(auth, async (req, session) => {
     },
     async () => {
       try {
-        if (!session) {
-          return createLoginPromptResponse("account health check");
-        }
-
-        // Check 2: Active Subscription
-        const hasSubscription = await hasActiveSubscription(session.userId);
-        if (!hasSubscription) {
-          return createSubscriptionRequiredResponse("account health check", session.userId);
-        }
-
-        // Check 3: Plaid Connection
-        const accessTokens = await UserService.getUserAccessTokens(session.userId);
-        if (accessTokens.length === 0) {
-          return await createPlaidRequiredResponse(session.userId, req.headers);
-        }
+        // Check authentication requirements
+        const authCheck = await requireAuth(session, "account health check", {
+          requireSubscription: true,
+          requirePlaid: true,
+          headers: req.headers,
+        });
+        if (authCheck) return authCheck;
 
         // Collect health data from all accounts
+        const accessTokens = await UserService.getUserAccessTokens(session.userId);
         const allAccounts = [];
         let overallStatus: "healthy" | "attention_needed" = "healthy";
 
@@ -590,17 +580,16 @@ const handler = withMcpAuth(auth, async (req, session) => {
     },
     async () => {
       try {
-        if (!session || !(await hasActiveSubscription(session.userId))) {
-          return createSubscriptionRequiredResponse("investment holdings", session?.userId);
-        }
-
-        // Check Plaid Connection
-        const accessTokens = await UserService.getUserAccessTokens(session.userId);
-        if (accessTokens.length === 0) {
-          return await createPlaidRequiredResponse(session.userId, req.headers);
-        }
+        // Check authentication requirements
+        const authCheck = await requireAuth(session, "investment holdings", {
+          requireSubscription: true,
+          requirePlaid: true,
+          headers: req.headers,
+        });
+        if (authCheck) return authCheck;
 
         // Fetch holdings from all connected accounts
+        const accessTokens = await UserService.getUserAccessTokens(session.userId);
         const allAccounts = [];
         const allHoldings = [];
         const allSecurities = [];
@@ -666,17 +655,16 @@ const handler = withMcpAuth(auth, async (req, session) => {
     },
     async () => {
       try {
-        if (!session || !(await hasActiveSubscription(session.userId))) {
-          return createSubscriptionRequiredResponse("liabilities", session?.userId);
-        }
-
-        // Check Plaid Connection
-        const accessTokens = await UserService.getUserAccessTokens(session.userId);
-        if (accessTokens.length === 0) {
-          return await createPlaidRequiredResponse(session.userId, req.headers);
-        }
+        // Check authentication requirements
+        const authCheck = await requireAuth(session, "liabilities", {
+          requireSubscription: true,
+          requirePlaid: true,
+          headers: req.headers,
+        });
+        if (authCheck) return authCheck;
 
         // Fetch liabilities from all connected accounts
+        const accessTokens = await UserService.getUserAccessTokens(session.userId);
         const allAccounts: AccountBase[] = [];
         const allCredit: NonNullable<LiabilitiesObject['credit']> = [];
         const allStudent: NonNullable<LiabilitiesObject['student']> = [];
@@ -833,15 +821,12 @@ const handler = withMcpAuth(auth, async (req, session) => {
       },
       async () => {
         try {
-          if (!session) {
-            return createLoginPromptResponse("subscription management");
-          }
-
-          // Check if user has active subscription
-          const hasSubscription = await hasActiveSubscription(session.userId);
-          if (!hasSubscription) {
-            return createSubscriptionRequiredResponse("subscription management", session.userId);
-          }
+          // Check authentication requirements (no Plaid required for subscription management)
+          const authCheck = await requireAuth(session, "subscription management", {
+            requireSubscription: true,
+            requirePlaid: false,
+          });
+          if (authCheck) return authCheck;
 
           // Get billing portal URL from environment
           const billingPortalUrl = process.env.STRIPE_BILLING_PORTAL_URL;

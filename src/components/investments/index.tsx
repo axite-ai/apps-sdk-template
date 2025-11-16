@@ -9,8 +9,7 @@ import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
 import { useTheme } from "@/src/use-theme";
 import { formatCurrency, formatPercent } from "@/src/utils/format";
-import PlaidRequired from "@/src/components/plaid-required";
-import SubscriptionRequired from "@/src/components/subscription-required";
+import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 
 interface Account {
   account_id: string;
@@ -55,7 +54,7 @@ interface Security {
   unofficial_currency_code: string | null;
 }
 
-interface ToolOutput {
+interface ToolOutput extends Record<string, unknown> {
   accounts?: Account[];
   holdings?: Holding[];
   securities?: Security[];
@@ -93,14 +92,9 @@ export default function Investments() {
     );
   }
 
-  // Check if bank connection is required
-  if (toolOutput.message === "Bank connection required") {
-    return <PlaidRequired />;
-  }
-
-  if (toolOutput.error_message === "Subscription required" || toolOutput.featureName) {
-    return <SubscriptionRequired />;
-  }
+  // Check for auth requirements
+  const authComponent = checkWidgetAuth(toolOutput);
+  if (authComponent) return authComponent;
 
   if (!toolOutput.holdings || !toolOutput.securities) {
     return (

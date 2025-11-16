@@ -51,3 +51,8 @@ This document outlines the process for synchronizing Plaid transactions with the
     1.  Trigger `syncTransactionsForItem` for all of the user's items.
     2.  Query the local `plaidTransactions` table to retrieve the requested transactions.
     3.  Perform filtering and metadata calculations on the data retrieved from the local database.
+
+## Testing & Environment Notes
+
+- Integration coverage lives in `tests/integration/services.test.ts` (`TransactionsService` + `Plaid Service Integration`). Those suites rely on Vitest's [`test.env`](https://vitest.dev/config/#test-env) defaults in `vitest.config.ts` so Plaid/Stripe/encryption secrets don't need to be injected just to run sync tests.
+- When adding new sync behaviors (webhook edge cases, cursor migrations), extend the integration suite first; the deterministic env defaults ensure new assertions won't flake due to missing env vars.

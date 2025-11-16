@@ -139,10 +139,10 @@ async function fetchTransactionUpdates(accessToken: string, initialCursor: strin
  * @param endDate End date (YYYY-MM-DD)
  * @returns Spending analysis by category
  */
-export async function syncTransactionsForItem(itemId: string) {
+export async function syncTransactionsForItem(itemId: string, dbInstance: typeof db = db) {
   try {
     // 1. Get the item from the database
-    const item = await db.query.plaidItems.findFirst({
+    const item = await dbInstance.query.plaidItems.findFirst({
       where: eq(plaidItems.itemId, itemId),
     });
 
@@ -158,7 +158,7 @@ export async function syncTransactionsForItem(itemId: string) {
     const accounts = accountsResponse.data.accounts;
 
     // 3. Upsert accounts into the database
-    await db.insert(plaidAccounts)
+    await dbInstance.insert(plaidAccounts)
       .values(accounts.map(acc => ({
         accountId: acc.account_id,
         itemId: item.itemId,
@@ -187,12 +187,12 @@ export async function syncTransactionsForItem(itemId: string) {
 
     // 5. Process updates
     if (removed.length > 0) {
-      await db.delete(plaidTransactions).where(inArray(plaidTransactions.transactionId, removed.map(t => t.transaction_id)));
+      await dbInstance.delete(plaidTransactions).where(inArray(plaidTransactions.transactionId, removed.map(t => t.transaction_id)));
     }
 
     const transactionsToUpsert = [...added, ...modified];
     if (transactionsToUpsert.length > 0) {
-      await db.insert(plaidTransactions)
+      await dbInstance.insert(plaidTransactions)
         .values(transactionsToUpsert.map(t => ({
           transactionId: t.transaction_id,
           accountId: t.account_id,
@@ -238,7 +238,7 @@ export async function syncTransactionsForItem(itemId: string) {
     }
 
     // 6. Update the cursor in the database
-    await db.update(plaidItems)
+    await dbInstance.update(plaidItems)
       .set({ transactionsCursor: nextCursor, updatedAt: new Date() })
       .where(eq(plaidItems.itemId, itemId));
 

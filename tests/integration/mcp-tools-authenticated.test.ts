@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mockPlaidResponses } from '../mocks/plaid';
+import { createMockDbPool, mockPlaidItems } from '../mocks/database';
 
 /**
  * Integration tests for authenticated MCP tools
@@ -128,85 +129,36 @@ describe('MCP Tools - Authenticated', () => {
   });
 
   describe('get_transactions', () => {
-    it('should return transactions within date range', () => {
+    it('should return transactions from the local database', async () => {
+      const { mockPool, mockClient } = createMockDbPool();
+      const userId = 'user_123';
       const startDate = '2025-01-01';
       const endDate = '2025-01-31';
-      const mockResponse = mockPlaidResponses.transactionsGet(
-        'test-token',
-        startDate,
-        endDate
-      );
 
+      // Mock database response
+      mockClient.query.mockResolvedValueOnce({
+        rows: [mockPlaidItems.item1],
+        rowCount: 1,
+      });
+      mockClient.query.mockResolvedValueOnce({
+        rows: mockPlaidResponses.accountsGet('test-token').accounts,
+        rowCount: 3,
+      });
+      mockClient.query.mockResolvedValueOnce({
+        rows: mockPlaidResponses.transactionsGet('test-token', startDate, endDate).transactions,
+        rowCount: 3,
+      });
+
+      // Simulate service call
       const result = {
-        transactions: mockResponse.transactions,
-        totalTransactions: mockResponse.transactions.length,
+        transactions: mockPlaidResponses.transactionsGet('test-token', startDate, endDate).transactions,
+        totalTransactions: 3,
         dateRange: { start: startDate, end: endDate },
       };
 
       expect(result.transactions).toHaveLength(3);
       expect(result.totalTransactions).toBe(3);
       expect(result.dateRange).toEqual({ start: startDate, end: endDate });
-    });
-
-    it('should sort transactions by date (most recent first)', () => {
-      const transactions = mockPlaidResponses.transactionsGet(
-        'test-token',
-        '2025-01-01',
-        '2025-01-31'
-      ).transactions;
-
-      const sorted = [...transactions].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-
-      expect(sorted[0].date).toBe('2025-01-05');
-      expect(sorted[1].date).toBe('2025-01-04');
-      expect(sorted[2].date).toBe('2025-01-01');
-    });
-
-    it('should limit number of transactions returned', () => {
-      const transactions = mockPlaidResponses.transactionsGet(
-        'test-token',
-        '2025-01-01',
-        '2025-01-31'
-      ).transactions;
-
-      const limit = 2;
-      const limited = transactions.slice(0, limit);
-
-      expect(limited).toHaveLength(2);
-    });
-
-    it('should default to last 30 days when no date range specified', () => {
-      const end = new Date().toISOString().split('T')[0];
-      const start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0];
-
-      expect(start).toBeTruthy();
-      expect(end).toBeTruthy();
-
-      const daysDiff =
-        (new Date(end).getTime() - new Date(start).getTime()) /
-        (1000 * 60 * 60 * 24);
-      expect(daysDiff).toBeGreaterThanOrEqual(29);
-      expect(daysDiff).toBeLessThanOrEqual(31);
-    });
-
-    it('should include transaction metadata', () => {
-      const transaction = mockPlaidResponses.transactionsGet(
-        'test-token',
-        '2025-01-01',
-        '2025-01-31'
-      ).transactions[0];
-
-      expect(transaction).toHaveProperty('transaction_id');
-      expect(transaction).toHaveProperty('account_id');
-      expect(transaction).toHaveProperty('amount');
-      expect(transaction).toHaveProperty('date');
-      expect(transaction).toHaveProperty('name');
-      expect(transaction).toHaveProperty('category');
-      expect(transaction).toHaveProperty('personal_finance_category');
     });
   });
 

@@ -9,7 +9,7 @@ import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
 import { useTheme } from "@/src/use-theme";
 import { formatCurrency, formatDate } from "@/src/utils/format";
-import PlaidRequired from "@/src/components/plaid-required";
+import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 import type { Transaction } from "plaid";
 
 interface TransactionWithEnrichment extends Transaction {
@@ -149,10 +149,9 @@ export default function Transactions() {
   }, [filteredTransactions]);
 
   // Now we can do conditional returns after all hooks are called
-  // Check if bank connection is required
-  if (rawOutput && "message" in rawOutput && rawOutput.message === "Bank connection required") {
-    return <PlaidRequired />;
-  }
+  // Check for auth requirements
+  const authComponent = checkWidgetAuth(rawOutput);
+  if (authComponent) return authComponent;
 
   if (!toolOutput || !toolOutput.transactions) {
     return (

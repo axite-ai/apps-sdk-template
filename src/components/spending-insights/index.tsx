@@ -8,8 +8,7 @@ import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
 import { useTheme } from "@/src/use-theme";
 import { formatCurrency, formatPercent } from "@/src/utils/format";
-import PlaidRequired from "@/src/components/plaid-required";
-import SubscriptionRequired from "@/src/components/subscription-required";
+import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 import { cn } from "@/lib/utils/cn";
 
 interface Category {
@@ -17,7 +16,7 @@ interface Category {
   amount: number;
 }
 
-interface ToolOutput {
+interface ToolOutput extends Record<string, unknown> {
   categories?: Category[];
   message?: string;
   error_message?: string;
@@ -355,24 +354,16 @@ export default function SpendingInsights() {
   const isDark = theme === "dark";
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  // Auth checks
+  // Check for auth requirements
+  const authComponent = checkWidgetAuth(toolOutput);
+  if (authComponent) return authComponent;
+
   if (!toolOutput) {
     return (
       <div className="p-8 text-center text-black/60 dark:text-white/60">
         <p>No spending data available</p>
       </div>
     );
-  }
-
-  if (toolOutput.message === "Bank connection required") {
-    return <PlaidRequired />;
-  }
-
-  if (
-    toolOutput.error_message === "Subscription required" ||
-    toolOutput.featureName
-  ) {
-    return <SubscriptionRequired />;
   }
 
   if (!toolOutput.categories || toolOutput.categories.length === 0) {

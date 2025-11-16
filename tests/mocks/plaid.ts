@@ -4,7 +4,15 @@ import type {
   TransactionsGetResponse,
   ItemPublicTokenExchangeResponse,
   LinkTokenCreateResponse,
+  TransactionsSyncResponse,
+  AccountSubtype,
+  AccountType,
+  Products,
+  ItemUpdateTypeEnum,
+  TransactionPaymentChannelEnum,
+  TransactionTransactionTypeEnum,
 } from 'plaid';
+import {   TransactionsUpdateStatus } from 'plaid'
 
 /**
  * Mock Plaid API responses
@@ -24,8 +32,8 @@ export const mockPlaidResponses = {
         mask: '0000',
         name: 'Checking Account',
         official_name: 'Premium Checking',
-        subtype: 'checking',
-        type: 'depository',
+        subtype: 'checking' as AccountSubtype,
+        type: 'depository' as AccountType,
       },
       {
         account_id: 'acc_2',
@@ -39,8 +47,8 @@ export const mockPlaidResponses = {
         mask: '1111',
         name: 'Savings Account',
         official_name: 'High Yield Savings',
-        subtype: 'savings',
-        type: 'depository',
+        subtype: 'savings' as AccountSubtype,
+        type: 'depository' as AccountType,
       },
       {
         account_id: 'acc_3',
@@ -54,18 +62,18 @@ export const mockPlaidResponses = {
         mask: '2222',
         name: 'Credit Card',
         official_name: 'Platinum Rewards Card',
-        subtype: 'credit card',
-        type: 'credit',
+        subtype: 'credit card' as AccountSubtype,
+        type: 'credit' as AccountType,
       },
     ],
     item: {
-      available_products: ['balance', 'transactions'],
-      billed_products: ['assets'],
+      available_products: ['balance', 'transactions'] as Products[],
+      billed_products: ['assets'] as Products[],
       consent_expiration_time: null,
       error: null,
       institution_id: 'ins_1',
       item_id: 'item_1',
-      update_type: 'background',
+      update_type: 'background' as ItemUpdateTypeEnum,
       webhook: '',
     },
     request_id: 'req_1',
@@ -89,8 +97,8 @@ export const mockPlaidResponses = {
         mask: '0000',
         name: 'Checking Account',
         official_name: 'Premium Checking',
-        subtype: 'checking',
-        type: 'depository',
+        subtype: 'checking' as AccountSubtype,
+        type: 'depository' as AccountType,
       },
     ],
     transactions: [
@@ -129,7 +137,7 @@ export const mockPlaidResponses = {
           reason: null,
           reference_number: null,
         },
-        payment_channel: 'in store',
+        payment_channel: 'in store' as TransactionPaymentChannelEnum,
         pending: false,
         pending_transaction_id: null,
         personal_finance_category: {
@@ -140,7 +148,7 @@ export const mockPlaidResponses = {
         personal_finance_category_icon_url: 'https://plaid.com/category/food.png',
         transaction_id: 'txn_1',
         transaction_code: null,
-        transaction_type: 'place',
+        transaction_type: 'place' as TransactionTransactionTypeEnum,
       },
       {
         account_id: 'acc_1',
@@ -177,7 +185,7 @@ export const mockPlaidResponses = {
           reason: null,
           reference_number: null,
         },
-        payment_channel: 'in store',
+        payment_channel: 'in store' as TransactionPaymentChannelEnum,
         pending: false,
         pending_transaction_id: null,
         personal_finance_category: {
@@ -188,7 +196,7 @@ export const mockPlaidResponses = {
         personal_finance_category_icon_url: 'https://plaid.com/category/groceries.png',
         transaction_id: 'txn_2',
         transaction_code: null,
-        transaction_type: 'place',
+        transaction_type: 'place' as TransactionTransactionTypeEnum,
       },
       {
         account_id: 'acc_1',
@@ -225,7 +233,7 @@ export const mockPlaidResponses = {
           reason: null,
           reference_number: null,
         },
-        payment_channel: 'other',
+        payment_channel: 'other' as TransactionPaymentChannelEnum,
         pending: false,
         pending_transaction_id: null,
         personal_finance_category: {
@@ -236,21 +244,38 @@ export const mockPlaidResponses = {
         personal_finance_category_icon_url: 'https://plaid.com/category/income.png',
         transaction_id: 'txn_3',
         transaction_code: null,
-        transaction_type: 'special',
+        transaction_type: 'special' as TransactionTransactionTypeEnum,
       },
     ],
     total_transactions: 3,
     item: {
-      available_products: ['balance', 'transactions'],
-      billed_products: ['assets'],
+      available_products: ['balance', 'transactions'] as Products[],
+      billed_products: ['assets'] as Products[],
       consent_expiration_time: null,
       error: null,
       institution_id: 'ins_1',
       item_id: 'item_1',
-      update_type: 'background',
+      update_type: 'background' as ItemUpdateTypeEnum,
       webhook: '',
     },
     request_id: 'req_2',
+  }),
+
+  transactionsSync: (accessToken: string, cursor: string | null): TransactionsSyncResponse => ({
+    added: mockPlaidResponses.transactionsGet(accessToken, '', '').transactions,
+    modified: [
+      {
+        ...mockPlaidResponses.transactionsGet(accessToken, '', '').transactions[0],
+        transaction_id: 'txn_mod_1',
+        amount: 50.0,
+      }
+    ],
+    removed: [{ transaction_id: 'txn_rem_1', account_id: 'acc_1' }],
+    next_cursor: 'next_cursor_123',
+    has_more: false,
+    request_id: 'req_sync_1',
+    transactions_update_status: TransactionsUpdateStatus.HistoricalUpdateComplete,
+    accounts: mockPlaidResponses.accountsGet(accessToken).accounts,
   }),
 
   linkTokenCreate: (): LinkTokenCreateResponse => ({

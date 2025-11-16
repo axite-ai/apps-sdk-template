@@ -8,6 +8,7 @@ import { useWidgetProps } from "@/src/use-widget-props";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
 import { useTheme } from "@/src/use-theme";
+import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 
 interface ManageSubscriptionProps extends Record<string, unknown> {
   billingPortalUrl?: string;
@@ -22,6 +23,10 @@ export default function ManageSubscription() {
   const theme = useTheme();
   const isFullscreen = displayMode === "fullscreen";
   const isDark = theme === "dark";
+
+  // Check for auth requirements
+  const authComponent = checkWidgetAuth(toolOutput);
+  if (authComponent) return authComponent;
 
   const billingPortalUrl = toolOutput?.billingPortalUrl;
   const currentPlan = toolOutput?.currentPlan;

@@ -8,8 +8,7 @@ import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
 import { useTheme } from "@/src/use-theme";
 import { formatCurrency } from "@/src/utils/format";
-import PlaidRequired from "@/src/components/plaid-required";
-import SubscriptionRequired from "@/src/components/subscription-required";
+import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 import { cn } from "@/lib/utils/cn";
 
 interface Account {
@@ -25,7 +24,7 @@ interface Account {
   };
 }
 
-interface ToolOutput {
+interface ToolOutput extends Record<string, unknown> {
   accounts?: Account[];
   featureName?: string;
   message?: string;
@@ -220,24 +219,17 @@ export default function AccountBalances() {
   const isFullscreen = displayMode === "fullscreen";
   const isDark = theme === "dark";
 
-  // Auth checks
+  // Check for auth requirements
+  const authComponent = checkWidgetAuth(toolOutput);
+  if (authComponent) return authComponent;
+
+  // No data check
   if (!toolOutput) {
     return (
       <div className="p-8 text-center text-black/60 dark:text-white/60">
         <p>No account data available</p>
       </div>
     );
-  }
-
-  if (toolOutput.message === "Bank connection required") {
-    return <PlaidRequired />;
-  }
-
-  if (
-    toolOutput.error_message === "Subscription required" ||
-    toolOutput.featureName
-  ) {
-    return <SubscriptionRequired />;
   }
 
   if (!toolOutput.accounts || toolOutput.accounts.length === 0) {

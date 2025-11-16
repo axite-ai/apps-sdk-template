@@ -103,10 +103,12 @@ The core of the application. Registers financial tools that ChatGPT can invoke:
 - `get_financial_tips` - Educational financial advice by topic
 - `calculate_budget` - 50/30/20 budget calculator
 
-All authenticated tools follow a three-tier authorization pattern:
+All authenticated tools use the `requireAuth()` helper which implements a three-tier authorization pattern:
 1. Check if user is logged in (OAuth session)
 2. Check if user has active subscription (via `hasActiveSubscription()`)
 3. Check if user has linked Plaid accounts (via `UserService.getUserAccessTokens()`)
+
+The `requireAuth()` helper from `lib/utils/mcp-auth-helpers.ts` provides a DRY way to implement these checks consistently across all tools.
 
 Tools return structured responses with OpenAI-specific metadata for widget rendering.
 
@@ -189,6 +191,7 @@ export type YourFeatureResponse = MCPToolResponse<
 
 ```typescript
 import { createSuccessResponse, createErrorResponse } from "@/lib/utils/mcp-response-helpers";
+import { requireAuth } from "@/lib/utils/mcp-auth-helpers";
 
 server.registerTool(
   "your_tool_name",
@@ -214,10 +217,13 @@ server.registerTool(
   },
   async ({ param1, param2 }) => {
     try {
-      // Auth checks
-      if (!session || !(await hasActiveSubscription(session.userId))) {
-        return createSubscriptionRequiredResponse("your feature", session?.userId);
-      }
+      // Auth checks using DRY helper
+      const authCheck = await requireAuth(session, "your feature", {
+        requireSubscription: true,
+        requirePlaid: true,
+        headers: req.headers,
+      });
+      if (authCheck) return authCheck;
 
       // Business logic
       const result = await yourBusinessLogic(param1, param2);
@@ -242,39 +248,51 @@ server.registerTool(
 
 ### 3. Response Helper Reference
 
-**Available helpers:**
+**MCP Response Helpers** (`lib/utils/mcp-response-helpers.ts`):
 - `createSuccessResponse(text, structuredContent, meta?)` - Standard success with data
 - `createErrorResponse(message, meta?)` - Error responses
-- `createSubscriptionRequiredResponse(featureName, userId)` - Subscription paywall (from `lib/utils/auth-responses.ts`)
-- `createPlaidRequiredResponse(userId, headers)` - Plaid connection required (from `lib/utils/auth-responses.ts`)
-- `createLoginPromptResponse(featureName?)` - Login required (from `lib/utils/auth-responses.ts`)
+
+**Auth Response Helpers** (`lib/utils/auth-responses.ts`):
+- `createSubscriptionRequiredResponse(featureName, userId)` - Subscription paywall
+- `createPlaidRequiredResponse(userId, headers)` - Plaid connection required
+- `createLoginPromptResponse(featureName?)` - Login required
+
+**Auth Check Helper** (`lib/utils/mcp-auth-helpers.ts`):
+- `requireAuth(session, featureName, options)` - DRY helper for three-tier auth checks
 
 **Individual content helpers:**
 - `createTextContent(text, meta?)` - Text content item
 - `createImageContent(data, mimeType, meta?)` - Image content item
 - `createResourceContent(uri, content, meta?)` - Resource content item
 
-### 4. Three-Tier Auth Pattern
+### 4. Auth Pattern (Using DRY Helper)
 
-For tools requiring authentication:
+For tools requiring authentication, use the `requireAuth()` helper:
 
 ```typescript
-// 1. Check OAuth session
-if (!session) {
-  return createLoginPromptResponse("feature name");
-}
+import { requireAuth } from "@/lib/utils/mcp-auth-helpers";
 
-// 2. Check active subscription
-if (!(await hasActiveSubscription(session.userId))) {
-  return createSubscriptionRequiredResponse("feature name", session.userId);
-}
+// DRY auth check (handles all three tiers)
+const authCheck = await requireAuth(session, "feature name", {
+  requireSubscription: true,  // Default: true
+  requirePlaid: true,         // Default: true
+  headers: req.headers,       // Required for Plaid check
+});
+if (authCheck) return authCheck;
 
-// 3. Check Plaid connection (if needed)
-const accessTokens = await UserService.getUserAccessTokens(session.userId);
-if (accessTokens.length === 0) {
-  return await createPlaidRequiredResponse(session.userId, req.headers);
-}
+// If requireAuth returns null, all checks passed
+// Continue with business logic...
 ```
+
+**Options:**
+- `requireSubscription` - Set to `false` for tools that don't need subscriptions (e.g., free tier tools)
+- `requirePlaid` - Set to `false` for tools that don't need bank connections (e.g., subscription management)
+- `headers` - Required when `requirePlaid: true` to extract MCP access token
+
+**What it checks:**
+1. OAuth session exists → Returns login prompt if missing
+2. Active subscription (if `requireSubscription: true`) → Returns subscription required if missing
+3. Plaid connection (if `requirePlaid: true`) → Returns Plaid required if missing
 
 All response helpers ensure:
 - Correct literal types (`type: "text"` not `type: string`)
@@ -372,6 +390,7 @@ Without `subscriptionId` in the metadata, webhooks will silently fail and subscr
 - `plaid_accounts` - Stores account-level data from Plaid
 - `plaid_transactions` - Stores transaction data synced from Plaid
 - `plaid_webhooks` - Plaid webhook event logs
+- The Plaid `/transactions/sync` workflow (webhook triggers, cursor handling, MCP tool consumption) lives in `docs/TRANSACTION_SYNC.md`; read it before modifying `plaid-service.ts` or the `get_transactions` tool.
 
 **Important:** Database columns use snake_case (e.g., `stripe_customer_id`, `reference_id`) while TypeScript properties use camelCase. When writing raw SQL queries, always use snake_case column names.
 
@@ -402,7 +421,7 @@ pnpm test:coverage     # Run tests with coverage report
 
 **Test Configuration:**
 - Test environment configured in `vitest.config.ts`
-- Test-specific environment variables in `.env.test` (safe defaults, dummy API keys)
+- Environment variables are set via Vitest's [`test.env`](https://vitest.dev/config/#test-env) plus a `testEnvDefaults` map (see `vitest.config.ts`) so Plaid/Stripe/encryption tests run with deterministic dummy secrets—any real env var you provide overrides the defaults.
 - Dedicated test database (`askmymoney_test`) created/dropped automatically
 - Uses Drizzle ORM for database operations in tests (consistent with app code)
 

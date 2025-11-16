@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockDbPool, mockUsers, mockSubscriptions, mockPlaidItems } from '../mocks/database';
 import { mockPlaidResponses } from '../mocks/plaid';
+import { syncTransactionsForItem } from '@/lib/services/plaid-service';
+import { getPlaidClient } from '@/lib/config/plaid';
+import { EncryptionService } from '@/lib/services/encryption-service';
 
 /**
  * Integration tests for core services
@@ -104,8 +107,9 @@ describe('Services - Integration Tests', () => {
     it('should handle encryption key from environment', () => {
       const encryptionKey = process.env.ENCRYPTION_KEY;
 
-      expect(encryptionKey).toBeTruthy();
-      expect(encryptionKey?.length).toBe(64); // 32 bytes as hex = 64 chars
+      const decoded = Buffer.from(encryptionKey!, 'base64');
+
+      expect(decoded.length).toBe(32);
     });
   });
 
@@ -229,25 +233,59 @@ describe('Services - Integration Tests', () => {
       expect(response.accounts[0].balances).toHaveProperty('available');
     });
 
-    it('should fetch transactions within date range', async () => {
+    it('should sync transactions for an item', async () => {
+      // TODO: This test needs to be refactored to use the real test database with Drizzle
+      // or the service needs to be refactored to accept a db instance for dependency injection
+      // Current issue: The service uses the global db instance, but the test creates mocks
+      // that aren't actually used by the service.
+
+      const { mockPool, mockClient } = createMockDbPool();
+      const itemId = 'item_123';
       const accessToken = 'access-sandbox-token';
-      const startDate = '2025-01-01';
-      const endDate = '2025-01-31';
-      const response = mockPlaidResponses.transactionsGet(
-        accessToken,
-        startDate,
-        endDate
-      );
+      const userId = 'user_123';
 
-      expect(response.transactions).toHaveLength(3);
-      expect(response.total_transactions).toBe(3);
+      // Mock database responses
+      const encryptedToken = EncryptionService.encrypt(accessToken);
+      mockClient.query.mockResolvedValueOnce({ rows: [{ ...mockPlaidItems.item1, itemId, accessToken: encryptedToken, userId }], rowCount: 1 }); // findFirst item
+      mockClient.query.mockResolvedValue({ rows: [], rowCount: 0 }); // Default for inserts/updates
 
-      // Verify all transactions are within date range
-      response.transactions.forEach((txn) => {
-        const txnDate = new Date(txn.date);
-        expect(txnDate >= new Date(startDate)).toBe(true);
-        expect(txnDate <= new Date(endDate)).toBe(true);
+      // Mock Plaid API responses
+      const plaidClient = getPlaidClient();
+      vi.spyOn(plaidClient, 'accountsGet').mockResolvedValue({
+        data: mockPlaidResponses.accountsGet(accessToken),
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {} as any,
       });
+      vi.spyOn(plaidClient, 'transactionsSync').mockResolvedValue({
+        data: mockPlaidResponses.transactionsSync(accessToken, null),
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {} as any,
+      });
+
+      // Call the service
+      const result = await syncTransactionsForItem(itemId, {
+        query: {
+          plaidItems: {
+            findFirst: mockClient.query,
+          },
+        },
+        insert: mockClient.query,
+        delete: mockClient.query,
+        update: mockClient.query,
+      } as any);
+
+      expect(result.added).toBe(3);
+      expect(result.modified).toBe(1);
+      expect(result.removed).toBe(1);
+
+      // Verify database calls
+      expect(mockClient.query).toHaveBeenCalledWith(expect.stringContaining('plaid_items'));
+      expect(mockClient.query).toHaveBeenCalledWith(expect.stringContaining('plaid_accounts'));
+      expect(mockClient.query).toHaveBeenCalledWith(expect.stringContaining('plaid_transactions'));
     });
 
     it('should create link token for Plaid Link', async () => {

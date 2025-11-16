@@ -22,7 +22,7 @@ The application is structured as a standard Next.js project with the following k
     *   `lib/types/tool-responses.ts` - Application-specific structured content types
     *   `lib/utils/mcp-response-helpers.ts` - Helper functions (`createSuccessResponse`, `createErrorResponse`, etc.)
     *   All helpers ensure correct literal types (`type: "text"` not `type: string`) for MCP SDK compatibility
-*   **`app/mcp/route.ts`:** The core MCP server that registers and exposes tools to ChatGPT. It handles requests for financial data, such as account balances, transactions, and spending insights. Tools require OAuth authentication, active subscriptions, and linked Plaid accounts. All tool handlers use type-safe response helpers.
+*   **`app/mcp/route.ts`:** The core MCP server that registers and exposes tools to ChatGPT. It handles requests for financial data, such as account balances, transactions, and spending insights. Tools use the `requireAuth()` helper for OAuth authentication, subscription checks, and Plaid connection verification. All tool handlers use type-safe response helpers.
 *   **`lib/services/`:** Service layer for business logic:
     *   `plaid-service.ts` - Plaid API interactions (balances, transactions, insights)
     *   `user-service.ts` - User-to-Plaid item mappings with encrypted access tokens
@@ -31,10 +31,15 @@ The application is structured as a standard Next.js project with the following k
 *   **`lib/db/`:** Drizzle ORM database layer:
     *   `index.ts` - Database instance and connection pool exports
     *   `schema.ts` - Type-safe schema definitions (Better Auth tables + custom Plaid tables)
-*   **`lib/utils/subscription-helpers.ts`:** Subscription validation utilities
+*   **`lib/utils/`:** Shared utilities:
+    *   `subscription-helpers.ts` - Subscription validation
+    *   `mcp-auth-helpers.ts` - DRY auth helper for MCP tools (`requireAuth()`)
+    *   `auth-responses.ts` - Auth response builders (login, subscription, Plaid required)
+*   **`src/utils/widget-auth-check.tsx`:** DRY auth helper for widgets (`checkWidgetAuth()`)
 *   **`widgets/*.html`:** Static HTML widgets rendered in ChatGPT interface (self-contained with inline styles)
 *   **`middleware.ts`:** CORS handling for cross-origin RSC requests in ChatGPT iframe
 *   **`app/layout.tsx`:** Root layout with `NextChatSDKBootstrap` for browser API patches (history, fetch, HTML attributes)
+*   **Deep dive docs:** `docs/TRANSACTION_SYNC.md` covers the Plaid `/transactions/sync` approach (webhooks, cursors, MCP integration) and should be reviewed before changing anything transaction-related.
 
 # Building and Running
 
@@ -91,9 +96,8 @@ pnpm typecheck         # Type checking only
 ```
 
 **Test Environment Configuration:**
-- Test config: `vitest.config.ts` with Vite's `loadEnv('test', ...)` to load `.env.test`
+- Test config: `vitest.config.ts` injects deterministic dummy secrets via Vitest's [`test.env`](https://vitest.dev/config/#test-env) and `testEnvDefaults`; any real env vars you set will override them.
 - Test database: `askmymoney_test` (created/migrated/dropped automatically)
-- Environment variables: `.env.test` contains safe defaults for testing (dummy API keys, test database)
 - Database operations: Uses Drizzle ORM (consistent with app code)
 
 **Test File Structure:**
@@ -177,12 +181,22 @@ When creating new MCP tools, follow this pattern for type safety:
    >;
    ```
 
-2. **Use response helpers** in tool handlers:
+2. **Use auth and response helpers** in tool handlers:
    ```typescript
    import { createSuccessResponse, createErrorResponse } from "@/lib/utils/mcp-response-helpers";
+   import { requireAuth } from "@/lib/utils/mcp-auth-helpers";
 
    server.registerTool("tool_name", config, async ({ param }) => {
      try {
+       // DRY auth check
+       const authCheck = await requireAuth(session, "feature name", {
+         requireSubscription: true,
+         requirePlaid: true,
+         headers: req.headers,
+       });
+       if (authCheck) return authCheck;
+
+       // Business logic
        const result = await fetchData(param);
        return createSuccessResponse(
          "Success message",
@@ -196,14 +210,33 @@ When creating new MCP tools, follow this pattern for type safety:
    });
    ```
 
-3. **Available response helpers:**
+3. **Available helpers:**
+
+   **MCP Response Helpers** (`lib/utils/mcp-response-helpers.ts`):
    - `createSuccessResponse(text, structuredContent, meta?)` - Standard responses
    - `createErrorResponse(message, meta?)` - Error responses
+
+   **Auth Response Helpers** (`lib/utils/auth-responses.ts`):
    - `createSubscriptionRequiredResponse(featureName, userId)` - Subscription required
    - `createPlaidRequiredResponse(userId, headers)` - Plaid connection required
    - `createLoginPromptResponse(featureName?)` - Authentication required
 
+   **Auth Check Helper** (`lib/utils/mcp-auth-helpers.ts`):
+   - `requireAuth(session, featureName, options)` - DRY three-tier auth (session → subscription → Plaid)
+
+   **Widget Auth Helper** (`src/utils/widget-auth-check.tsx`):
+   - `checkWidgetAuth(toolOutput)` - DRY widget auth state detection
+
 All helpers ensure proper literal types and MCP SDK compatibility.
+
+**Auth Helper Options:**
+```typescript
+await requireAuth(session, "feature name", {
+  requireSubscription: true,  // Default: true
+  requirePlaid: true,         // Default: true (set false for non-Plaid tools)
+  headers: req.headers,       // Required when requirePlaid: true
+});
+```
 
 ## Important: Creating Stripe Checkout Sessions
 
