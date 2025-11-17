@@ -219,11 +219,13 @@ async function handleSessionFinished(
   }
 
   // Update session as completed
+  // Both SUCCESS and EXIT statuses indicate successful item addition
+  // Only ERROR status should mark the session as failed
   await db
     .update(plaidLinkSessions)
     .set({
       linkSessionId: webhook.link_session_id,
-      status: status === 'SUCCESS' ? 'completed' : 'failed',
+      status: status === 'ERROR' ? 'failed' : 'completed',
       publicTokens: publicTokens || [],
       completedAt: new Date(),
       metadata: {
