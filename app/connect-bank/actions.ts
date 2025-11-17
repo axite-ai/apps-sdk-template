@@ -1,7 +1,9 @@
 'use server';
 
 import { auth } from '@/lib/auth';
-import { pool } from '@/lib/db';
+import { db } from '@/lib/db';
+import { user, subscription } from '@/lib/db/schema';
+import { eq, and, inArray, desc } from 'drizzle-orm';
 import { headers, cookies } from 'next/headers';
 import { hasActiveSubscription } from '@/lib/utils/subscription-helpers';
 import { createLinkToken, exchangePublicToken } from '@/lib/services/plaid-service';
@@ -65,47 +67,44 @@ export const createPlaidLinkToken = async (mcpToken?: string): Promise<LinkToken
     const existingItems = await UserService.getUserPlaidItems(userId, true);
 
     // Get user's subscription to check limits
-    const client = await pool.connect();
+    const userSubscriptions = await db
+      .select({ plan: subscription.plan })
+      .from(subscription)
+      .where(
+        and(
+          eq(subscription.referenceId, userId),
+          inArray(subscription.status, ['active', 'trialing'])
+        )
+      )
+      .orderBy(desc(subscription.periodStart))
+      .limit(1);
 
-    try {
-      const subResult = await client.query(
-        `SELECT plan FROM subscription
-         WHERE reference_id = $1
-         AND status IN ('active', 'trialing')
-         ORDER BY period_start DESC
-         LIMIT 1`,
-        [userId]
-      );
+    const userSubscription = userSubscriptions[0];
+    const plan = userSubscription?.plan || 'basic';
 
-      const subscription = subResult.rows[0];
-      const plan = subscription?.plan || 'basic';
+    // Map plan to account limits (matches auth config in lib/auth/index.ts)
+    const planLimits: Record<string, number> = {
+      basic: 3,
+      pro: 10,
+      enterprise: 999999,
+    };
+    const maxAccounts = planLimits[plan] ?? 3;
 
-      // Map plan to account limits (matches auth config in lib/auth/index.ts)
-      const planLimits: Record<string, number> = {
-        basic: 3,
-        pro: 10,
-        enterprise: 999999,
-      };
-      const maxAccounts = planLimits[plan] ?? 3;
-
-      if (existingItems.length >= maxAccounts) {
-        return {
-          success: false,
-          error: `Account limit reached. Your plan allows ${maxAccounts} bank account(s). Please upgrade or remove an existing connection.`,
-        };
-      }
-
-      // All checks passed - create link token
-      const linkTokenData = await createLinkToken(userId);
-
+    if (existingItems.length >= maxAccounts) {
       return {
-        success: true,
-        linkToken: linkTokenData.link_token,
-        expiration: linkTokenData.expiration,
+        success: false,
+        error: `Account limit reached. Your plan allows ${maxAccounts} bank account(s). Please upgrade or remove an existing connection.`,
       };
-    } finally {
-      client.release();
     }
+
+    // All checks passed - create link token
+    const linkTokenData = await createLinkToken(userId);
+
+    return {
+      success: true,
+      linkToken: linkTokenData.link_token,
+      expiration: linkTokenData.expiration,
+    };
   } catch (error) {
     console.error('[Server Action] createPlaidLinkToken error:', error);
     return {
@@ -188,39 +187,40 @@ export const exchangePlaidPublicToken = async (
     // Send email notification
     try {
       const { EmailService } = await import("@/lib/services/email-service");
+      const { plaidItems } = await import("@/lib/db/schema");
+      const { count } = await import("drizzle-orm");
 
       // Get user details and count of connected accounts
-      const client = await pool.connect();
+      const [userDetails] = await db
+        .select({ email: user.email, name: user.name })
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
 
-      try {
-        const userResult = await client.query(
-          'SELECT email, name FROM "user" WHERE id = $1',
-          [userId]
+      const [itemCount] = await db
+        .select({ count: count() })
+        .from(plaidItems)
+        .where(
+          and(
+            eq(plaidItems.userId, userId),
+            eq(plaidItems.status, 'active')
+          )
         );
 
-        const countResult = await client.query(
-          'SELECT COUNT(*) FROM plaid_items WHERE user_id = $1 AND status = $2',
-          [userId, 'active']
+      const accountCount = Number(itemCount?.count || 0);
+      const isFirstAccount = accountCount === 1;
+
+      if (userDetails?.email && institutionName) {
+        const userName = userDetails.name || "there";
+
+        await EmailService.sendBankConnectionConfirmation(
+          userDetails.email,
+          userName,
+          institutionName,
+          isFirstAccount
         );
 
-        const user = userResult.rows[0];
-        const accountCount = parseInt(countResult.rows[0]?.count || '0', 10);
-        const isFirstAccount = accountCount === 1;
-
-        if (user?.email && institutionName) {
-          const userName = user.name || "there";
-
-          await EmailService.sendBankConnectionConfirmation(
-            user.email,
-            userName,
-            institutionName,
-            isFirstAccount
-          );
-
-          console.log('[Server Action] Bank connection email sent to', user.email);
-        }
-      } finally {
-        client.release();
+        console.log('[Server Action] Bank connection email sent to', userDetails.email);
       }
     } catch (error) {
       console.error('[Server Action] Failed to send bank connection email:', error);

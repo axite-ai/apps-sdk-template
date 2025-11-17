@@ -4,7 +4,9 @@
  * Utilities for checking subscription status, tiers, and limits using Better Auth Stripe plugin
  */
 
-import { pool } from "@/lib/db";
+import { db } from "@/lib/db";
+import { subscription } from "@/lib/db/schema";
+import { eq, and, inArray, desc, count as drizzleCount } from "drizzle-orm";
 
 /**
  * Get user's subscription from Better Auth Stripe plugin
@@ -13,55 +15,53 @@ import { pool } from "@/lib/db";
  * The auth.api methods are designed for external API calls with session cookies.
  */
 export async function getUserSubscription(userId: string) {
-  console.log('[Subscription] Attempting to connect to database from pool...');
-  const client = await pool.connect();
-  console.log('[Subscription] Successfully connected to database client.');
+  console.log('[Subscription] Querying database for user subscription...');
+
   try {
     // First, check ALL subscriptions for this user (any status)
-    const allSubsResult = await client.query(
-      `SELECT id, reference_id, plan, status, stripe_subscription_id, stripe_customer_id,
-              period_start, period_end, cancel_at_period_end
-       FROM subscription
-       WHERE reference_id = $1`,
-      [userId]
-    );
+    const allSubs = await db
+      .select()
+      .from(subscription)
+      .where(eq(subscription.referenceId, userId));
+
     console.log('[Subscription] All subscriptions for user (any status):', {
       userId,
-      count: allSubsResult.rowCount,
-      subscriptions: allSubsResult.rows,
-      statuses: allSubsResult.rows.map(s => s.status)
+      count: allSubs.length,
+      subscriptions: allSubs,
+      statuses: allSubs.map(s => s.status)
     });
 
     // Also check if there are ANY subscriptions in the table
-    const totalSubsResult = await client.query(
-      `SELECT COUNT(*) as total FROM subscription`
-    );
-    console.log('[Subscription] Total subscriptions in database:', totalSubsResult.rows[0]);
+    const [totalSubsCount] = await db
+      .select({ total: drizzleCount() })
+      .from(subscription);
+
+    console.log('[Subscription] Total subscriptions in database:', totalSubsCount);
 
     // Query for active subscriptions for this user
-    const result = await client.query(
-      `SELECT * FROM subscription
-      WHERE reference_id = $1
-      AND status IN ('active', 'trialing')
-      ORDER BY period_start DESC NULLS LAST
-      LIMIT 1`,
-      [userId]
-    );
+    const result = await db
+      .select()
+      .from(subscription)
+      .where(
+        and(
+          eq(subscription.referenceId, userId),
+          inArray(subscription.status, ['active', 'trialing'])
+        )
+      )
+      .orderBy(desc(subscription.periodStart))
+      .limit(1);
 
     console.log('[Subscription] Active subscription query result:', {
       userId,
-      rowCount: result.rowCount,
-      hasSubscription: !!result?.rows?.[0],
-      subscription: result?.rows?.[0]
+      count: result.length,
+      hasSubscription: !!result[0],
+      subscription: result[0]
     });
 
-    return result?.rows?.[0] || null;
+    return result[0] || null;
   } catch (error) {
     console.error(`[Subscription] Error fetching subscription for userId: ${userId}`, error);
     return null;
-  } finally {
-    client.release();
-    console.log('[Subscription] Database client released.');
   }
 }
 

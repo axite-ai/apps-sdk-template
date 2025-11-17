@@ -5,24 +5,13 @@
  * Provides webhook verification and event processing.
  */
 
-import { Pool } from 'pg';
 import crypto from 'crypto';
+import { db } from '@/lib/db';
+import { plaidWebhooks, plaidItems } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import { logger, LoggerService, AuditEventType } from './logger-service';
 import { UserService } from './user-service';
 import { syncTransactionsForItem } from './plaid-service';
-
-// Database pool
-const pool = new Pool({
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5432'),
-  database: process.env.POSTGRES_DATABASE || 'askmymoney',
-  user: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || 'postgres',
-  ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
 
 /**
  * Plaid webhook payload structure
@@ -44,13 +33,16 @@ export interface PlaidWebhook {
 
 export interface WebhookRecord {
   id: string;
-  item_id: string;
-  webhook_type: string;
-  webhook_code: string;
-  payload: Record<string, unknown>;
+  itemId: string | null;
+  userId: string | null;
+  webhookType: string;
+  webhookCode: string;
+  errorCode: string | null;
+  payload: unknown;
   processed: boolean;
-  received_at: Date;
-  processed_at?: Date;
+  receivedAt: Date;
+  processedAt: Date | null;
+  createdAt: Date;
 }
 
 /**
@@ -98,53 +90,42 @@ export class WebhookService {
    * Store webhook in database for audit and processing
    */
   public static async storeWebhook(webhook: PlaidWebhook, userId?: string): Promise<string> {
-    const client = await pool.connect();
+    const [result] = await db
+      .insert(plaidWebhooks)
+      .values({
+        webhookType: webhook.webhook_type,
+        webhookCode: webhook.webhook_code,
+        itemId: webhook.item_id,
+        errorCode: webhook.error?.error_code || null,
+        payload: webhook as any,
+        userId: userId || null,
+      })
+      .returning({ id: plaidWebhooks.id });
 
-    try {
-      const result = await client.query(
-        `INSERT INTO plaid_webhooks (webhook_type, webhook_code, item_id, error_code, payload, user_id)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING id`,
-        [
-          webhook.webhook_type,
-          webhook.webhook_code,
-          webhook.item_id,
-          webhook.error?.error_code || null,
-          JSON.stringify(webhook),
-          userId || null,
-        ]
-      );
+    const webhookId = result.id;
 
-      const webhookId = result.rows[0].id;
+    // Log to audit trail
+    await LoggerService.logWebhook(
+      webhook.webhook_type,
+      webhook.webhook_code,
+      webhook.item_id,
+      userId
+    );
 
-      // Log to audit trail
-      await LoggerService.logWebhook(
-        webhook.webhook_type,
-        webhook.webhook_code,
-        webhook.item_id,
-        userId
-      );
-
-      return webhookId;
-    } finally {
-      client.release();
-    }
+    return webhookId;
   }
 
   /**
    * Mark webhook as processed
    */
   public static async markWebhookProcessed(webhookId: string): Promise<void> {
-    const client = await pool.connect();
-
-    try {
-      await client.query(
-        `UPDATE plaid_webhooks SET processed = true, processed_at = NOW() WHERE id = $1`,
-        [webhookId]
-      );
-    } finally {
-      client.release();
-    }
+    await db
+      .update(plaidWebhooks)
+      .set({
+        processed: true,
+        processedAt: new Date(),
+      })
+      .where(eq(plaidWebhooks.id, webhookId));
   }
 
   /**
@@ -355,23 +336,20 @@ export class WebhookService {
    * Find user by Plaid item ID
    */
   private static async findUserByItemId(itemId: string): Promise<string | undefined> {
-    const client = await pool.connect();
-
     try {
-      const result = await client.query(
-        `SELECT user_id FROM plaid_items WHERE item_id = $1 LIMIT 1`,
-        [itemId]
-      );
+      const result = await db
+        .select({ userId: plaidItems.userId })
+        .from(plaidItems)
+        .where(eq(plaidItems.itemId, itemId))
+        .limit(1);
 
-      return result.rows[0]?.user_id;
+      return result[0]?.userId;
     } catch (error) {
       logger.error('[Webhook] Failed to find user by item ID', {
         itemId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       return undefined;
-    } finally {
-      client.release();
     }
   }
 
@@ -379,35 +357,27 @@ export class WebhookService {
    * Get unprocessed webhooks (for batch processing)
    */
   public static async getUnprocessedWebhooks(limit: number = 100): Promise<WebhookRecord[]> {
-    const client = await pool.connect();
+    const result = await db
+      .select()
+      .from(plaidWebhooks)
+      .where(eq(plaidWebhooks.processed, false))
+      .orderBy(plaidWebhooks.receivedAt)
+      .limit(limit);
 
-    try {
-      const result = await client.query(
-        `SELECT * FROM plaid_webhooks WHERE processed = false ORDER BY received_at ASC LIMIT $1`,
-        [limit]
-      );
-
-      return result.rows;
-    } finally {
-      client.release();
-    }
+    return result as WebhookRecord[];
   }
 
   /**
    * Get webhook history for an item
    */
   public static async getItemWebhookHistory(itemId: string, limit: number = 50): Promise<WebhookRecord[]> {
-    const client = await pool.connect();
+    const result = await db
+      .select()
+      .from(plaidWebhooks)
+      .where(eq(plaidWebhooks.itemId, itemId))
+      .orderBy(desc(plaidWebhooks.receivedAt))
+      .limit(limit);
 
-    try {
-      const result = await client.query(
-        `SELECT * FROM plaid_webhooks WHERE item_id = $1 ORDER BY received_at DESC LIMIT $2`,
-        [itemId, limit]
-      );
-
-      return result.rows;
-    } finally {
-      client.release();
-    }
+    return result as WebhookRecord[];
   }
 }

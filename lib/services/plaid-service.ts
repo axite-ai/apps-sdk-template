@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
-import { plaidItems, plaidAccounts, plaidTransactions } from '@/lib/db/schema';
-import { eq, sql, inArray, and, gte, lte } from 'drizzle-orm';
+import { plaidItems, plaidAccounts, plaidTransactions, plaidLinkSessions } from '@/lib/db/schema';
+import { eq, sql, inArray, and, gte, lte, desc } from 'drizzle-orm';
 import { getPlaidClient } from '../config/plaid';
 import { EncryptionService } from './encryption-service';
 import {
@@ -18,33 +18,130 @@ import {
   LinkTokenCreateRequest,
   ItemPublicTokenExchangeRequest,
   ItemGetRequest,
+  UserCreateRequest,
 } from 'plaid';
 
 /**
- * Create a Link token for initializing Plaid Link
+ * Helper to log detailed Plaid API errors
+ */
+function logPlaidError(functionName: string, error: any): void {
+  if (error.response?.data) {
+    console.error(`[Plaid] ${functionName} API error:`, JSON.stringify(error.response.data, null, 2));
+  } else {
+    console.error(`[Plaid] ${functionName} error:`, error);
+  }
+}
+
+/**
+ * Helper to get error message from Plaid API error
+ */
+function getPlaidErrorMessage(error: any): string {
+  return error.response?.data?.error_message || error.message || 'Unknown error';
+}
+
+/**
+ * Helper to check if error is PRODUCTS_NOT_SUPPORTED
+ * Returns true if the institution doesn't support the product
+ */
+function isProductNotSupported(error: any): boolean {
+  return error.response?.data?.error_code === 'PRODUCTS_NOT_SUPPORTED';
+}
+
+/**
+ * Get or create a Plaid user token for Multi-Item Link
+ * Checks database for existing token, creates new one if not found
+ * @param userId Unique user identifier
+ * @returns Plaid user token for reuse across Link sessions
+ */
+export const getOrCreatePlaidUserToken = async (userId: string): Promise<string> => {
+  try {
+    // Check if user already has a user token from a previous session
+    const [existingSession] = await db
+      .select({ plaidUserToken: plaidLinkSessions.plaidUserToken })
+      .from(plaidLinkSessions)
+      .where(eq(plaidLinkSessions.userId, userId))
+      .orderBy(desc(plaidLinkSessions.createdAt))
+      .limit(1);
+
+    if (existingSession?.plaidUserToken) {
+      console.log('[Plaid] Reusing existing user token for userId:', userId);
+      return existingSession.plaidUserToken;
+    }
+
+    // No existing token, create a new one
+    console.log('[Plaid] Creating new user token for userId:', userId);
+    const request: UserCreateRequest = {
+      client_user_id: userId,
+    };
+
+    const response = await getPlaidClient().userCreate(request);
+    console.log('[Plaid] Created user token for userId:', userId);
+
+    if (!response.data.user_token) {
+      throw new Error('Plaid API did not return a user token');
+    }
+
+    return response.data.user_token;
+  } catch (error: any) {
+    logPlaidError('userCreate', error);
+    throw new Error(`Failed to create Plaid user token: ${getPlaidErrorMessage(error)}`);
+  }
+};
+
+/**
+ * Create a Link token for initializing Plaid Link with Multi-Item support
+ * Always uses user tokens for Multi-Item Link functionality
  * @param userId Unique user identifier
  * @param redirectUri Optional redirect URI for OAuth flows
  * @returns Link token for client-side Plaid Link initialization
  */
-export const createLinkToken = async (userId: string, redirectUri?: string) => {
+export const createLinkToken = async (
+  userId: string,
+  redirectUri?: string
+) => {
   try {
+    // Get or create a user token for Multi-Item Link (reuses existing token if available)
+    const userToken = await getOrCreatePlaidUserToken(userId);
+
     const request: LinkTokenCreateRequest = {
+      user_token: userToken,
       user: {
         client_user_id: userId,
       },
+      investments: {
+        allow_unverified_crypto_wallets: true,
+        allow_manual_entry: true,
+      },
+      cra_enabled: true,
       client_name: 'AskMyMoney',
-      products: [Products.Transactions, Products.Auth, Products.Investments, Products.Liabilities],
+      products: [Products.Transactions],
+      // Auth and Transfer in optional_products so we can connect multiple accounts
+      // but still get auth for accounts that support it
+      optional_products: [Products.Auth, Products.Investments, Products.Liabilities],
+      enable_multi_item_link: true,
       country_codes: [CountryCode.Us],
       language: 'en',
       webhook: process.env.BETTER_AUTH_URL ? `${process.env.BETTER_AUTH_URL}/api/plaid/webhook` : undefined,
       ...(redirectUri && { redirect_uri: redirectUri }),
     };
 
+    console.log('[Plaid] Creating link token with Multi-Item Link enabled');
     const response = await getPlaidClient().linkTokenCreate(request);
+
+    // Store Link session in database for webhook processing
+    await db.insert(plaidLinkSessions).values({
+      userId,
+      linkToken: response.data.link_token,
+      plaidUserToken: userToken,
+      status: 'pending',
+    });
+
+    console.log('[Plaid] Created link token successfully');
+
     return response.data;
-  } catch (error) {
-    console.error('Error creating link token:', error);
-    throw new Error(`Failed to create link token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } catch (error: any) {
+    logPlaidError('linkTokenCreate', error);
+    throw new Error(`Failed to create link token: ${getPlaidErrorMessage(error)}`);
   }
 };
 
@@ -64,9 +161,9 @@ export const exchangePublicToken = async (publicToken: string) => {
       accessToken: response.data.access_token,
       itemId: response.data.item_id,
     };
-  } catch (error) {
-    console.error('Error exchanging public token:', error);
-    throw new Error(`Failed to exchange public token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } catch (error: any) {
+    logPlaidError('itemPublicTokenExchange', error);
+    throw new Error(`Failed to exchange public token: ${getPlaidErrorMessage(error)}`);
   }
 };
 
@@ -82,10 +179,9 @@ export async function getAccountBalances(accessToken: string) {
   try {
     const response = await getPlaidClient().accountsGet(request);
     return response.data;
-  } catch (error: unknown) {
-    const plaidError = error as { response?: { data?: { error_message?: string } } };
-    console.error('Error getting account balances:', plaidError.response?.data);
-    throw new Error(`Failed to get account balances: ${plaidError.response?.data?.error_message || 'Unknown error'}`);
+  } catch (error: any) {
+    logPlaidError('accountsGet', error);
+    throw new Error(`Failed to get account balances: ${getPlaidErrorMessage(error)}`);
   }
 }
 
@@ -435,16 +531,16 @@ export async function getAuth(accessToken: string) {
       accounts: response.data.accounts,
       numbers: response.data.numbers,
     };
-  } catch (error) {
-    console.error('Error getting auth data:', error);
-    throw new Error(`Failed to get auth data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } catch (error: any) {
+    logPlaidError('authGet', error);
+    throw new Error(`Failed to get auth data: ${getPlaidErrorMessage(error)}`);
   }
 }
 
 /**
  * Get investment holdings
  * @param accessToken Plaid access token
- * @returns Investment holdings and securities
+ * @returns Investment holdings and securities, or null if not supported by institution
  */
 export async function getInvestmentHoldings(accessToken: string) {
   try {
@@ -458,9 +554,13 @@ export async function getInvestmentHoldings(accessToken: string) {
       holdings: response.data.holdings,
       securities: response.data.securities,
     };
-  } catch (error) {
-    console.error('Error getting investment holdings:', error);
-    throw new Error(`Failed to get investment holdings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } catch (error: any) {
+    if (isProductNotSupported(error)) {
+      console.log('[Plaid] Institution does not support investments, skipping');
+      return null;
+    }
+    logPlaidError('investmentsHoldingsGet', error);
+    throw new Error(`Failed to get investment holdings: ${getPlaidErrorMessage(error)}`);
   }
 }
 
@@ -469,7 +569,7 @@ export async function getInvestmentHoldings(accessToken: string) {
  * @param accessToken Plaid access token
  * @param startDate Start date (YYYY-MM-DD)
  * @param endDate End date (YYYY-MM-DD)
- * @returns Investment transactions (buys, sells, dividends)
+ * @returns Investment transactions (buys, sells, dividends), or null if not supported
  */
 export async function getInvestmentTransactions(accessToken: string, startDate: string, endDate: string) {
   try {
@@ -486,16 +586,20 @@ export async function getInvestmentTransactions(accessToken: string, startDate: 
       securities: response.data.securities,
       totalInvestmentTransactions: response.data.total_investment_transactions,
     };
-  } catch (error) {
-    console.error('Error getting investment transactions:', error);
-    throw new Error(`Failed to get investment transactions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } catch (error: any) {
+    if (isProductNotSupported(error)) {
+      console.log('[Plaid] Institution does not support investments, skipping');
+      return null;
+    }
+    logPlaidError('investmentsTransactionsGet', error);
+    throw new Error(`Failed to get investment transactions: ${getPlaidErrorMessage(error)}`);
   }
 }
 
 /**
  * Get liabilities (credit cards, loans, mortgages)
  * @param accessToken Plaid access token
- * @returns Liability details including payment schedules
+ * @returns Liability details including payment schedules, or null if not supported
  */
 export async function getLiabilities(accessToken: string) {
   try {
@@ -508,9 +612,13 @@ export async function getLiabilities(accessToken: string) {
       accounts: response.data.accounts,
       liabilities: response.data.liabilities,
     };
-  } catch (error) {
-    console.error('Error getting liabilities:', error);
-    throw new Error(`Failed to get liabilities: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } catch (error: any) {
+    if (isProductNotSupported(error)) {
+      console.log('[Plaid] Institution does not support liabilities, skipping');
+      return null;
+    }
+    logPlaidError('liabilitiesGet', error);
+    throw new Error(`Failed to get liabilities: ${getPlaidErrorMessage(error)}`);
   }
 }
 

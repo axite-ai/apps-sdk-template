@@ -2,7 +2,9 @@
 
 import { baseURL } from "@/baseUrl";
 import Stripe from "stripe";
-import { pool } from "@/lib/db";
+import { db } from "@/lib/db";
+import { user } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 
 type UpgradeResult =
@@ -51,51 +53,46 @@ export async function upgradeSubscription(userId: string, plan: string): Promise
     // Get user's Stripe customer ID from database
     // Better Auth stores this in the user table when createCustomerOnSignUp is true
     let stripeCustomerId: string | null = null;
-    const client = await pool.connect();
 
-    try {
-      const result = await client.query(
-        'SELECT stripe_customer_id FROM "user" WHERE id = $1',
-        [userId]
-      );
+    const userResult = await db
+      .select({
+        stripeCustomerId: user.stripeCustomerId,
+        email: user.email,
+        name: user.name,
+      })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
 
-      if (result.rows.length === 0) {
-        return {
-          success: false,
-          error: "User not found",
-        };
-      }
+    if (userResult.length === 0) {
+      return {
+        success: false,
+        error: "User not found",
+      };
+    }
 
-      stripeCustomerId = result.rows[0].stripe_customer_id;
+    const userData = userResult[0];
+    stripeCustomerId = userData.stripeCustomerId;
 
-      // If no customer ID exists, create one
-      if (!stripeCustomerId) {
-        const userResult = await client.query(
-          'SELECT email, name FROM "user" WHERE id = $1',
-          [userId]
-        );
+    // If no customer ID exists, create one
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: userData.email,
+        name: userData.name,
+        metadata: {
+          userId,
+        },
+      });
 
-        const user = userResult.rows[0];
-        const customer = await stripe.customers.create({
-          email: user.email,
-          name: user.name,
-          metadata: {
-            userId,
-          },
-        });
+      stripeCustomerId = customer.id;
 
-        stripeCustomerId = customer.id;
+      // Update user with Stripe customer ID
+      await db
+        .update(user)
+        .set({ stripeCustomerId: stripeCustomerId })
+        .where(eq(user.id, userId));
 
-        // Update user with Stripe customer ID
-        await client.query(
-          'UPDATE "user" SET stripe_customer_id = $1 WHERE id = $2',
-          [stripeCustomerId, userId]
-        );
-
-        console.log("[Subscription Action] Created Stripe customer:", stripeCustomerId);
-      }
-    } finally {
-      client.release();
+      console.log("[Subscription Action] Created Stripe customer:", stripeCustomerId);
     }
 
     // CRITICAL: Pre-create subscription record in database with status "incomplete"

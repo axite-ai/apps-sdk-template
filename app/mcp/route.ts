@@ -376,12 +376,43 @@ const handler = withMcpAuth(auth, async (req, session) => {
           }
         }
 
+        // Transform database records to Plaid Transaction format
+        const plaidFormattedTransactions = limitedTransactions.map((tx) => ({
+          ...tx,
+          // Map snake_case DB columns to Plaid's expected camelCase structure
+          transaction_id: tx.transactionId,
+          account_id: tx.accountId,
+          iso_currency_code: tx.isoCurrencyCode,
+          unofficial_currency_code: tx.unofficialCurrencyCode,
+          check_number: tx.checkNumber,
+          authorized_date: tx.authorizedDate?.toISOString().split('T')[0] || null,
+          authorized_datetime: tx.authorizedDatetime?.toISOString() || null,
+          merchant_name: tx.merchantName,
+          payment_channel: tx.paymentChannel,
+          pending_transaction_id: tx.pendingTransactionId,
+          transaction_code: tx.transactionCode,
+          original_description: tx.originalDescription,
+          logo_url: tx.logoUrl,
+          payment_meta: tx.paymentMeta,
+          // Transform category fields to Plaid's personal_finance_category structure
+          personal_finance_category: tx.categoryPrimary ? {
+            primary: tx.categoryPrimary,
+            detailed: tx.categoryDetailed || '',
+            confidence_level: (tx.categoryConfidence || 'UNKNOWN') as 'VERY_HIGH' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN'
+          } : null,
+          // Convert dates to ISO strings
+          date: typeof tx.date === 'string' ? tx.date : tx.date?.toISOString().split('T')[0] || '',
+          datetime: tx.datetime?.toISOString() || null,
+          // Convert amount to number
+          amount: parseFloat(tx.amount),
+        }));
+
         return createSuccessResponse(
           `Found ${limitedTransactions.length} transaction(s) from ${start} to ${end}` +
           (category ? ` in category ${category}` : '') +
           (paymentChannel ? ` via ${paymentChannel}` : ''),
           {
-            transactions: limitedTransactions,
+            transactions: plaidFormattedTransactions,
             totalTransactions: allTransactions.length,
             displayedTransactions: limitedTransactions.length,
             dateRange: { start, end },
@@ -597,6 +628,10 @@ const handler = withMcpAuth(auth, async (req, session) => {
 
         for (const accessToken of accessTokens) {
           const data = await getInvestmentHoldings(accessToken);
+
+          // Skip if institution doesn't support investments
+          if (!data) continue;
+
           allAccounts.push(...data.accounts);
           allHoldings.push(...data.holdings);
 
@@ -671,7 +706,12 @@ const handler = withMcpAuth(auth, async (req, session) => {
         const allMortgage: NonNullable<LiabilitiesObject['mortgage']> = [];
 
         for (const accessToken of accessTokens) {
-          const { accounts, liabilities } = await getLiabilities(accessToken);
+          const data = await getLiabilities(accessToken);
+
+          // Skip if institution doesn't support liabilities
+          if (!data) continue;
+
+          const { accounts, liabilities } = data;
           allAccounts.push(...accounts);
 
           if (liabilities.credit) {

@@ -22,7 +22,6 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   stripeCustomerId: text("stripe_customer_id"),
-  plaidItemIds: text("plaid_item_ids"),
 });
 
 export const account = pgTable("account", {
@@ -182,10 +181,14 @@ export const plaidWebhooks = pgTable("plaid_webhooks", {
     .primaryKey()
     .$defaultFn(() => createId()),
   itemId: text("item_id"),
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
   webhookType: text("webhook_type").notNull(),
   webhookCode: text("webhook_code").notNull(),
-  error: text("error"),
-  newWebhookUrl: text("new_webhook_url"),
+  errorCode: text("error_code"),
+  payload: jsonb("payload"),
+  processed: boolean("processed").default(false).notNull(),
+  receivedAt: timestamp("received_at").defaultNow().notNull(),
+  processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -274,5 +277,58 @@ export const plaidTransactions = pgTable(
       table.accountId
     ),
     userIdIndex: index("plaid_transactions_user_id_idx").on(table.userId),
+  })
+);
+
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    eventType: text("event_type").notNull(),
+    eventData: jsonb("event_data"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    success: boolean("success").notNull(),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIndex: index("audit_logs_user_id_idx").on(table.userId),
+    eventTypeIndex: index("audit_logs_event_type_idx").on(table.eventType),
+    createdAtIndex: index("audit_logs_created_at_idx").on(table.createdAt),
+  })
+);
+
+export const plaidLinkSessions = pgTable(
+  "plaid_link_sessions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    linkToken: text("link_token").notNull(),
+    linkSessionId: text("link_session_id"),
+    plaidUserToken: text("plaid_user_token"),
+    status: text("status").default("pending").notNull(), // pending, active, completed, failed
+    publicTokens: jsonb("public_tokens"), // Array of public tokens from SESSION_FINISHED
+    itemsAdded: integer("items_added").default(0).notNull(),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+    completedAt: timestamp("completed_at"),
+  },
+  (table) => ({
+    userIdIndex: index("plaid_link_sessions_user_id_idx").on(table.userId),
+    linkTokenIndex: index("plaid_link_sessions_link_token_idx").on(table.linkToken),
+    linkSessionIdIndex: index("plaid_link_sessions_link_session_id_idx").on(table.linkSessionId),
+    statusIndex: index("plaid_link_sessions_status_idx").on(table.status),
   })
 );

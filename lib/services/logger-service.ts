@@ -6,7 +6,9 @@
  */
 
 import winston from 'winston';
-import { Pool } from 'pg';
+import { db } from '@/lib/db';
+import { auditLogs } from '@/lib/db/schema';
+import { eq, and, desc, gt } from 'drizzle-orm';
 
 const { combine, timestamp, json, printf, colorize, errors } = winston.format;
 
@@ -60,19 +62,6 @@ export const logger = winston.createLogger({
   ],
 });
 
-// Database pool for audit logging
-const pool = new Pool({
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5432'),
-  database: process.env.POSTGRES_DATABASE || 'askmymoney',
-  user: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || 'postgres',
-  ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
-
 /**
  * Audit log types for security tracking
  */
@@ -105,7 +94,7 @@ export interface AuditLogEntry {
 
 export interface AuditLogRecord extends AuditLogEntry {
   id: string;
-  created_at: Date;
+  createdAt: Date;
 }
 
 /**
@@ -116,22 +105,16 @@ export class LoggerService {
    * Log a security audit event to the database
    */
   public static async audit(entry: AuditLogEntry): Promise<void> {
-    const client = await pool.connect();
-
     try {
-      await client.query(
-        `INSERT INTO audit_logs (user_id, event_type, event_data, ip_address, user_agent, success, error_message)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [
-          entry.userId || null,
-          entry.eventType,
-          JSON.stringify(entry.eventData || {}),
-          entry.ipAddress || null,
-          entry.userAgent || null,
-          entry.success,
-          entry.errorMessage || null,
-        ]
-      );
+      await db.insert(auditLogs).values({
+        userId: entry.userId || null,
+        eventType: entry.eventType,
+        eventData: entry.eventData || {},
+        ipAddress: entry.ipAddress || null,
+        userAgent: entry.userAgent || null,
+        success: entry.success,
+        errorMessage: entry.errorMessage || null,
+      });
 
       // Also log to Winston
       const logData = {
@@ -155,8 +138,6 @@ export class LoggerService {
         error: error instanceof Error ? error.message : 'Unknown error',
         entry,
       });
-    } finally {
-      client.release();
     }
   }
 
@@ -257,18 +238,14 @@ export class LoggerService {
     userId: string,
     limit: number = 50
   ): Promise<AuditLogRecord[]> {
-    const client = await pool.connect();
+    const result = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.userId, userId))
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(limit);
 
-    try {
-      const result = await client.query(
-        `SELECT * FROM audit_logs WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2`,
-        [userId, limit]
-      );
-
-      return result.rows;
-    } finally {
-      client.release();
-    }
+    return result as AuditLogRecord[];
   }
 
   /**
@@ -278,20 +255,20 @@ export class LoggerService {
     since: Date = new Date(Date.now() - 3600000), // last hour
     limit: number = 100
   ): Promise<AuditLogRecord[]> {
-    const client = await pool.connect();
+    const result = await db
+      .select()
+      .from(auditLogs)
+      .where(
+        and(
+          eq(auditLogs.eventType, AuditEventType.USER_LOGIN),
+          eq(auditLogs.success, false),
+          gt(auditLogs.createdAt, since)
+        )
+      )
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(limit);
 
-    try {
-      const result = await client.query(
-        `SELECT * FROM audit_logs
-         WHERE event_type = $1 AND success = false AND created_at > $2
-         ORDER BY created_at DESC LIMIT $3`,
-        [AuditEventType.USER_LOGIN, since, limit]
-      );
-
-      return result.rows;
-    } finally {
-      client.release();
-    }
+    return result as AuditLogRecord[];
   }
 }
 

@@ -85,18 +85,25 @@ export default function PlaidRequired() {
     <div
       className={cn(
         "antialiased w-full p-6 rounded-2xl border shadow-lg",
-        "bg-gradient-to-br from-gray-800 to-gray-900 border-green-500/30 text-white"
+        isDark
+          ? "bg-gradient-to-br from-gray-800 to-gray-900 border-green-500/30 text-white"
+          : "bg-gradient-to-br from-gray-50 to-gray-100 border-green-300 text-black"
       )}
     >
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         {/* Header */}
         <div className="flex items-start mb-6">
-          <div className="p-3 rounded-xl bg-green-500/20 mr-4 flex-shrink-0">
-            <CreditCard strokeWidth={1.5} className="h-6 w-6 text-green-400" />
+          <div className={cn(
+            "p-3 rounded-xl mr-4 flex-shrink-0",
+            isDark ? "bg-green-500/20" : "bg-green-100"
+          )}>
+            <CreditCard strokeWidth={1.5} className={cn("h-6 w-6", isDark ? "text-green-400" : "text-green-600")} />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-bold mb-2">Connect Your Bank Account</h2>
-            <p className="text-sm text-gray-300">
+            <h2 className={cn("text-xl font-bold mb-2", isDark ? "text-white" : "text-black")}>
+              Connect Your Bank Account
+            </h2>
+            <p className={cn("text-sm", isDark ? "text-gray-300" : "text-gray-700")}>
               Link your financial accounts to access this feature
             </p>
           </div>
@@ -107,7 +114,12 @@ export default function PlaidRequired() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-xl text-green-300 text-sm"
+            className={cn(
+              "mb-4 p-3 border rounded-xl text-sm",
+              isDark
+                ? "bg-green-500/20 border-green-500/50 text-green-300"
+                : "bg-green-50 border-green-300 text-green-700"
+            )}
           >
             {success}
           </motion.div>
@@ -116,15 +128,25 @@ export default function PlaidRequired() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm"
+            className={cn(
+              "mb-4 p-3 border rounded-xl text-sm",
+              isDark
+                ? "bg-red-500/20 border-red-500/50 text-red-300"
+                : "bg-red-50 border-red-300 text-red-700"
+            )}
           >
             {error}
           </motion.div>
         )}
 
         {/* Features List */}
-        <div className="bg-gray-800/50 rounded-xl p-5 mb-6">
-          <h3 className="font-semibold mb-4 text-sm text-gray-200">What You'll Get:</h3>
+        <div className={cn(
+          "rounded-xl p-5 mb-6",
+          isDark ? "bg-gray-800/50" : "bg-gray-100"
+        )}>
+          <h3 className={cn("font-semibold mb-4 text-sm", isDark ? "text-gray-200" : "text-gray-800")}>
+            What You'll Get:
+          </h3>
           <div className="space-y-3">
             {features.map((feature, index) => (
               <motion.div
@@ -132,10 +154,13 @@ export default function PlaidRequired() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="flex items-center text-sm text-gray-300"
+                className={cn("flex items-center text-sm", isDark ? "text-gray-300" : "text-gray-700")}
               >
-                <div className="p-1.5 rounded-lg bg-green-500/20 mr-3 flex-shrink-0">
-                  <feature.icon strokeWidth={1.5} className="h-4 w-4 text-green-400" />
+                <div className={cn(
+                  "p-1.5 rounded-lg mr-3 flex-shrink-0",
+                  isDark ? "bg-green-500/20" : "bg-green-100"
+                )}>
+                  <feature.icon strokeWidth={1.5} className={cn("h-4 w-4", isDark ? "text-green-400" : "text-green-600")} />
                 </div>
                 <span>{feature.text}</span>
               </motion.div>
@@ -144,10 +169,13 @@ export default function PlaidRequired() {
         </div>
 
         {/* Security Notice */}
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6">
+        <div className={cn(
+          "border rounded-xl p-4 mb-6",
+          isDark ? "bg-blue-500/10 border-blue-500/30" : "bg-blue-50 border-blue-200"
+        )}>
           <div className="flex items-start">
-            <Lock strokeWidth={1.5} className="h-4 w-4 text-blue-400 mr-2 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-200">
+            <Lock strokeWidth={1.5} className={cn("h-4 w-4 mr-2 flex-shrink-0 mt-0.5", isDark ? "text-blue-400" : "text-blue-600")} />
+            <p className={cn("text-xs", isDark ? "text-blue-200" : "text-blue-700")}>
               Your data is encrypted and secured by Plaid, trusted by thousands of financial apps.
               We never see your login credentials.
             </p>
@@ -167,8 +195,12 @@ export default function PlaidRequired() {
 
         {/* Footer Notes */}
         <div className="mt-4 text-center space-y-1">
-          <p className="text-xs text-gray-400">Opens in a new window for secure authentication</p>
-          <p className="text-xs text-gray-500">Powered by Plaid</p>
+          <p className={cn("text-xs", isDark ? "text-gray-400" : "text-gray-600")}>
+            Opens in a new window for secure authentication
+          </p>
+          <p className={cn("text-xs", isDark ? "text-gray-500" : "text-gray-500")}>
+            Powered by Plaid
+          </p>
         </div>
       </motion.div>
     </div>

@@ -131,10 +131,7 @@ export const auth = betterAuth({
   // User schema
   user: {
     additionalFields: {
-      plaidItemIds: {
-        type: "string",
-        required: false,
-      },
+      // No additional fields - Plaid items are stored in plaid_items table
     },
   },
 
