@@ -8,10 +8,10 @@
 import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { plaidWebhooks, plaidItems } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, gte, sql } from 'drizzle-orm';
 import { logger, LoggerService, AuditEventType } from './logger-service';
 import { UserService } from './user-service';
-import { syncTransactionsForItem } from './plaid-service';
+import { syncTransactionsForItem, plaidClient } from './plaid-service';
 
 /**
  * Plaid webhook payload structure
@@ -88,8 +88,19 @@ export class WebhookService {
 
   /**
    * Store webhook in database for audit and processing
+   *
+   * NOTE: We do NOT dedupe webhooks by type/code because Plaid legitimately
+   * sends the same webhook type multiple times (e.g., SYNC_UPDATES_AVAILABLE
+   * fires every time transactions update). Deduping by type/code would break
+   * transaction syncing after the first event each day.
+   *
+   * Plaid handles retry logic on their end. If we receive a webhook, we should
+   * process it. Database constraints (not application logic) prevent true duplicates.
    */
   public static async storeWebhook(webhook: PlaidWebhook, userId?: string): Promise<string> {
+    // Simply store the webhook - no deduplication
+    // If Plaid retries the exact same webhook, it's because we didn't respond with 200 OK
+    // and they want us to process it again
     const [result] = await db
       .insert(plaidWebhooks)
       .values({
@@ -141,8 +152,13 @@ export class WebhookService {
     // Find the user who owns this item
     const userId = await this.findUserByItemId(webhook.item_id);
 
-    // Store webhook
+    // Store webhook for audit trail
     const webhookId = await this.storeWebhook(webhook, userId);
+
+    if (!webhookId) {
+      logger.error('[Webhook] Failed to store webhook');
+      return;
+    }
 
     try {
       // Route to appropriate handler based on webhook type
@@ -179,23 +195,40 @@ export class WebhookService {
         webhookId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+
+      // Update webhook with error info
+      await db
+        .update(plaidWebhooks)
+        .set({
+          processingError: { error: error instanceof Error ? error.message : 'Unknown error' },
+          retryCount: sql`${plaidWebhooks.retryCount} + 1`,
+        })
+        .where(eq(plaidWebhooks.id, webhookId));
+
       throw error;
     }
   }
 
   /**
    * Handle ITEM webhooks (errors, login required, etc.)
+   *
+   * Note: Plaid does NOT send an ITEM_READY webhook. Items are ready immediately
+   * after public token exchange. See: https://plaid.com/docs/api/items/#webhooks
    */
   private static async handleItemWebhook(webhook: PlaidWebhook, userId?: string): Promise<void> {
     switch (webhook.webhook_code) {
       case 'ERROR':
         // Item has an error (often means login required)
         if (userId && webhook.error) {
-          await UserService.markItemError(
-            userId,
-            webhook.item_id,
-            webhook.error.error_code
-          );
+          await db
+            .update(plaidItems)
+            .set({
+              status: 'error',
+              errorCode: webhook.error.error_code,
+              errorMessage: webhook.error.error_message,
+              lastWebhookAt: new Date(),
+            })
+            .where(eq(plaidItems.itemId, webhook.item_id));
 
           logger.warn('[Webhook] Item error detected', {
             userId,
@@ -226,12 +259,19 @@ export class WebhookService {
           itemId: webhook.item_id,
           consentExpirationTime: webhook.consent_expiration_time,
         });
+        // TODO: Notify user to relink
         break;
 
       case 'USER_PERMISSION_REVOKED':
-        // User revoked access at their bank
+        // User revoked access at their bank - IMMEDIATE revocation
         if (userId) {
-          await UserService.revokeItem(userId, webhook.item_id);
+          await db
+            .update(plaidItems)
+            .set({
+              status: 'revoked',
+              lastWebhookAt: new Date(),
+            })
+            .where(eq(plaidItems.itemId, webhook.item_id));
 
           logger.info('[Webhook] User revoked item permissions', {
             userId,
@@ -248,8 +288,31 @@ export class WebhookService {
         break;
 
       case 'WEBHOOK_UPDATE_ACKNOWLEDGED':
-        // Plaid acknowledged webhook URL update
-        logger.info('[Webhook] Webhook URL update acknowledged');
+        // Plaid acknowledged item removal (sent after /item/remove API call)
+        if (userId) {
+          await db
+            .update(plaidItems)
+            .set({
+              status: 'deleted',
+              deletedAt: new Date(),
+              lastWebhookAt: new Date(),
+            })
+            .where(eq(plaidItems.itemId, webhook.item_id));
+
+          logger.info('[Webhook] Item deletion confirmed', {
+            userId,
+            itemId: webhook.item_id,
+          });
+
+          await LoggerService.audit({
+            userId,
+            eventType: AuditEventType.ITEM_DISCONNECTED,
+            eventData: { itemId: webhook.item_id, reason: 'deleted' },
+            success: true,
+          });
+        } else {
+          logger.info('[Webhook] Webhook URL update acknowledged (non-item event)');
+        }
         break;
 
       default:

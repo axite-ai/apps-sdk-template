@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize2, TrendingUp, TrendingDown, Wallet, PieChart } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useWidgetProps } from "@/src/use-widget-props";
+import { useOpenAiGlobal } from "@/src/use-openai-global";
+import { useWidgetState } from "@/src/use-widget-state";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
 import { useTheme } from "@/src/use-theme";
@@ -55,28 +57,57 @@ interface Security {
 }
 
 interface ToolOutput extends Record<string, unknown> {
-  accounts?: Account[];
-  holdings?: Holding[];
-  securities?: Security[];
+  accountCount?: number;
+  holdingCount?: number;
   totalValue?: number;
   featureName?: string;
   message?: string;
   error_message?: string;
 }
 
+interface ToolMetadata {
+  accounts: Account[];
+  holdings: Holding[];
+  securities: Security[];
+}
+
+interface InvestmentsUIState extends Record<string, unknown> {
+  expandedAccountIds: string[];
+}
+
+
 export default function Investments() {
   const toolOutput = useWidgetProps<ToolOutput>();
+  const toolMetadata = useOpenAiGlobal("toolResponseMetadata") as ToolMetadata | null;
+  const [uiState, setUiState] = useWidgetState<InvestmentsUIState>({
+    expandedAccountIds: [],
+  });
+
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
   const theme = useTheme();
   const isFullscreen = displayMode === "fullscreen";
   const isDark = theme === "dark";
-  const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
 
   // Max visible accounts in inline mode
   const MAX_VISIBLE_INLINE = 3;
 
-  if (!toolOutput) {
+  const toggleAccountExpanded = (accountId: string) => {
+    setUiState(prevState => {
+      const expanded = new Set(prevState.expandedAccountIds);
+      if (expanded.has(accountId)) {
+        expanded.delete(accountId);
+      } else {
+        expanded.add(accountId);
+      }
+      return { ...prevState, expandedAccountIds: Array.from(expanded) };
+    });
+  };
+
+  const authComponent = checkWidgetAuth(toolOutput);
+  if (authComponent) return authComponent;
+
+  if (!toolOutput && !toolMetadata) {
     return (
       <div
         className={cn(
@@ -92,12 +123,15 @@ export default function Investments() {
     );
   }
 
-  // Check for auth requirements
-  const authComponent = checkWidgetAuth(toolOutput);
-  if (authComponent) return authComponent;
+  const accounts: Account[] = toolMetadata?.accounts || [];
+  const holdings: Holding[] = toolMetadata?.holdings || [];
+  const securities: Security[] = toolMetadata?.securities || [];
+  const totalValue: number = toolOutput?.totalValue || 0;
+  const accountCount = toolOutput?.accountCount ?? accounts.length;
+  const holdingCount = toolOutput?.holdingCount ?? holdings.length;
 
-  if (!toolOutput.holdings || !toolOutput.securities) {
-    return (
+  if (holdingCount === 0) {
+     return (
       <div
         className={cn(
           "antialiased w-full relative flex items-center justify-center",
@@ -112,10 +146,6 @@ export default function Investments() {
     );
   }
 
-  const accounts: Account[] = toolOutput.accounts || [];
-  const holdings: Holding[] = toolOutput.holdings || [];
-  const securities: Security[] = toolOutput.securities || [];
-  const totalValue: number = toolOutput.totalValue || 0;
 
   // Create a map of securities for quick lookup
   const securitiesMap = new Map<string, Security>(
@@ -215,7 +245,7 @@ export default function Investments() {
                 Accounts
               </div>
               <div className={cn("text-xl font-semibold", isDark ? "text-white" : "text-black")}>
-                {accounts.length}
+                {accountCount}
               </div>
             </div>
             <div
@@ -228,7 +258,7 @@ export default function Investments() {
                 Holdings
               </div>
               <div className={cn("text-xl font-semibold", isDark ? "text-white" : "text-black")}>
-                {holdings.length}
+                {holdingCount}
               </div>
             </div>
           </div>
@@ -242,7 +272,7 @@ export default function Investments() {
               (sum: number, h: Holding) => sum + h.institution_value,
               0
             );
-            const isExpanded = expandedAccount === account.account_id;
+            const isExpanded = uiState.expandedAccountIds.includes(account.account_id);
 
             return (
               <motion.div
@@ -261,9 +291,7 @@ export default function Investments() {
                     "p-4 cursor-pointer transition-colors",
                     isDark ? "hover:bg-gray-750" : "hover:bg-gray-50"
                   )}
-                  onClick={() =>
-                    setExpandedAccount(isExpanded ? null : account.account_id)
-                  }
+                  onClick={() => toggleAccountExpanded(account.account_id)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">

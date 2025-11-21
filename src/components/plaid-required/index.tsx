@@ -5,13 +5,23 @@ import { motion } from "framer-motion";
 import { CreditCard, Check, Lock, TrendingUp, DollarSign, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useWidgetProps } from "@/src/use-widget-props";
+import { useOpenAiGlobal } from "@/src/use-openai-global";
+import { useWidgetState } from "@/src/use-widget-state";
 import { useTheme } from "@/src/use-theme";
 
 interface WidgetProps extends Record<string, unknown> {
   baseUrl?: string;
-  userId?: string;
   message?: string;
+}
+
+interface PlaidRequiredMetadata {
+  userId?: string;
   mcpToken?: string;
+}
+
+interface PlaidRequiredUIState extends Record<string, unknown> {
+  successMessage: string | null;
+  errorMessage: string | null;
 }
 
 const features = [
@@ -22,24 +32,28 @@ const features = [
 ];
 
 export default function PlaidRequired() {
-  const props = useWidgetProps<WidgetProps>();
+  const toolOutput = useWidgetProps<WidgetProps>();
+  const toolMetadata = useOpenAiGlobal("toolResponseMetadata") as PlaidRequiredMetadata | null;
+  const [uiState, setUiState] = useWidgetState<PlaidRequiredUIState>({
+    successMessage: null,
+    errorMessage: null,
+  });
   const theme = useTheme();
   const isDark = theme === "dark";
-  const [success, setSuccess] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+
+  const mcpToken = toolMetadata?.mcpToken;
 
   const handleConnect = () => {
+    const baseUrl = toolOutput?.baseUrl || window.location.origin;
     console.log("[PlaidRequired Widget] Opening /connect-bank with MCP token");
 
-    if (!props?.mcpToken) {
+    if (!mcpToken) {
       console.error("[PlaidRequired Widget] No MCP token in props");
-      setError("Authentication token not available. Please try again.");
+      setUiState({ successMessage: null, errorMessage: "Authentication token not available. Please try again."});
       return;
     }
 
-    // Open the connect-bank page with the token in the URL
-    const baseUrl = props.baseUrl || window.location.origin;
-    const connectUrl = `${baseUrl}/connect-bank?token=${encodeURIComponent(props.mcpToken)}`;
+    const connectUrl = `${baseUrl}/connect-bank?token=${encodeURIComponent(mcpToken)}`;
 
     const width = 600;
     const height = 700;
@@ -54,32 +68,15 @@ export default function PlaidRequired() {
 
     if (!popup || popup.closed) {
       console.error("[PlaidRequired Widget] Popup blocked - please allow popups");
-      setError("Popup blocked. Please allow popups and try again.");
+      setUiState({ successMessage: null, errorMessage: "Popup blocked. Please allow popups and try again."});
     } else {
       console.log("[PlaidRequired Widget] Popup opened successfully");
     }
   };
 
-  // Listen for success messages from the popup window
-  React.useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Verify origin for security
-      const baseUrl = props?.baseUrl || window.location.origin;
-      if (!event.origin.includes(new URL(baseUrl).hostname)) {
-        return;
-      }
-
-      if (event.data.type === "plaid-success") {
-        console.log("[PlaidRequired Widget] Received success message from popup");
-        setSuccess(
-          `Successfully connected ${event.data.institution || "your bank"}! You can now use all financial features.`
-        );
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [props?.baseUrl]);
+  // Note: Plaid Link operates within the same page context via the usePlaidLink hook,
+  // so no postMessage communication is needed. The /connect-bank page handles success
+  // via the onSuccess callback directly.
 
   return (
     <div
@@ -110,7 +107,7 @@ export default function PlaidRequired() {
         </div>
 
         {/* Status Messages */}
-        {success && (
+        {uiState?.successMessage && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -121,10 +118,10 @@ export default function PlaidRequired() {
                 : "bg-green-50 border-green-300 text-green-700"
             )}
           >
-            {success}
+            {uiState.successMessage}
           </motion.div>
         )}
-        {error && (
+        {uiState?.errorMessage && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -135,7 +132,7 @@ export default function PlaidRequired() {
                 : "bg-red-50 border-red-300 text-red-700"
             )}
           >
-            {error}
+            {uiState.errorMessage}
           </motion.div>
         )}
 

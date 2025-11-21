@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AskMyMoney is a financial management application built as a ChatGPT MCP (Model Context Protocol) server using Next.js. It integrates with Plaid for bank account data, Better Auth for OAuth 2.1 authentication, and Stripe for subscription management. The app exposes financial tools through MCP that can be invoked from ChatGPT, with responses rendered as interactive widgets in ChatGPT's interface.
+AskMyMoney is a financial management application built as a ChatGPT MCP (Model Context Protocol) server using Next.js. It integrates with Plaid for bank account data, Better Auth for OAuth 2.1 authentication, and Stripe for subscription management. The app exposes financial tools through MCP that can be invoked from ChatGPT, with responses rendered as interactive widgets in ChatGPT's interface. Recent work added Plaid Multi-Item Link support, an account-management widget/tool (`connect_item`), webhook-driven plan-limit enforcement, and an item-deletion audit trail.
 
 ## Development Commands
 
@@ -32,9 +32,9 @@ pnpm check
 pnpm lint
 
 # Database operations
-pnpm db:generate      # Generate Drizzle migrations from schema
-pnpm db:migrate       # Apply pending migrations
-pnpm db:push         # Push schema without migrations (dev only)
+pnpm db:push         # Current workflow: push schema directly in development
+pnpm db:generate     # Optional - generate migrations (coordinate before committing)
+pnpm db:migrate      # Apply pending migrations (mainly for CI or when migrations exist)
 pnpm db:studio       # Launch Drizzle Studio GUI
 pnpm db:schema       # Regenerate schema from Better Auth config
 ```
@@ -98,6 +98,8 @@ The core of the application. Registers financial tools that ChatGPT can invoke:
 - `get_transactions` - Retrieve recent transactions with date filtering (now syncs from local DB)
 - `get_spending_insights` - Analyze spending by category
 - `check_account_health` - Check for low balances, overdrafts, high credit utilization
+- `connect_item` - Connect or delete Plaid items through the Connect Item widget (requires subscription but sets `requirePlaid: false` because it is the entry point for linking)
+- `manage_subscription` - Launch a Stripe billing-portal session so users can update payment methods or cancel plans
 
 **Free Tools (no authentication required):**
 - `get_financial_tips` - Educational financial advice by topic
@@ -123,10 +125,13 @@ Session data stored in PostgreSQL. Rate limiting and caching use Redis as second
 ### Data Layer
 
 **Services:**
-- `lib/services/plaid-service.ts` - All Plaid API interactions (balances, transactions sync, insights, health checks)
-- `lib/services/user-service.ts` - Manages user-to-Plaid item mappings, encrypts/decrypts access tokens
+- `lib/services/plaid-service.ts` - All Plaid API interactions (balances, transactions sync, insights, health checks) plus Multi-Item Link helpers (`getOrCreatePlaidUserToken`, `createLinkToken`, and storage in `plaid_link_sessions`)
+- `lib/services/user-service.ts` - Manages user-to-Plaid item mappings, encrypts/decrypts access tokens, and exposes `countUserItems()` for plan enforcement
+- `lib/services/duplicate-detection-service.ts` - Prevents reconnecting the same institution/accounts by comparing institution IDs and account masks before exchanges
+- `lib/services/item-deletion-service.ts` - Enforces one deletion per 30 days, soft deletes items, calls Plaid `/item/remove`, and logs audits in `plaid_item_deletions`
+- `lib/services/webhook-service.ts` - Persists every webhook payload (no dedupe) and routes ITEM / TRANSACTIONS / AUTH codes
 - `lib/services/encryption-service.ts` - AES-256-GCM encryption for Plaid tokens at rest
-- `lib/utils/subscription-helpers.ts` - Subscription status validation
+- `lib/utils/subscription-helpers.ts` & `lib/utils/plan-limits.ts` - Subscription status validation plus centralized plan metadata
 
 **Database:**
 - PostgreSQL for user data, sessions, Plaid items, subscriptions
@@ -134,6 +139,13 @@ Session data stored in PostgreSQL. Rate limiting and caching use Redis as second
 - Drizzle ORM for type-safe database operations
 - Schema defined in `lib/db/schema.ts`
 - Migrations managed via Drizzle Kit in `drizzle/` directory
+
+### Multi-Item Link & Account Management
+- **Link creation (`app/connect-bank/actions.ts`):** Server action authenticates via Better Auth MCP tokens, checks for active subscriptions, counts items with `UserService.countUserItems()` (active + error items only), enforces limits from `getMaxAccountsForPlan()`, surfaces deletion cooldowns via `ItemDeletionService.getDeletionInfo()`, runs `DuplicateDetectionService.checkForDuplicateItem()` before exchanging public tokens, and triggers initial `/transactions/sync`.
+- **Webhook handler (`app/api/plaid/webhook/route.ts`):** Handles `LINK` events (`ITEM_ADD_RESULT`, `SESSION_FINISHED`) emitted by Multi-Item Link. Each public token exchange re-checks plan limits before calling `UserService.savePlaidItem()` (which sets `status = 'active'` immediately), triggers initial transaction sync, and logs sessions in `plaid_link_sessions`. ITEM/TRANSACTIONS/AUTH events fall through `WebhookService`, which stores every webhook (no type/code dedupe) and routes to sync/update handlers.
+- **Item Status Lifecycle:** Items are created with `status = 'active'` immediately after public token exchange (no waiting for webhooks). Plaid does **NOT** send an `ITEM_READY` webhook - items are ready to use as soon as you have an access token. Status transitions: `active` (connected and ready) → `error` (requires user action, set by ERROR webhook) → `revoked` (user revoked access, set by USER_PERMISSION_REVOKED webhook) → `deleted` (soft deleted by user). The `pending` status is deprecated and no longer used.
+- **Connect Item tool + widget:** The `connect_item` MCP tool (in `app/mcp/route.ts`) packages `ConnectItemResponse` data from `getConnectItemStatus()` and includes `mcpToken` + `baseUrl` metadata so `src/components/connect-item` can open `/connect-bank?token=...` popups, listen for `postMessage` success events, and refresh. Users can delete items via `deleteItem()` (ItemDeletionService rate limit enforced) and see plan-limit messaging inline.
+- **Deletion workflow:** `ItemDeletionService.deleteItemWithRateLimit()` decrypts the Plaid token, calls `/item/remove`, marks the row `status = 'deleted'` with `deleted_at`, and inserts an audit row into `plaid_item_deletions`. Widgets should read `deletionStatus.daysUntilNext` to communicate cooldowns.
 
 ### ChatGPT Widget Integration
 
@@ -149,6 +161,64 @@ Session data stored in PostgreSQL. Rate limiting and caching use Redis as second
    - `<html>` attribute observer - Prevents ChatGPT from modifying root element
 
 4. **Widget Resources**: Tools link to widgets via `templateUri` in OpenAI metadata (e.g., `"ui://widget/account-balances.html"`)
+
+### Widget Architecture Pattern
+
+1. **Widgets are View-Only Components:** Widgets display the structured content returned by MCP tools; they never issue data fetches on their own during initial render.
+2. **Single Source of Truth:** Only read from `toolOutput` (structured content) and `toolMetadata` (widget-only hints like polling intervals). Missing data should be surfaced to the user, not patched by new requests.
+3. **No Server Actions on Mount:** Avoid calling server actions inside `useEffect` when `toolOutput` is `null`. ChatGPT/Claude iframes block those unauthenticated calls, causing false subscription or Plaid errors.
+4. **Server Actions Only for User Interactions:** Server actions are valid when invoked via explicit user interactions (buttons, forms). The Apps SDK forwards credentials for those calls.
+5. **Auth Checks:** Always run `checkWidgetAuth(toolOutput)` before rendering so auth/subscription responses from MCP tools short-circuit reliably.
+6. **Handle Missing Data Gracefully:** If `toolOutput` is missing, show an empty state or instructions instead of firing server actions.
+
+This pattern is critical for every widget so that ChatGPT/Claude iframe contexts remain authenticated.
+
+**Connect Item Bug Recap:**
+- **Bug:** When `toolOutput` was `null`, the Connect Item widget called the `getConnectItemStatus()` server action inside `useEffect`.
+- **Problem:** Better Auth rejects mount-time server action calls made from ChatGPT iframes, so users saw a subscription modal even if they were paid.
+- **Fix:** Remove the mount-time server action and hydrate solely from MCP tool props—this matches working widgets such as account balances and transactions.
+
+**✅ Correct implementation (hydrate from MCP props only):**
+```tsx
+import { useWidgetProps, useWidgetMetadata } from "@openai/widget-sdk";
+import { deleteItem } from "@/app/widgets/connect-item/actions";
+import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
+import type { ConnectItemStatusResponse } from "@/lib/types/tool-responses";
+
+export default function ConnectItemWidget() {
+  const toolOutput = useWidgetProps<ConnectItemStatusResponse>();
+  const toolMetadata = useWidgetMetadata<{ baseUrl?: string }>();
+
+  const authComponent = checkWidgetAuth(toolOutput);
+  if (authComponent) return authComponent;
+
+  if (!toolOutput?.structuredContent) {
+    return <EmptyState message="No accounts yet. Launch Connect Item to add one." />;
+  }
+
+  const { items, deletionStatus } = toolOutput.structuredContent;
+
+  return (
+    <ConnectItemList
+      items={items}
+      deletionStatus={toolMetadata?.deletionStatusOverride ?? deletionStatus}
+      onDelete={async (itemId) => {
+        await deleteItem(itemId); // user action -> server action
+      }}
+    />
+  );
+}
+```
+
+**❌ Incorrect anti-pattern (server action on mount):**
+```tsx
+useEffect(() => {
+  if (!toolOutput) {
+    void getConnectItemStatus(); // server action
+  }
+}, [toolOutput]);
+```
+This anti-pattern reintroduces the bug by calling a server action while the iframe is still authenticating, which results in auth failures.
 
 ### Environment Variables
 
@@ -367,6 +437,8 @@ if (referenceId && subscriptionId) {
 
 Without `subscriptionId` in the metadata, webhooks will silently fail and subscriptions won't be persisted to your database, even though they exist in Stripe.
 
+The `manage_subscription` MCP tool (in `app/mcp/route.ts`) already follows this pattern by surfacing an authenticated billing-portal link. It initializes the Stripe SDK with the pinned preview version `2025-10-29.clover`; keep that value unless maintainers decide to downgrade, since the rest of the stack expects that version.
+
 ## Database Schema
 
 **Using Drizzle ORM** - Schema defined in `lib/db/schema.ts` with snake_case column names:
@@ -386,10 +458,12 @@ Without `subscriptionId` in the metadata, webhooks will silently fail and subscr
 - `subscription` - Stripe subscriptions with plan limits (from stripe plugin)
 
 **Custom Application Tables:**
-- `plaid_items` - User-to-Plaid account mappings (access tokens encrypted)
+- `plaid_items` - User-to-Plaid account mappings (encrypted tokens, `status`, error columns, `deleted_at`)
 - `plaid_accounts` - Stores account-level data from Plaid
 - `plaid_transactions` - Stores transaction data synced from Plaid
-- `plaid_webhooks` - Plaid webhook event logs
+- `plaid_webhooks` - Full webhook event log (no dedupe)
+- `plaid_link_sessions` - Tracks Multi-Item Link sessions, user tokens, statuses, and metadata consumed by webhook handlers
+- `plaid_item_deletions` - Records deletion audits + timestamps for rate limiting
 - The Plaid `/transactions/sync` workflow (webhook triggers, cursor handling, MCP tool consumption) lives in `docs/TRANSACTION_SYNC.md`; read it before modifying `plaid-service.ts` or the `get_transactions` tool.
 
 **Important:** Database columns use snake_case (e.g., `stripe_customer_id`, `reference_id`) while TypeScript properties use camelCase. When writing raw SQL queries, always use snake_case column names.

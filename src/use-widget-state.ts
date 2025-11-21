@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type SetStateAction } from "react";
+import { useCallback, type SetStateAction } from "react";
 import { useOpenAiGlobal } from "./use-openai-global";
 import type { UnknownObject } from "./types";
 
@@ -30,41 +30,28 @@ export function useWidgetState<T extends UnknownObject>(
   defaultState: T | (() => T)
 ): readonly [T, (state: SetStateAction<T>) => void];
 export function useWidgetState<T extends UnknownObject>(
-  defaultState?: T | (() => T | null) | null
-): readonly [T | null, (state: SetStateAction<T | null>) => void];
-export function useWidgetState<T extends UnknownObject>(
-  defaultState?: T | (() => T | null) | null
-): readonly [T | null, (state: SetStateAction<T | null>) => void] {
-  const widgetStateFromWindow = useOpenAiGlobal("widgetState") as T;
-
-  const [widgetState, _setWidgetState] = useState<T | null>(() => {
-    if (widgetStateFromWindow != null) {
-      return widgetStateFromWindow;
-    }
-
-    return typeof defaultState === "function"
-      ? defaultState()
-      : defaultState ?? null;
-  });
-
-  useEffect(() => {
-    _setWidgetState(widgetStateFromWindow);
-  }, [widgetStateFromWindow]);
+  defaultState: T | (() => T)
+): readonly [T, (state: SetStateAction<T>) => void] {
+  const widgetState = useOpenAiGlobal("widgetState") as T | null;
 
   const setWidgetState = useCallback(
-    (state: SetStateAction<T | null>) => {
-      _setWidgetState((prevState) => {
-        const newState = typeof state === "function" ? state(prevState) : state;
+    (state: SetStateAction<T>) => {
+      // Correctly handle functional updates, ensuring we don't pass nulls
+      const currentState = (typeof window !== "undefined" ? window.openai?.widgetState : null) as T | null;
+      const resolvedDefault = typeof defaultState === "function" ? (defaultState as () => T)() : defaultState;
 
-        if (newState != null && typeof window !== "undefined" && window.openai) {
-          window.openai.setWidgetState(newState);
-        }
+      const newState = typeof state === "function"
+        ? (state as (prevState: T) => T)(currentState ?? resolvedDefault)
+        : state;
 
-        return newState;
-      });
+      if (newState != null && typeof window !== "undefined" && window.openai) {
+        window.openai.setWidgetState(newState);
+      }
     },
-    []
+    [defaultState]
   );
 
-  return [widgetState, setWidgetState] as const;
+  const resolvedState = widgetState ?? (typeof defaultState === "function" ? (defaultState as () => T)() : defaultState);
+
+  return [resolvedState, setWidgetState] as const;
 }

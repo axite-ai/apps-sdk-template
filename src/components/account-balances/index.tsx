@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize2, ChevronDown, ChevronUp } from "lucide-react";
 import { useWidgetProps } from "@/src/use-widget-props";
+import { useOpenAiGlobal } from "@/src/use-openai-global";
+import { useWidgetState } from "@/src/use-widget-state";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
 import { useTheme } from "@/src/use-theme";
@@ -25,10 +27,19 @@ interface Account {
 }
 
 interface ToolOutput extends Record<string, unknown> {
-  accounts?: Account[];
+  totalBalance?: number;
+  accountCount?: number;
   featureName?: string;
   message?: string;
   error_message?: string;
+}
+
+interface ToolMetadata {
+  accounts: Account[];
+}
+
+interface BalancesUIState extends Record<string, unknown> {
+  expandedAccountIds: string[];
 }
 
 function getAccountIcon(type: string, subtype?: string) {
@@ -55,13 +66,12 @@ function getAccountColor(type: string) {
 
 interface AccountCardProps {
   account: Account;
-  isFullscreen: boolean;
+  isExpanded: boolean;
+  onToggle: () => void;
   isDark: boolean;
 }
 
-function AccountCard({ account, isFullscreen, isDark }: AccountCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
+function AccountCard({ account, isExpanded, onToggle, isDark }: AccountCardProps) {
   const hasAvailable =
     account.balances.available !== null &&
     account.balances.available !== account.balances.current;
@@ -124,7 +134,7 @@ function AccountCard({ account, isFullscreen, isDark }: AccountCardProps) {
 
           {hasAvailable && (
             <button
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={onToggle}
               className={cn(
                 "flex-shrink-0 p-1.5 rounded-lg transition-colors",
                 isDark
@@ -213,38 +223,45 @@ function AccountCard({ account, isFullscreen, isDark }: AccountCardProps) {
 
 export default function AccountBalances() {
   const toolOutput = useWidgetProps<ToolOutput>();
+  const toolMetadata = useOpenAiGlobal("toolResponseMetadata") as ToolMetadata | null;
+  const [uiState, setUiState] = useWidgetState<BalancesUIState>({
+    expandedAccountIds: [],
+  });
+
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
   const theme = useTheme();
   const isFullscreen = displayMode === "fullscreen";
   const isDark = theme === "dark";
 
+  const toggleAccountExpanded = (accountId: string) => {
+    setUiState(prevState => {
+      const currentlyExpanded = new Set(prevState.expandedAccountIds);
+      if (currentlyExpanded.has(accountId)) {
+        currentlyExpanded.delete(accountId);
+      } else {
+        currentlyExpanded.add(accountId);
+      }
+      return { ...prevState, expandedAccountIds: Array.from(currentlyExpanded) };
+    });
+  };
+
   // Check for auth requirements
   const authComponent = checkWidgetAuth(toolOutput);
   if (authComponent) return authComponent;
 
-  // No data check
-  if (!toolOutput) {
-    return (
-      <div className="p-8 text-center text-black/60 dark:text-white/60">
-        <p>No account data available</p>
-      </div>
-    );
-  }
+  const accounts = toolMetadata?.accounts ?? [];
+  const totalBalance = toolOutput?.totalBalance ?? 0;
+  const accountCount = toolOutput?.accountCount ?? accounts.length;
 
-  if (!toolOutput.accounts || toolOutput.accounts.length === 0) {
+  // No data check
+  if (accounts.length === 0) {
     return (
       <div className="p-8 text-center text-black/60 dark:text-white/60">
         <p>No accounts found</p>
       </div>
     );
   }
-
-  const accounts = toolOutput.accounts;
-  const totalBalance = accounts.reduce(
-    (sum, account) => sum + (account.balances.current || 0),
-    0
-  );
 
   return (
     <div
@@ -324,7 +341,7 @@ export default function AccountBalances() {
                   : "bg-emerald-100 text-emerald-800"
               )}
             >
-              {accounts.length} {accounts.length === 1 ? "Account" : "Accounts"}
+              {accountCount} {accountCount === 1 ? "Account" : "Accounts"}
             </div>
           </div>
         </div>
@@ -343,7 +360,8 @@ export default function AccountBalances() {
               <AccountCard
                 key={account.account_id}
                 account={account}
-                isFullscreen={isFullscreen}
+                isExpanded={uiState.expandedAccountIds.includes(account.account_id)}
+                onToggle={() => toggleAccountExpanded(account.account_id)}
                 isDark={isDark}
               />
             ))}

@@ -113,86 +113,73 @@ describe('Services - Integration Tests', () => {
     });
   });
 
+  vi.mock('@/lib/utils/subscription-helpers', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/utils/subscription-helpers')>();
+  return {
+    ...actual,
+    // Mock getUserSubscription as it's a dependency of hasActiveSubscription and makes external calls
+    getUserSubscription: vi.fn(),
+  };
+});
+
+import { hasActiveSubscription, getUserSubscription } from '@/lib/utils/subscription-helpers';
+
+// ... (rest of the file remains the same until the describe block) ...
+
   describe('Subscription Helpers', () => {
+    // Restore mocks before each test
+    beforeEach(() => {
+      vi.restoreAllMocks();
+    });
+
     describe('hasActiveSubscription', () => {
-      it('should return true for active subscription', async () => {
+      it('should return the subscription object for an active subscription', async () => {
         const userId = mockUsers.withSubscription.id;
+        (getUserSubscription as vi.Mock).mockResolvedValue(mockSubscriptions.active);
 
-        const { mockPool, mockClient } = createMockDbPool();
-        mockClient.query.mockResolvedValueOnce({
-          rows: [mockSubscriptions.active],
-          rowCount: 1,
-        });
-
-        // Simulate subscription check
-        const hasSubscription = mockSubscriptions.active.status === 'active';
-
-        expect(hasSubscription).toBe(true);
+        const result = await hasActiveSubscription(userId);
+        expect(getUserSubscription).toHaveBeenCalledWith(userId);
+        expect(result).not.toBeNull();
+        expect(result?.status).toBe('active');
       });
 
-      it('should return true for trialing subscription', async () => {
+      it('should return the subscription object for a trialing subscription', async () => {
         const userId = mockUsers.withPlaid.id;
+        (getUserSubscription as vi.Mock).mockResolvedValue(mockSubscriptions.trialing);
 
-        const { mockPool, mockClient } = createMockDbPool();
-        mockClient.query.mockResolvedValueOnce({
-          rows: [mockSubscriptions.trialing],
-          rowCount: 1,
-        });
-
-        // Trialing counts as active
-        const hasSubscription = ['active', 'trialing'].includes(
-          mockSubscriptions.trialing.status
-        );
-
-        expect(hasSubscription).toBe(true);
+        const result = await hasActiveSubscription(userId);
+        expect(getUserSubscription).toHaveBeenCalledWith(userId);
+        expect(result).not.toBeNull();
+        expect(result?.status).toBe('trialing');
       });
 
-      it('should return false when no subscription exists', async () => {
+      it('should return null when no subscription exists', async () => {
         const userId = mockUsers.withoutSubscription.id;
+        (getUserSubscription as vi.Mock).mockResolvedValue(null);
 
-        const { mockPool, mockClient } = createMockDbPool();
-        mockClient.query.mockResolvedValueOnce({
-          rows: [],
-          rowCount: 0,
-        });
-
-        const hasSubscription = false;
-
-        expect(hasSubscription).toBe(false);
+        const result = await hasActiveSubscription(userId);
+        expect(getUserSubscription).toHaveBeenCalledWith(userId);
+        expect(result).toBeNull();
       });
 
-      it('should return false for canceled subscription', async () => {
-        const canceledSub = {
-          ...mockSubscriptions.active,
-          status: 'canceled',
-        };
+      it('should return null for a canceled subscription', async () => {
+        const userId = 'user_with_canceled_sub';
+        const canceledSub = { ...mockSubscriptions.active, status: 'canceled' };
+        (getUserSubscription as vi.Mock).mockResolvedValue(canceledSub);
 
-        const { mockPool, mockClient } = createMockDbPool();
-        mockClient.query.mockResolvedValueOnce({
-          rows: [canceledSub],
-          rowCount: 1,
-        });
-
-        const hasSubscription = canceledSub.status === 'active';
-
-        expect(hasSubscription).toBe(false);
+        const result = await hasActiveSubscription(userId);
+        expect(getUserSubscription).toHaveBeenCalledWith(userId);
+        expect(result).toBeNull();
       });
 
-      it('should return false for past_due subscription', async () => {
-        const pastDueSub = {
-          ...mockSubscriptions.active,
-          status: 'past_due',
-        };
+      it('should return null for a past_due subscription', async () => {
+        const userId = 'user_with_pastdue_sub';
+        const pastDueSub = { ...mockSubscriptions.active, status: 'past_due' };
+        (getUserSubscription as vi.Mock).mockResolvedValue(pastDueSub);
 
-        const { mockPool, mockClient } = createMockDbPool();
-        mockClient.query.mockResolvedValueOnce({
-          rows: [pastDueSub],
-          rowCount: 1,
-        });
-
-        const hasSubscription = pastDueSub.status === 'active';
-
-        expect(hasSubscription).toBe(false);
+        const result = await hasActiveSubscription(userId);
+        expect(getUserSubscription).toHaveBeenCalledWith(userId);
+        expect(result).toBeNull();
       });
     });
 

@@ -119,7 +119,7 @@ export default function LoginForm() {
       if (oauthAuthorizeUrl) {
         // OAuth flow - redirect to authorization endpoint
         console.log("Redirecting to OAuth authorize:", oauthAuthorizeUrl);
-        window.location.href = oauthAuthorizeUrl;
+        router.push(oauthAuthorizeUrl);
       } else if (data.url) {
         // Better Auth provided a redirect URL
         console.log("Redirecting to:", data.url);

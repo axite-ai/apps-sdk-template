@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Lock, Check, Maximize2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useWidgetProps } from "@/src/use-widget-props";
+import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
 import { useTheme } from "@/src/use-theme";
@@ -17,7 +18,7 @@ const PLANS = [
     price: "$9.99",
     interval: "month",
     features: [
-      "Up to 3 bank accounts",
+      "Up to 3 financial accounts",
       "Transaction history",
       "Spending insights",
       "Email support",
@@ -31,7 +32,7 @@ const PLANS = [
     popular: true,
     trial: "14-day free trial",
     features: [
-      "Up to 10 bank accounts",
+      "Up to 10 financial accounts",
       "All Basic features",
       "Account health monitoring",
       "Advanced analytics",
@@ -44,7 +45,7 @@ const PLANS = [
     price: "$49.99",
     interval: "month",
     features: [
-      "Unlimited bank accounts",
+      "Unlimited financial accounts",
       "All Pro features",
       "Custom reporting",
       "API access",
@@ -55,13 +56,17 @@ const PLANS = [
 
 interface SubscriptionRequiredProps extends Record<string, unknown> {
   featureName?: string;
-  userId?: string;
   error_message?: string;
   pricingUrl?: string;
 }
 
+interface SubscriptionRequiredMetadata {
+  userId?: string;
+}
+
 export default function SubscriptionRequired() {
   const toolOutput = useWidgetProps<SubscriptionRequiredProps>();
+  const toolMetadata = useOpenAiGlobal("toolResponseMetadata") as SubscriptionRequiredMetadata | null;
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
   const theme = useTheme();
@@ -73,7 +78,8 @@ export default function SubscriptionRequired() {
   const [error, setError] = useState<string | null>(null);
 
   const featureName = toolOutput?.featureName || "this feature";
-  const userId = toolOutput?.userId;
+  const userId = toolMetadata?.userId;
+
 
   const handleSelectPlan = (planId: string) => {
     if (isLoading) return;
@@ -83,7 +89,6 @@ export default function SubscriptionRequired() {
   const handleSubscribe = async () => {
     if (!selectedPlan || isLoading) return;
 
-    // Validate we have userId from the authenticated MCP session
     if (!userId) {
       setError("Authentication error. Please refresh and try again.");
       return;
@@ -93,16 +98,7 @@ export default function SubscriptionRequired() {
     setError(null);
 
     try {
-      console.log(
-        "[Subscription Widget] Calling server action for plan:",
-        selectedPlan,
-        "userId:",
-        userId
-      );
-
       const result = await upgradeSubscription(userId, selectedPlan);
-
-      console.log("[Subscription Widget] Server action result:", result);
 
       if (!result.success) {
         throw new Error(result.error || "Failed to create checkout session");
@@ -112,22 +108,20 @@ export default function SubscriptionRequired() {
         throw new Error("No checkout URL returned from server");
       }
 
-      console.log("[Subscription Widget] Opening checkout URL:", result.checkoutUrl);
-
-      // Check if we're in ChatGPT MCP context
+      // Redirect to Stripe (button stays disabled)
       if (typeof window !== "undefined" && window.openai?.openExternal) {
-        // In ChatGPT iframe - use openExternal
         window.openai.openExternal({ href: result.checkoutUrl });
       } else {
-        // Regular browser - use window.location
         window.location.href = result.checkoutUrl;
       }
+
+      // Note: Button stays disabled after redirect. User will close the Stripe page
+      // and retry their original request in ChatGPT, which will now work.
     } catch (error: unknown) {
       console.error("Subscription error:", error);
       setError(
         error instanceof Error ? error.message : "Failed to start subscription. Please try again."
       );
-    } finally {
       setIsLoading(false);
     }
   };
@@ -141,7 +135,7 @@ export default function SubscriptionRequired() {
       )}
       style={{
         maxHeight: maxHeight ?? undefined,
-        height: isFullscreen ? maxHeight ?? undefined : undefined,
+        height: isFullscreen ? maxHeight ?? undefined : "auto",
       }}
     >
       {/* Expand button (inline mode only) */}
@@ -307,7 +301,7 @@ export default function SubscriptionRequired() {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-              Processing...
+              Opening Stripe...
             </>
           ) : selectedPlan ? (
             <>Subscribe to {PLANS.find((p) => p.id === selectedPlan)?.name}</>

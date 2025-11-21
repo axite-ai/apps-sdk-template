@@ -9,7 +9,8 @@ import { betterAuth } from "better-auth";
 import { mcp, apiKey, jwt } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { stripe } from "@better-auth/stripe";
-import { db, pool } from "@/lib/db";
+import { db, pool, schema } from "@/lib/db";
+import { eq } from "drizzle-orm";
 import { Redis } from "ioredis";
 import Stripe from "stripe";
 import type { Subscription, StripePlan } from "@better-auth/stripe";
@@ -50,10 +51,9 @@ const ensureLeadingSlash = (value: string) =>
   value.startsWith("/") ? value : `/${value}`;
 
 // Determine the application origin (used for user-facing URLs)
-const appOrigin =
-  process.env.APP_URL ||
-  (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
-  "https://dev.askmymoney.ai";
+const appOrigin = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : "https://dev.askmymoney.ai";
 
 const authBasePath = ensureLeadingSlash(
   process.env.BETTER_AUTH_BASE_PATH || "/api/auth"
@@ -192,6 +192,15 @@ export const auth = betterAuth({
           "email",
           "claudeai",
           "offline_access",
+          "balances:read",
+          "transactions:read",
+          "insights:read",
+          "health:read",
+          "investments:read",
+          "liabilities:read",
+          "subscription:manage",
+          "accounts:read",
+          "accounts:write",
         ],
         trustedClients: [
           {
@@ -341,35 +350,29 @@ export const auth = betterAuth({
             cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
           });
 
-          // Verify subscription was written to database
+          // Verify subscription was written to database using Drizzle ORM
           try {
-            const client = await pool.connect();
+            const dbCheckResult = await db
+              .select()
+              .from(schema.subscription)
+              .where(eq(schema.subscription.referenceId, subscription.referenceId));
 
-            try {
-              // Check if subscription exists in database
-              const dbCheckResult = await client.query(
-                'SELECT * FROM subscription WHERE "referenceId" = $1',
-                [subscription.referenceId]
-              );
-              console.log("[Stripe] Database verification after onSubscriptionComplete:", {
-                found: dbCheckResult.rowCount,
-                subscriptions: dbCheckResult.rows,
+            console.log("[Stripe] Database verification after onSubscriptionComplete:", {
+              found: dbCheckResult.length,
+              subscriptions: dbCheckResult,
+            });
+
+            if (subscription.stripeSubscriptionId) {
+              const stripeIdCheckResult = await db
+                .select()
+                .from(schema.subscription)
+                .where(eq(schema.subscription.stripeSubscriptionId, subscription.stripeSubscriptionId));
+              
+              console.log("[Stripe] Database lookup by stripeSubscriptionId:", {
+                stripeSubscriptionId: subscription.stripeSubscriptionId,
+                found: stripeIdCheckResult.length,
+                subscriptions: stripeIdCheckResult,
               });
-
-              // Also check by stripeSubscriptionId
-              if (subscription.stripeSubscriptionId) {
-                const stripeIdCheckResult = await client.query(
-                  'SELECT * FROM subscription WHERE "stripeSubscriptionId" = $1',
-                  [subscription.stripeSubscriptionId]
-                );
-                console.log("[Stripe] Database lookup by stripeSubscriptionId:", {
-                  stripeSubscriptionId: subscription.stripeSubscriptionId,
-                  found: stripeIdCheckResult.rowCount,
-                  subscriptions: stripeIdCheckResult.rows,
-                });
-              }
-            } finally {
-              client.release();
             }
           } catch (error) {
             console.error("[Stripe] Failed to verify subscription in database:", error);
@@ -379,30 +382,25 @@ export const auth = betterAuth({
           try {
             const { EmailService } = await import("@/lib/services/email-service");
 
-            // Get user details from database
-            const client = await pool.connect();
+            // Get user details from database using Drizzle
+            const userResult = await db
+              .select({ email: schema.user.email, name: schema.user.name })
+              .from(schema.user)
+              .where(eq(schema.user.id, subscription.referenceId))
+              .limit(1);
 
-            try {
-              const userResult = await client.query(
-                'SELECT email, name FROM "user" WHERE id = $1',
-                [subscription.referenceId]
+            const user = userResult[0];
+            if (user?.email) {
+              const userName = user.name || "there";
+              const planName = plan.name.charAt(0).toUpperCase() + plan.name.slice(1);
+
+              await EmailService.sendSubscriptionConfirmation(
+                user.email,
+                userName,
+                planName
               );
 
-              const user = userResult.rows[0];
-              if (user?.email) {
-                const userName = user.name || "there";
-                const planName = plan.name.charAt(0).toUpperCase() + plan.name.slice(1);
-
-                await EmailService.sendSubscriptionConfirmation(
-                  user.email,
-                  userName,
-                  planName
-                );
-
-                console.log("[Stripe] Subscription confirmation email sent to", user.email);
-              }
-            } finally {
-              client.release();
+              console.log("[Stripe] Subscription confirmation email sent to", user.email);
             }
           } catch (error) {
             console.error("[Stripe] Failed to send subscription confirmation email:", error);

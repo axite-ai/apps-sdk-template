@@ -8,6 +8,7 @@
 // Add any per-test-file setup here if needed
 // For example: importing test utilities, setting up mocks, etc.
 
+import { beforeAll, afterAll } from 'vitest';
 import '@testing-library/jest-dom';
 
 // Suppress console errors/warnings in tests unless explicitly testing them

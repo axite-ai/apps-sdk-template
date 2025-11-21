@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, TrendingDown, TrendingUp } from "lucide-react";
+import { Maximize2, TrendingDown } from "lucide-react";
 import { useWidgetProps } from "@/src/use-widget-props";
+import { useOpenAiGlobal } from "@/src/use-openai-global";
+import { useWidgetState } from "@/src/use-widget-state";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
 import { useTheme } from "@/src/use-theme";
@@ -14,13 +16,24 @@ import { cn } from "@/lib/utils/cn";
 interface Category {
   name: string;
   amount: number;
+  percentage: number;
 }
 
 interface ToolOutput extends Record<string, unknown> {
-  categories?: Category[];
+  totalSpending?: number;
+  categoryCount?: number;
+  dateRange?: { start: string; end: string };
   message?: string;
   error_message?: string;
   featureName?: string;
+}
+
+interface ToolMetadata {
+  categories: Category[];
+}
+
+interface SpendingUIState extends Record<string, unknown> {
+  selectedIndex: number | null;
 }
 
 const CATEGORY_COLORS = [
@@ -70,7 +83,7 @@ function getCategoryIcon(name: string) {
 }
 
 interface CategoryBarProps {
-  category: Category & { percentage: number; color: string; solidColor: string };
+  category: Category & { color: string; solidColor: string };
   index: number;
   isFullscreen: boolean;
   isDark: boolean;
@@ -81,7 +94,6 @@ interface CategoryBarProps {
 function CategoryBar({
   category,
   index,
-  isFullscreen,
   isDark,
   onClick,
   isSelected,
@@ -135,7 +147,7 @@ function CategoryBar({
               isDark ? "text-white/50" : "text-black/50"
             )}
           >
-            {formatPercent(category.percentage)}
+            {formatPercent(category.percentage / 100)}
           </p>
         </div>
         <div
@@ -172,7 +184,7 @@ function CategoryBar({
 }
 
 interface DonutChartProps {
-  categories: Array<Category & { percentage: number; color: string; solidColor: string }>;
+  categories: Array<Category & { color: string; solidColor: string }>;
   totalSpending: number;
   isDark: boolean;
   selectedIndex: number | null;
@@ -347,18 +359,22 @@ function DonutChart({
 
 export default function SpendingInsights() {
   const toolOutput = useWidgetProps<ToolOutput>();
+  const toolMetadata = useOpenAiGlobal("toolResponseMetadata") as ToolMetadata | null;
+  const [uiState, setUiState] = useWidgetState<SpendingUIState>({
+    selectedIndex: null,
+  });
+
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
   const theme = useTheme();
   const isFullscreen = displayMode === "fullscreen";
   const isDark = theme === "dark";
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   // Check for auth requirements
   const authComponent = checkWidgetAuth(toolOutput);
   if (authComponent) return authComponent;
 
-  if (!toolOutput) {
+  if (!toolOutput && !toolMetadata) {
     return (
       <div className="p-8 text-center text-black/60 dark:text-white/60">
         <p>No spending data available</p>
@@ -366,23 +382,24 @@ export default function SpendingInsights() {
     );
   }
 
-  if (!toolOutput.categories || toolOutput.categories.length === 0) {
-    return (
-      <div className="p-8 text-center text-black/60 dark:text-white/60">
-        <p>No spending data available</p>
-      </div>
-    );
-  }
-
-  const rawCategories = toolOutput.categories;
-  const totalSpending = rawCategories.reduce(
+  const rawCategories = toolMetadata?.categories || [];
+  const totalSpending = toolOutput?.totalSpending ?? rawCategories.reduce(
     (sum, cat) => sum + Math.abs(cat.amount),
     0
   );
 
+  if (rawCategories.length === 0) {
+    return (
+      <div className="p-8 text-center text-black/60 dark:text-white/60">
+        <p>No spending data available</p>
+      </div>
+    );
+  }
+
+
   const categoriesWithMetadata = rawCategories.map((cat, index) => ({
     ...cat,
-    percentage: (Math.abs(cat.amount) / totalSpending) * 100,
+    percentage: cat.percentage ?? (totalSpending > 0 ? (Math.abs(cat.amount) / totalSpending) * 100 : 0),
     color: CATEGORY_COLORS[index % CATEGORY_COLORS.length]!,
     solidColor: CATEGORY_SOLID_COLORS[index % CATEGORY_SOLID_COLORS.length]!,
   }));
@@ -473,9 +490,9 @@ export default function SpendingInsights() {
                 categories={categoriesWithMetadata}
                 totalSpending={totalSpending}
                 isDark={isDark}
-                selectedIndex={selectedIndex}
+                selectedIndex={uiState.selectedIndex}
                 onSelectCategory={(index) =>
-                  setSelectedIndex(selectedIndex === index ? null : index)
+                  setUiState(s => ({ ...s, selectedIndex: s.selectedIndex === index ? null : index }))
                 }
               />
             </div>
@@ -492,9 +509,9 @@ export default function SpendingInsights() {
                   isFullscreen={isFullscreen}
                   isDark={isDark}
                   onClick={() =>
-                    setSelectedIndex(selectedIndex === index ? null : index)
+                    setUiState(s => ({ ...s, selectedIndex: s.selectedIndex === index ? null : index }))
                   }
-                  isSelected={selectedIndex === index}
+                  isSelected={uiState.selectedIndex === index}
                 />
               ))}
             </AnimatePresence>

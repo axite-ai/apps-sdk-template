@@ -52,29 +52,53 @@ export async function requireAuth(
 ) {
   const { requireSubscription = true, requirePlaid = true, headers } = options;
 
+  console.log(`[requireAuth] Checking auth for ${featureName}:`, {
+    hasSession: !!session,
+    userId: session?.userId,
+    requireSubscription,
+    requirePlaid,
+  });
+
   // Check 1: Session exists (OAuth authentication)
   if (!session) {
+    console.log(`[requireAuth] No session, returning login prompt`);
     return createLoginPromptResponse(featureName);
   }
 
   // Check 2: Active subscription (if required)
-  if (requireSubscription && !(await hasActiveSubscription(session.userId))) {
-    return createSubscriptionRequiredResponse(featureName, session.userId);
+  if (requireSubscription) {
+    const hasSubscription = await hasActiveSubscription(session.userId);
+    console.log(`[requireAuth] Subscription check:`, {
+      required: true,
+      hasSubscription,
+    });
+
+    if (!hasSubscription) {
+      console.log(`[requireAuth] No subscription, returning subscription required response`);
+      return createSubscriptionRequiredResponse(featureName, session.userId);
+    }
   }
 
   // Check 3: Plaid connection (if required)
   if (requirePlaid) {
     const accessTokens = await UserService.getUserAccessTokens(session.userId);
+    console.log(`[requireAuth] Plaid check:`, {
+      required: true,
+      tokenCount: accessTokens.length,
+    });
+
     if (accessTokens.length === 0) {
       if (!headers) {
         throw new Error(
           `[requireAuth] Headers required for Plaid check but not provided for feature: ${featureName}`
         );
       }
+      console.log(`[requireAuth] No Plaid tokens, returning Plaid required response`);
       return await createPlaidRequiredResponse(session.userId, headers);
     }
   }
 
   // All checks passed
+  console.log(`[requireAuth] All checks passed for ${featureName}`);
   return null;
 }

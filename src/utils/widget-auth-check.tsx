@@ -36,10 +36,8 @@ export function checkWidgetAuth(toolOutput: any) {
   }
 
   // Check for subscription required
-  if (
-    toolOutput.error_message === "Subscription required" ||
-    toolOutput.featureName
-  ) {
+  // Only show subscription modal if there's an actual error, not just because featureName exists
+  if (toolOutput.error_message === "Subscription required") {
     return <SubscriptionRequired />;
   }
 

@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { plaidLinkSessions } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { WebhookService } from '@/lib/services/webhook-service';
-import { exchangePublicToken } from '@/lib/services/plaid-service';
+import { exchangePublicToken, plaidClient } from '@/lib/services/plaid-service';
 import { UserService } from '@/lib/services/user-service';
 
 /**
@@ -132,14 +132,70 @@ async function handleItemAddResult(
   }
 
   try {
+    // CRITICAL: Check plan limits before exchanging token
+    // This prevents users from bypassing limits by adding multiple items in one session
+    const itemCount = await UserService.countUserItems(session.userId);
+    const { getMaxAccountsForPlan } = await import('@/lib/utils/plan-limits');
+    const { subscription } = await import('@/lib/db/schema');
+    const { and, eq, inArray, desc } = await import('drizzle-orm');
+
+    // Get user's plan
+    const userSubscriptions = await db
+      .select({ plan: subscription.plan })
+      .from(subscription)
+      .where(
+        and(
+          eq(subscription.referenceId, session.userId),
+          inArray(subscription.status, ['active', 'trialing'])
+        )
+      )
+      .orderBy(desc(subscription.periodStart))
+      .limit(1);
+
+    const plan = userSubscriptions[0]?.plan || null;
+    const maxAccounts = getMaxAccountsForPlan(plan);
+
+    // If no active subscription, skip processing
+    if (!plan || maxAccounts === null) {
+      console.warn('[Link Webhook] No active subscription, skipping item add', {
+        userId: session.userId,
+      });
+      return;
+    }
+
+    if (itemCount >= maxAccounts) {
+      console.warn('[Link Webhook] Plan limit reached, skipping item add', {
+        userId: session.userId,
+        itemCount,
+        maxAccounts,
+        plan,
+      });
+      return; // Skip this item - user at limit
+    }
+
     // Exchange public token for access token
     const { accessToken, itemId } = await exchangePublicToken(publicToken);
 
     // Extract institution info from webhook metadata if available
-    const institutionId = webhook.institution?.institution_id;
-    const institutionName = webhook.institution?.name;
+    let institutionId = webhook.institution?.institution_id;
+    let institutionName = webhook.institution?.name;
 
-    // Save the Plaid item
+    // If institution details missing, fetch from Plaid using /item/get
+    // (webhook payloads don't always include institution info)
+    if (!institutionId || !institutionName) {
+      try {
+        console.log('[Link Webhook] Institution details missing, fetching from /item/get');
+        const itemResponse = await plaidClient.itemGet({ access_token: accessToken });
+        institutionId = itemResponse.data.item.institution_id ?? undefined;
+        institutionName = itemResponse.data.item.institution_name ?? undefined;
+        console.log('[Link Webhook] Fetched institution details:', { institutionId, institutionName });
+      } catch (error) {
+        console.error('[Link Webhook] Error fetching institution details from /item/get:', error);
+        // Continue without institution details - not critical for item creation
+      }
+    }
+
+    // Save the Plaid item (status set to 'active' immediately)
     await UserService.savePlaidItem(
       session.userId,
       itemId,
@@ -147,6 +203,18 @@ async function handleItemAddResult(
       institutionId,
       institutionName
     );
+
+    // CRITICAL: Trigger initial transaction sync
+    // This ensures Plaid sends future SYNC_UPDATES_AVAILABLE webhooks
+    // Items are ready immediately after token exchange - no need to wait for ITEM_READY
+    try {
+      const { syncTransactionsForItem } = await import('@/lib/services/plaid-service');
+      await syncTransactionsForItem(itemId);
+      console.log(`[Link Webhook] Initial transaction sync triggered for item ${itemId}`);
+    } catch (error) {
+      console.error(`[Link Webhook] Failed to trigger initial sync for item ${itemId}`, error);
+      // Don't fail the webhook - sync can be retried later
+    }
 
     // Update session with incremented items count
     await db
@@ -193,6 +261,40 @@ async function handleSessionFinished(
 
     for (const publicToken of publicTokens) {
       try {
+        // CRITICAL: Check plan limits before each token exchange
+        const itemCount = await UserService.countUserItems(session.userId);
+        const { getMaxAccountsForPlan } = await import('@/lib/utils/plan-limits');
+        const { subscription } = await import('@/lib/db/schema');
+        const { and, eq, inArray, desc } = await import('drizzle-orm');
+
+        const userSubscriptions = await db
+          .select({ plan: subscription.plan })
+          .from(subscription)
+          .where(
+            and(
+              eq(subscription.referenceId, session.userId),
+              inArray(subscription.status, ['active', 'trialing'])
+            )
+          )
+          .orderBy(desc(subscription.periodStart))
+          .limit(1);
+
+        const plan = userSubscriptions[0]?.plan || null;
+        const maxAccounts = getMaxAccountsForPlan(plan);
+
+        // If no active subscription, stop processing
+        if (!plan || maxAccounts === null) {
+          console.warn('[Link Webhook] No active subscription in SESSION_FINISHED, skipping remaining tokens', {
+            userId: session.userId,
+          });
+          break;
+        }
+
+        if (itemCount >= maxAccounts) {
+          console.warn('[Link Webhook] Plan limit reached in SESSION_FINISHED, skipping remaining tokens');
+          break; // Stop processing tokens - user at limit
+        }
+
         // Only process if we haven't already (check by counting items)
         // This is a safety check in case ITEM_ADD_RESULT webhooks were missed
         const { accessToken, itemId } = await exchangePublicToken(publicToken);

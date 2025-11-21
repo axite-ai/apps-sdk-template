@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, CreditCard, GraduationCap, Home, AlertTriangle, DollarSign, Calendar } from "lucide-react";
+import { Maximize2, CreditCard, GraduationCap, Home, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useWidgetProps } from "@/src/use-widget-props";
+import { useOpenAiGlobal } from "@/src/use-openai-global";
+import { useWidgetState } from "@/src/use-widget-state";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
 import { useTheme } from "@/src/use-theme";
@@ -126,14 +128,21 @@ interface Summary {
 }
 
 interface ToolOutput extends Record<string, unknown> {
-  accounts?: Account[];
-  credit?: CreditCard[];
-  student?: StudentLoan[];
-  mortgage?: Mortgage[];
   summary?: Summary;
   featureName?: string;
   message?: string;
   error_message?: string;
+}
+
+interface ToolMetadata {
+  accounts: Account[];
+  credit: CreditCard[];
+  student: StudentLoan[];
+  mortgage: Mortgage[];
+}
+
+interface LiabilitiesUIState extends Record<string, unknown> {
+  expandedIds: string[];
 }
 
 function getDaysUntil(dateString: string | null) {
@@ -147,17 +156,37 @@ function getDaysUntil(dateString: string | null) {
 
 export default function Liabilities() {
   const toolOutput = useWidgetProps<ToolOutput>();
+  const toolMetadata = useOpenAiGlobal("toolResponseMetadata") as ToolMetadata | null;
+  const [uiState, setUiState] = useWidgetState<LiabilitiesUIState>({
+    expandedIds: [],
+  });
+
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
   const theme = useTheme();
   const isFullscreen = displayMode === "fullscreen";
   const isDark = theme === "dark";
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Max visible items per category in inline mode
   const MAX_VISIBLE_INLINE = 3;
 
-  if (!toolOutput) {
+  const toggleExpanded = (id: string) => {
+    setUiState(prevState => {
+      const expanded = new Set(prevState.expandedIds);
+      if (expanded.has(id)) {
+        expanded.delete(id);
+      } else {
+        expanded.add(id);
+      }
+      return { ...prevState, expandedIds: Array.from(expanded) };
+    });
+  };
+
+  // Check for auth requirements
+  const authComponent = checkWidgetAuth(toolOutput);
+  if (authComponent) return authComponent;
+
+  if (!toolOutput && !toolMetadata) {
     return (
       <div
         className={cn(
@@ -173,15 +202,11 @@ export default function Liabilities() {
     );
   }
 
-  // Check for auth requirements
-  const authComponent = checkWidgetAuth(toolOutput);
-  if (authComponent) return authComponent;
-
-  const accounts: Account[] = toolOutput.accounts || [];
-  const credit: CreditCard[] = toolOutput.credit || [];
-  const student: StudentLoan[] = toolOutput.student || [];
-  const mortgage: Mortgage[] = toolOutput.mortgage || [];
-  const summary = toolOutput.summary;
+  const accounts: Account[] = toolMetadata?.accounts || [];
+  const credit: CreditCard[] = toolMetadata?.credit || [];
+  const student: StudentLoan[] = toolMetadata?.student || [];
+  const mortgage: Mortgage[] = toolMetadata?.mortgage || [];
+  const summary = toolOutput?.summary;
 
   // Create account lookup
   const accountMap = new Map<string, Account>(
@@ -372,7 +397,7 @@ export default function Liabilities() {
             const limit = account.balances.limit || 0;
             const utilization = limit > 0 ? (balance / limit) * 100 : 0;
             const daysUntilDue = getDaysUntil(card.next_payment_due_date);
-            const isExpanded = expandedId === card.account_id;
+            const isExpanded = uiState.expandedIds.includes(card.account_id);
 
             return (
               <motion.div
@@ -390,7 +415,7 @@ export default function Liabilities() {
                     "p-4 cursor-pointer transition-colors",
                     isDark ? "hover:bg-gray-750" : "hover:bg-gray-50"
                   )}
-                  onClick={() => setExpandedId(isExpanded ? null : card.account_id)}
+                  onClick={() => toggleExpanded(card.account_id)}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -473,7 +498,7 @@ export default function Liabilities() {
                             : "text-black"
                         )}
                       >
-                        {formatDate(card.next_payment_due_date)}
+                        {card.next_payment_due_date ? formatDate(card.next_payment_due_date) : 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -546,7 +571,6 @@ export default function Liabilities() {
             if (!account) return null;
 
             const balance = account.balances.current || 0;
-            const isExpanded = expandedId === loan.account_id;
 
             return (
               <motion.div
@@ -616,7 +640,7 @@ export default function Liabilities() {
                         Due Date
                       </span>
                       <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
-                        {formatDate(loan.next_payment_due_date)}
+                        {loan.next_payment_due_date ? formatDate(loan.next_payment_due_date) : 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -718,7 +742,7 @@ export default function Liabilities() {
                         Due Date
                       </span>
                       <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
-                        {formatDate(mtg.next_payment_due_date)}
+                        {mtg.next_payment_due_date ? formatDate(mtg.next_payment_due_date) : 'N/A'}
                       </span>
                     </div>
                   </div>

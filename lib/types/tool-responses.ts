@@ -369,3 +369,38 @@ export type LiabilitiesResponse = MCPToolResponse<
   LiabilitiesContent,
   OpenAIResponseMetadata
 >;
+
+/**
+ * Structured content for connect item management
+ */
+export interface ConnectItemContent {
+  items: Array<{
+    id: string;
+    institutionId: string | null;
+    institutionName: string | null;
+    institutionLogo?: string;
+    accountCount: number;
+    status: string | null;
+    errorCode: string | null;
+    errorMessage: string | null;
+    connectedAt: string;
+  }>;
+  planLimits: {
+    current: number;
+    max: number;
+    maxFormatted: string;
+    planName: string;
+  };
+  deletionStatus: {
+    canDelete: boolean;
+    lastDeletionDate?: string;
+    daysUntilNext?: number;
+  };
+  canConnect: boolean;
+
+}
+
+export type ConnectItemResponse = MCPToolResponse<
+  ConnectItemContent,
+  OpenAIResponseMetadata
+>;

@@ -17,7 +17,7 @@ describe('Subscription Flows', () => {
       const session = mockStripeResponses.checkoutSession('basic');
 
       expect(session.mode).toBe('subscription');
-      expect(session.metadata.plan).toBe('basic');
+      expect(session.metadata!.plan).toBe('basic');
       expect(session.url).toContain('checkout.stripe.com');
       expect(session.status).toBe('open');
     });
@@ -25,7 +25,7 @@ describe('Subscription Flows', () => {
     it('should create checkout session for pro plan with trial', () => {
       const session = mockStripeResponses.checkoutSession('pro');
 
-      expect(session.metadata.plan).toBe('pro');
+      expect(session.metadata!.plan).toBe('pro');
       expect(session.mode).toBe('subscription');
       // Pro plan should support 14-day trial
     });
@@ -33,7 +33,7 @@ describe('Subscription Flows', () => {
     it('should create checkout session for enterprise plan', () => {
       const session = mockStripeResponses.checkoutSession('enterprise');
 
-      expect(session.metadata.plan).toBe('enterprise');
+      expect(session.metadata!.plan).toBe('enterprise');
       expect(session.mode).toBe('subscription');
     });
 
@@ -96,7 +96,7 @@ describe('Subscription Flows', () => {
       };
 
       expect(event.type).toBe('checkout.session.completed');
-      expect(event.data.object.metadata.plan).toBe('pro');
+      expect(event.data.object.metadata!.plan).toBe('pro');
     });
 
     it('should handle customer.subscription.created event', () => {

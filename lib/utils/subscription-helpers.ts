@@ -66,12 +66,15 @@ export async function getUserSubscription(userId: string) {
 }
 
 /**
- * Check if user has an active subscription
- * Returns true if subscription status is 'active' or 'trialing'
+ * Check if user has an active subscription.
+ * Returns the subscription object if status is 'active' or 'trialing', otherwise null.
  */
-export async function hasActiveSubscription(userId: string): Promise<boolean> {
+export async function hasActiveSubscription(userId: string) {
   const subscription = await getUserSubscription(userId);
-  return subscription?.status === 'active' || subscription?.status === 'trialing';
+  if (subscription?.status === 'active' || subscription?.status === 'trialing') {
+    return subscription;
+  }
+  return null;
 }
 
 /**

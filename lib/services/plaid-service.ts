@@ -3,6 +3,9 @@ import { plaidItems, plaidAccounts, plaidTransactions, plaidLinkSessions } from 
 import { eq, sql, inArray, and, gte, lte, desc } from 'drizzle-orm';
 import { getPlaidClient } from '../config/plaid';
 import { EncryptionService } from './encryption-service';
+
+// Export Plaid client for use in other services
+export const plaidClient = getPlaidClient();
 import {
   CountryCode,
   Products,
@@ -92,49 +95,72 @@ export const getOrCreatePlaidUserToken = async (userId: string): Promise<string>
  * Create a Link token for initializing Plaid Link with Multi-Item support
  * Always uses user tokens for Multi-Item Link functionality
  * @param userId Unique user identifier
- * @param redirectUri Optional redirect URI for OAuth flows
+ * @param options Optional configuration
+ * @param options.redirectUri Optional redirect URI for OAuth flows
+ * @param options.accessToken Optional access token for update mode (re-authentication)
  * @returns Link token for client-side Plaid Link initialization
  */
 export const createLinkToken = async (
   userId: string,
-  redirectUri?: string
+  options?: {
+    redirectUri?: string;
+    accessToken?: string;
+  }
 ) => {
   try {
-    // Get or create a user token for Multi-Item Link (reuses existing token if available)
-    const userToken = await getOrCreatePlaidUserToken(userId);
+    const { redirectUri, accessToken } = options || {};
 
+    // For update mode, we don't need a user token
     const request: LinkTokenCreateRequest = {
-      user_token: userToken,
       user: {
         client_user_id: userId,
       },
-      investments: {
-        allow_unverified_crypto_wallets: true,
-        allow_manual_entry: true,
-      },
-      cra_enabled: true,
       client_name: 'AskMyMoney',
-      products: [Products.Transactions],
-      // Auth and Transfer in optional_products so we can connect multiple accounts
-      // but still get auth for accounts that support it
-      optional_products: [Products.Auth, Products.Investments, Products.Liabilities],
-      enable_multi_item_link: true,
       country_codes: [CountryCode.Us],
       language: 'en',
       webhook: process.env.BETTER_AUTH_URL ? `${process.env.BETTER_AUTH_URL}/api/plaid/webhook` : undefined,
       ...(redirectUri && { redirect_uri: redirectUri }),
     };
 
-    console.log('[Plaid] Creating link token with Multi-Item Link enabled');
+    // Update mode: re-authenticate existing item
+    if (accessToken) {
+      console.log('[Plaid] Creating link token for update mode (re-authentication)');
+      request.access_token = accessToken;
+      // Do NOT include products array for update mode
+    } else {
+      // Regular mode: connect new items
+      console.log('[Plaid] Creating link token with Multi-Item Link enabled');
+
+      // Get or create a user token for Multi-Item Link
+      const userToken = await getOrCreatePlaidUserToken(userId);
+      request.user_token = userToken;
+      request.products = [Products.Transactions];
+      request.optional_products = [Products.Auth, Products.Investments, Products.Liabilities];
+      request.enable_multi_item_link = true;
+      request.investments = {
+        allow_unverified_crypto_wallets: true,
+        allow_manual_entry: true,
+      };
+      request.cra_enabled = true;
+
+      // Store Link session in database for webhook processing (only for new connections)
+      await db.insert(plaidLinkSessions).values({
+        userId,
+        linkToken: '',
+        plaidUserToken: userToken,
+        status: 'pending',
+      });
+    }
+
     const response = await getPlaidClient().linkTokenCreate(request);
 
-    // Store Link session in database for webhook processing
-    await db.insert(plaidLinkSessions).values({
-      userId,
-      linkToken: response.data.link_token,
-      plaidUserToken: userToken,
-      status: 'pending',
-    });
+    // Update the link token in the session if we created one
+    if (!accessToken) {
+      await db
+        .update(plaidLinkSessions)
+        .set({ linkToken: response.data.link_token })
+        .where(eq(plaidLinkSessions.userId, userId));
+    }
 
     console.log('[Plaid] Created link token successfully');
 

@@ -9,12 +9,14 @@ import {
   getLiabilities,
   syncTransactionsForItem,
 } from "@/lib/services/plaid-service";
+import { getConnectItemStatus } from "@/app/widgets/connect-item/actions";
 import { db } from "@/lib/db";
-import { plaidTransactions, plaidAccounts } from "@/lib/db/schema";
+import { plaidTransactions, plaidAccounts, user } from "@/lib/db/schema";
 import { and, gte, lte, eq as drizzleEq, inArray } from 'drizzle-orm';
 import { UserService } from "@/lib/services/user-service";
 import { auth } from "@/lib/auth";
 import { hasActiveSubscription } from "@/lib/utils/subscription-helpers";
+import Stripe from "stripe";
 import {
   createLoginPromptResponse,
   createSubscriptionRequiredResponse,
@@ -37,6 +39,7 @@ import type {
   SubscriptionManagementResponse,
   InvestmentHoldingsResponse,
   LiabilitiesResponse,
+  ConnectItemResponse,
 } from "@/lib/types/tool-responses";
 import { withMcpAuth } from "better-auth/plugins";
 import { baseURL } from "@/baseUrl";
@@ -106,6 +109,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
       { id: 'plaid-required', title: 'Connect Bank Account', description: 'Prompts user to connect their bank account via Plaid', path: '/widgets/plaid-required' },
       { id: 'subscription-required', title: 'Choose Subscription Plan', description: 'Select and subscribe to a plan to unlock features', path: '/widgets/subscription-required' },
       { id: 'manage-subscription', title: 'Manage Subscription', description: 'Update or cancel your subscription', path: '/widgets/manage-subscription' },
+      { id: 'connect-item', title: 'Manage Financial Accounts', description: 'Connect or manage your linked financial accounts', path: '/widgets/connect-item' },
     ];
 
     for (const widget of widgets) {
@@ -132,11 +136,17 @@ const handler = withMcpAuth(auth, async (req, session) => {
               _meta: {
                 'openai/widgetDescription': widget.description,
                 'openai/widgetPrefersBorder': true,
+                'openai/widgetDomain': baseURL,
                 'openai/widgetCSP': {
-                  connect_domains: [baseURL],
+                  'base-uri': ["'self'", baseURL], // Allow Next.js dev scripts to set the base URI
+                  connect_domains: [
+                    baseURL,
+                    baseURL.replace(/^http/, 'ws') // Allow HMR WebSockets in dev
+                  ],
                   resource_domains: [
                     baseURL,
                     'https://*.plaid.com',
+                    'https://*.oaistatic.com',
                   ],
                 },
               },
@@ -196,7 +206,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
           readOnlyHint: true,
         },
         // @ts-expect-error - securitySchemes not yet in MCP SDK types
-        securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["balances:read"] }],
+        securitySchemes: [{ type: "oauth2", scopes: ["balances:read"] }],
       },
     async () => {
       try {
@@ -221,13 +231,19 @@ const handler = withMcpAuth(auth, async (req, session) => {
           return sum + (account.balances.current || 0);
         }, 0);
 
+        const structuredContentForModel = {
+          totalBalance,
+          accountCount: allAccounts.length,
+          lastUpdated: new Date().toISOString(),
+        };
+        const metaForWidget = {
+          accounts: allAccounts,
+        };
+
         return createSuccessResponse(
           `Found ${allAccounts.length} account(s) with a total balance of $${totalBalance.toFixed(2)}`,
-          {
-            accounts: allAccounts,
-            totalBalance,
-            lastUpdated: new Date().toISOString(),
-          }
+          structuredContentForModel,
+          metaForWidget
         );
       } catch (error) {
         console.error("[Tool] get_account_balances error", { error });
@@ -264,7 +280,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
         readOnlyHint: true,
       },
       // @ts-expect-error - securitySchemes not yet in MCP SDK types
-      securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["transactions:read"] }],
+      securitySchemes: [{ type: "oauth2", scopes: ["transactions:read"] }],
     },
     async ({ startDate, endDate, limit, category, paymentChannel, includePending = true }: {
       startDate?: string;
@@ -407,41 +423,47 @@ const handler = withMcpAuth(auth, async (req, session) => {
           amount: parseFloat(tx.amount),
         }));
 
+        const structuredContentForModel = {
+          totalTransactions: allTransactions.length,
+          displayedTransactions: limitedTransactions.length,
+          dateRange: { start, end },
+          metadata: {
+            categoryBreakdown: Array.from(categoryBreakdown.entries()).map(([cat, data]) => ({
+              category: cat,
+              count: data.count,
+              total: data.total
+            })).sort((a, b) => b.total - a.total),
+            topMerchants: Array.from(merchantBreakdown.entries())
+              .map(([id, data]) => ({
+                merchantId: id,
+                name: data.name,
+                count: data.count,
+                total: data.total
+              }))
+              .sort((a, b) => b.total - a.total)
+              .slice(0, 10),
+            summary: {
+              totalSpending,
+              totalIncome,
+              netCashFlow: totalIncome - totalSpending,
+              pendingCount,
+              averageTransaction: limitedTransactions.length > 0
+                ? limitedTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount), 0) / limitedTransactions.length
+                : 0
+            }
+          }
+        };
+
+        const metaForWidget = {
+          transactions: plaidFormattedTransactions,
+        };
+
         return createSuccessResponse(
           `Found ${limitedTransactions.length} transaction(s) from ${start} to ${end}` +
           (category ? ` in category ${category}` : '') +
           (paymentChannel ? ` via ${paymentChannel}` : ''),
-          {
-            transactions: plaidFormattedTransactions,
-            totalTransactions: allTransactions.length,
-            displayedTransactions: limitedTransactions.length,
-            dateRange: { start, end },
-            metadata: {
-              categoryBreakdown: Array.from(categoryBreakdown.entries()).map(([cat, data]) => ({
-                category: cat,
-                count: data.count,
-                total: data.total
-              })).sort((a, b) => b.total - a.total),
-              topMerchants: Array.from(merchantBreakdown.entries())
-                .map(([id, data]) => ({
-                  merchantId: id,
-                  name: data.name,
-                  count: data.count,
-                  total: data.total
-                }))
-                .sort((a, b) => b.total - a.total)
-                .slice(0, 10),
-              summary: {
-                totalSpending,
-                totalIncome,
-                netCashFlow: totalIncome - totalSpending,
-                pendingCount,
-                averageTransaction: limitedTransactions.length > 0
-                  ? limitedTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount), 0) / limitedTransactions.length
-                  : 0
-              }
-            }
-          }
+          structuredContentForModel,
+          metaForWidget
         );
       } catch (error) {
         console.error("[Tool] get_transactions error", { error });
@@ -474,7 +496,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
         readOnlyHint: true,
       },
       // @ts-expect-error - securitySchemes not yet in MCP SDK types
-      securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["insights:read"] }],
+      securitySchemes: [{ type: "oauth2", scopes: ["insights:read"] }],
     },
     async ({ startDate, endDate }: { startDate?: string; endDate?: string }) => {
       try {
@@ -491,19 +513,24 @@ const handler = withMcpAuth(auth, async (req, session) => {
 
         const insights = await getSpendingInsights(session.userId, start, end);
 
-        const output = {
+        const structuredContentForModel = {
+          totalSpending: insights.totalSpending,
+          dateRange: { start, end },
+          categoryCount: insights.categoryBreakdown.length,
+        };
+
+        const metaForWidget = {
           categories: insights.categoryBreakdown.map(c => ({
             name: c.category,
             amount: c.amount,
             percentage: c.percentage,
           })),
-          totalSpending: insights.totalSpending,
-          dateRange: { start, end },
         };
 
         return createSuccessResponse(
-          `Total spending: $${output.totalSpending.toFixed(2)} across ${output.categories.length} categories from ${start} to ${end}`,
-          output
+          `Total spending: $${insights.totalSpending.toFixed(2)} across ${insights.categoryBreakdown.length} categories from ${start} to ${end}`,
+          structuredContentForModel,
+          metaForWidget
         );
       } catch (error) {
         console.error("[Tool] get_spending_insights error", { error });
@@ -533,7 +560,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
         readOnlyHint: true,
       },
       // @ts-expect-error - securitySchemes not yet in MCP SDK types
-      securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["health:read"] }],
+      securitySchemes: [{ type: "oauth2", scopes: ["health:read"] }],
     },
     async () => {
       try {
@@ -607,7 +634,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
         readOnlyHint: true,
       },
       // @ts-expect-error - securitySchemes not yet in MCP SDK types
-      securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["investments:read"] }],
+      securitySchemes: [{ type: "oauth2", scopes: ["investments:read"] }],
     },
     async () => {
       try {
@@ -649,15 +676,23 @@ const handler = withMcpAuth(auth, async (req, session) => {
           return sum + (holding.institution_value || 0);
         }, 0);
 
+        const structuredContentForModel = {
+          accountCount: allAccounts.length,
+          holdingCount: allHoldings.length,
+          totalValue,
+          lastUpdated: new Date().toISOString(),
+        };
+
+        const metaForWidget = {
+          accounts: allAccounts,
+          holdings: allHoldings,
+          securities: allSecurities,
+        };
+
         return createSuccessResponse(
           `Found ${allHoldings.length} holding(s) across ${allAccounts.length} investment account(s) with a total value of $${totalValue.toFixed(2)}`,
-          {
-            accounts: allAccounts,
-            holdings: allHoldings,
-            securities: allSecurities,
-            totalValue,
-            lastUpdated: new Date().toISOString(),
-          }
+          structuredContentForModel,
+          metaForWidget
         );
       } catch (error) {
         console.error("[Tool] get_investment_holdings error", { error });
@@ -686,7 +721,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
         readOnlyHint: true,
       },
       // @ts-expect-error - securitySchemes not yet in MCP SDK types
-      securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["liabilities:read"] }],
+      securitySchemes: [{ type: "oauth2", scopes: ["liabilities:read"] }],
     },
     async () => {
       try {
@@ -788,7 +823,16 @@ const handler = withMcpAuth(auth, async (req, session) => {
           }
         }
 
-        const output = {
+        const structuredContentForModel = {
+          summary: {
+            totalDebt,
+            totalMinimumPayment,
+            accountsOverdue,
+            nextPaymentDue: earliestPaymentDue,
+          },
+        };
+
+        const metaForWidget = {
           accounts: allAccounts.map(account => ({
             account_id: account.account_id,
             name: account.name,
@@ -806,12 +850,6 @@ const handler = withMcpAuth(auth, async (req, session) => {
           credit: allCredit,
           student: allStudent,
           mortgage: allMortgage,
-          summary: {
-            totalDebt,
-            totalMinimumPayment,
-            accountsOverdue,
-            nextPaymentDue: earliestPaymentDue,
-          },
           lastUpdated: new Date().toISOString(),
         };
 
@@ -827,7 +865,8 @@ const handler = withMcpAuth(auth, async (req, session) => {
           `Total debt: $${totalDebt.toFixed(2)}\n` +
           `Minimum payments due: $${totalMinimumPayment.toFixed(2)}` +
           (accountsOverdue > 0 ? `\n⚠️ ${accountsOverdue} account(s) overdue` : ''),
-          output
+          structuredContentForModel,
+          metaForWidget
         );
       } catch (error) {
         console.error("[Tool] get_liabilities error", { error });
@@ -857,7 +896,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
           readOnlyHint: true,
         },
         // @ts-expect-error - securitySchemes not yet in MCP SDK types
-        securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes: ["subscription:manage"] }],
+        securitySchemes: [{ type: "oauth2", scopes: ["subscription:manage"] }],
       },
       async () => {
         try {
@@ -868,11 +907,37 @@ const handler = withMcpAuth(auth, async (req, session) => {
           });
           if (authCheck) return authCheck;
 
-          // Get billing portal URL from environment
-          const billingPortalUrl = process.env.STRIPE_BILLING_PORTAL_URL;
-          if (!billingPortalUrl) {
-            return createErrorResponse("Billing portal URL not configured. Please contact support.");
+          // Initialize Stripe client
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+            apiVersion: "2025-10-29.clover",
+          });
+
+          // Get user's Stripe customer ID and email from database
+          const userResult = await db
+            .select({
+              stripeCustomerId: user.stripeCustomerId,
+              email: user.email,
+            })
+            .from(user)
+            .where(drizzleEq(user.id, session.userId))
+            .limit(1);
+
+          if (userResult.length === 0) {
+            return createErrorResponse("User not found");
           }
+
+          const userData = userResult[0];
+          const stripeCustomerId = userData.stripeCustomerId;
+
+          if (!stripeCustomerId) {
+            return createErrorResponse("No Stripe customer found. Please contact support.");
+          }
+
+          // Create a billing portal session with prefilled customer email
+          const portalSession = await stripe.billingPortal.sessions.create({
+            customer: stripeCustomerId,
+            return_url: `${baseURL}/pricing`,
+          });
 
           // Get user's current plan (optional - for display purposes)
           const ctx = await auth.$context;
@@ -881,12 +946,12 @@ const handler = withMcpAuth(auth, async (req, session) => {
             where: [{ field: "referenceId", value: session.userId }],
           }) as Array<{ plan: string }>;
 
-          const currentPlan = subscriptions?.[0]?.plan || "unknown";
+          const currentPlan = subscriptions?.[0]?.plan || null;
 
           return createSuccessResponse(
             "Click the link below to manage your subscription, update payment methods, or view billing history.",
             {
-              billingPortalUrl,
+              billingPortalUrl: portalSession.url,
               currentPlan,
               message: "Manage your subscription through the Stripe billing portal.",
             }
@@ -895,6 +960,83 @@ const handler = withMcpAuth(auth, async (req, session) => {
           console.error("[Tool] manage_subscription error", { error });
           return createErrorResponse(
             error instanceof Error ? error.message : "Failed to access subscription management"
+          );
+        }
+      }
+    );
+
+    // ============================================================================
+    // CONNECT ITEM (Account Management)
+    // ============================================================================
+    server.registerTool(
+      "connect_item",
+      {
+        title: "Manage Financial Accounts",
+        description: "Connect new financial accounts (banks, credit cards, investments, loans) or manage existing connections. Always shows your connected accounts to prevent duplicates. Requires authentication and active subscription.",
+        inputSchema: {},
+        _meta: {
+          "openai/outputTemplate": "ui://widget/connect-item.html",
+          "openai/toolInvocation/invoking": "Loading your accounts...",
+          "openai/toolInvocation/invoked": "Account management ready",
+          "openai/widgetAccessible": true,
+        },
+        annotations: {
+          destructiveHint: false, // Deletion happens in a separate server action inside the widget
+          readOnlyHint: true, // This tool call only reads data to display the widget
+        },
+        // @ts-expect-error - securitySchemes not yet in MCP SDK types
+        securitySchemes: [{ type: "oauth2", scopes: ["accounts:read"] }],
+      },
+      async () => {
+        try {
+          // Check authentication requirements
+          // NOTE: requirePlaid is FALSE because this IS how users connect Plaid
+          const authCheck = await requireAuth(session, "account management", {
+            requireSubscription: true,
+            requirePlaid: false,
+          });
+          if (authCheck) return authCheck;
+
+          // Get connect item status (pass userId from session)
+          const result = await getConnectItemStatus(session.userId);
+
+          if (!result.success) {
+            return createErrorResponse(result.error);
+          }
+
+          const { data } = result;
+
+          // Create message based on status
+          let message = "";
+          if (data.items.length === 0) {
+            message = "Ready to connect your first financial account. Get started by connecting your bank, credit card, or investment account.";
+          } else if (data.canConnect) {
+            message = `You have ${data.planLimits.current} of ${data.planLimits.maxFormatted} accounts connected. You can connect more accounts.`;
+          } else {
+            if (data.deletionStatus.canDelete) {
+              message = `Account limit reached (${data.planLimits.current}/${data.planLimits.maxFormatted}). Remove an account or upgrade your plan to connect more.`;
+            } else {
+              message = `Account limit reached. Next deletion available in ${data.deletionStatus.daysUntilNext} days, or upgrade your plan.`;
+            }
+          }
+
+          const structuredContentForModel = {
+            planLimits: data.planLimits,
+            deletionStatus: data.deletionStatus,
+            canConnect: data.canConnect,
+          };
+
+          const metaForWidget = {
+            items: data.items,
+            mcpToken: req.headers.get("authorization")?.replace("Bearer ", ""),
+            baseUrl: baseURL,
+          };
+
+          return createSuccessResponse(message, structuredContentForModel, metaForWidget);
+        } catch (error) {
+          console.error("[Tool] connect_item error", { error });
+          return createErrorResponse(
+            error instanceof Error ? error.message : "Failed to load account management"
           );
         }
       }

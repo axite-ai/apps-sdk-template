@@ -75,10 +75,12 @@ export function createSubscriptionRequiredResponse(featureName?: string, userId?
       featureName: featureName || "this feature",
       error_message: "Subscription required",
       pricingUrl: `${baseURL}/pricing`,
-      userId, // Pass userId so widget can use it in server action
     },
     isError: false,
-    _meta: responseMeta,
+    _meta: {
+      ...responseMeta,
+      userId, // Pass userId so widget can use it in server action
+    },
   };
 }
 
@@ -101,7 +103,7 @@ export async function createPlaidRequiredResponse(userId: string, headers: Heade
 
   console.log('[Plaid Required Response] MCP token:', mcpToken ? 'present' : 'missing');
 
-  const baseMessage = "Please connect your bank account to access your financial data.";
+  const baseMessage = "Please connect your financial accounts to access your data.";
 
   const responseMeta: OpenAIResponseMetadata = {
     "openai/toolInvocation/invoking": "Checking bank connection",
@@ -121,12 +123,14 @@ export async function createPlaidRequiredResponse(userId: string, headers: Heade
     // Pass the MCP access token to the widget so it can open /connect-bank with auth
     structuredContent: {
       baseUrl: baseURL,
-      userId,
       message: "Bank connection required",
-      mcpToken, // MCP Bearer token for authenticating /connect-bank popup
     },
     isError: false,
-    _meta: responseMeta,
+    _meta: {
+      ...responseMeta,
+      userId,
+      mcpToken, // MCP Bearer token for authenticating /connect-bank popup
+    },
   };
 
   console.log('[Plaid Required Response] Widget will receive MCP token in props');

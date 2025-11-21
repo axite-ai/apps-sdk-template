@@ -6,7 +6,7 @@
  * All Plaid access tokens are encrypted at rest using AES-256-GCM.
  */
 
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { plaidItems } from '../db/schema';
 import { EncryptionService } from './encryption-service';
@@ -19,6 +19,8 @@ export interface PlaidItem {
   institutionId: string | null;
   institutionName: string | null;
   status: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
   consentExpiresAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -56,7 +58,7 @@ export class UserService {
         accessToken: encryptedToken,
         institutionId: institutionId || null,
         institutionName: institutionName || null,
-        status: 'active',
+        status: 'active', // Item is ready immediately after public token exchange
       })
       .onConflictDoUpdate({
         target: plaidItems.itemId, // itemId is unique
@@ -65,7 +67,7 @@ export class UserService {
           accessToken: encryptedToken,
           institutionId: institutionId || null,
           institutionName: institutionName || null,
-          status: 'active',
+          // Keep existing status on conflict (don't overwrite active/error states)
         },
       })
       .returning();
@@ -78,10 +80,15 @@ export class UserService {
   }
 
   /**
-   * Get all Plaid items for a user
+   * Get Plaid items for a user (always excludes deleted and revoked items)
    *
    * @param userId - Better Auth user ID
-   * @param activeOnly - Only return active items (default: true)
+   * @param activeOnly - If true, only return items with status 'active'.
+   *                     If false, return pending, active, and error items.
+   *                     Deleted and revoked items are ALWAYS excluded.
+   *
+   * NOTE: For plan limit enforcement, use countUserItems() instead which
+   * only counts active and error items.
    */
   public static async getUserPlaidItems(
     userId: string,
@@ -93,7 +100,10 @@ export class UserService {
       .where(
         activeOnly
           ? and(eq(plaidItems.userId, userId), eq(plaidItems.status, 'active'))
-          : eq(plaidItems.userId, userId)
+          : and(
+              eq(plaidItems.userId, userId),
+              inArray(plaidItems.status, ['pending', 'active', 'error'])
+            )
       )
       .orderBy(desc(plaidItems.createdAt));
 
@@ -102,6 +112,27 @@ export class UserService {
       ...item,
       accessToken: EncryptionService.decrypt(item.accessToken),
     }));
+  }
+
+  /**
+   * Count user items for plan limit enforcement
+   * Includes active and error items (excludes deleted and revoked)
+   *
+   * Note: 'pending' status is deprecated - items are set to 'active' immediately
+   * after token exchange since Plaid items are ready to use right away.
+   */
+  public static async countUserItems(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(plaidItems)
+      .where(
+        and(
+          eq(plaidItems.userId, userId),
+          inArray(plaidItems.status, ['active', 'error'])
+        )
+      );
+
+    return Number(result[0]?.count || 0);
   }
 
   /**
@@ -149,14 +180,16 @@ export class UserService {
   public static async markItemError(
     userId: string,
     itemId: string,
-    errorCode: string
+    errorCode: string,
+    errorMessage?: string
   ): Promise<void> {
     console.log(`[UserService] Marking item ${itemId} as error with code: ${errorCode}`);
     await db
       .update(plaidItems)
       .set({
         status: 'error',
-        // errorCode field doesn't exist in schema - just log it
+        errorCode: errorCode,
+        errorMessage: errorMessage || null,
       })
       .where(and(eq(plaidItems.userId, userId), eq(plaidItems.itemId, itemId)));
   }

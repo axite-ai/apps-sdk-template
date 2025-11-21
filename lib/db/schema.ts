@@ -7,6 +7,7 @@ import {
   jsonb,
   decimal,
   index,
+  pgEnum
 } from "drizzle-orm/pg-core";
 import { createId } from "@paralleldrive/cuid2";
 
@@ -148,22 +149,56 @@ export const subscription = pgTable("subscription", {
 
 // Custom application tables
 
+/**
+ * Plaid Item Status Lifecycle
+ *
+ * - 'active': Item is connected and ready to use (set immediately after token exchange)
+ * - 'error': Item requires user action (login, MFA, etc.) - set by ERROR webhook
+ * - 'revoked': User revoked access at their institution - set by USER_PERMISSION_REVOKED webhook
+ * - 'deleted': Item was removed by user via deleteItem() - set by item deletion service
+ * - 'pending': DEPRECATED - No longer used (items are active immediately after token exchange)
+ *
+ * Note: Plaid does NOT send an ITEM_READY webhook. Items are ready immediately after
+ * public token exchange. See: https://plaid.com/docs/api/items/#webhooks
+ */
+export const PlaidItemStatus = pgEnum("plaid_item_status", [
+  "pending",   // DEPRECATED - kept for backward compatibility with existing data
+  "active",    // Item connected and ready
+  "error",     // Requires user action
+  "revoked",   // User revoked access
+  "deleted",   // Soft deleted by user
+])
+
 export const plaidItems = pgTable(
   "plaid_items",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
+
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+
     itemId: text("item_id").notNull().unique(),
+
     accessToken: text("access_token").notNull(), // Encrypted
+
     institutionId: text("institution_id"),
     institutionName: text("institution_name"),
-    status: text("status").default("active"),
+
+    status: PlaidItemStatus("status").default("active"), // Items are ready immediately after token exchange
+
     consentExpiresAt: timestamp("consent_expires_at"),
+
     transactionsCursor: text("transactions_cursor"),
+
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+
+    lastWebhookAt: timestamp("last_webhook_at"),
+
+    deletedAt: timestamp("deleted_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -173,24 +208,50 @@ export const plaidItems = pgTable(
   (table) => ({
     itemIdIndex: index("plaid_items_item_id_idx").on(table.itemId),
     userIdIndex: index("plaid_items_user_id_idx").on(table.userId),
+    statusIndex: index("plaid_items_status_idx").on(table.status),
   })
 );
 
-export const plaidWebhooks = pgTable("plaid_webhooks", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  itemId: text("item_id"),
-  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
-  webhookType: text("webhook_type").notNull(),
-  webhookCode: text("webhook_code").notNull(),
-  errorCode: text("error_code"),
-  payload: jsonb("payload"),
-  processed: boolean("processed").default(false).notNull(),
-  receivedAt: timestamp("received_at").defaultNow().notNull(),
-  processedAt: timestamp("processed_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const plaidWebhooks = pgTable(
+  "plaid_webhooks",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+
+    itemId: text("item_id"),
+
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+
+    webhookType: text("webhook_type").notNull(),
+    webhookCode: text("webhook_code").notNull(),
+
+    errorCode: text("error_code"),
+
+    payload: jsonb("payload"),
+
+    processed: boolean("processed").default(false).notNull(),
+    processingError: jsonb("processing_error"),
+
+    retryCount: integer("retry_count").default(0).notNull(),
+
+    receivedAt: timestamp("received_at").defaultNow().notNull(),
+    processedAt: timestamp("processed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    itemIdProcessedIndex: index("plaid_webhooks_item_id_processed_idx").on(
+      table.itemId,
+      table.processed,
+      table.createdAt
+    ),
+    webhookTypeCodeIndex: index("plaid_webhooks_type_code_item_idx").on(
+      table.webhookType,
+      table.webhookCode,
+      table.itemId
+    ),
+  })
+);
 
 export const plaidAccounts = pgTable(
   "plaid_accounts",
@@ -330,5 +391,32 @@ export const plaidLinkSessions = pgTable(
     linkTokenIndex: index("plaid_link_sessions_link_token_idx").on(table.linkToken),
     linkSessionIdIndex: index("plaid_link_sessions_link_session_id_idx").on(table.linkSessionId),
     statusIndex: index("plaid_link_sessions_status_idx").on(table.status),
+  })
+);
+
+export const plaidItemDeletions = pgTable(
+  "plaid_item_deletions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+
+    itemId: text("item_id").notNull(),
+
+    institutionId: text("institution_id"),
+    institutionName: text("institution_name"),
+
+    deletedAt: timestamp("deleted_at").defaultNow().notNull(),
+    reason: text("reason"),
+  },
+  (table) => ({
+    userIdDeletedAtIndex: index("plaid_item_deletions_user_id_deleted_at_idx").on(
+      table.userId,
+      table.deletedAt
+    ),
   })
 );

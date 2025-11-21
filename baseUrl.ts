@@ -1,7 +1,6 @@
-export const baseURL =
-  process.env.NODE_ENV == "development"
-    ? "https://dev.askmymoney.ai"
-    : "https://" +
-      (process.env.VERCEL_ENV === "production"
-        ? process.env.VERCEL_PROJECT_PRODUCTION_URL
-        : process.env.VERCEL_BRANCH_URL || process.env.VERCEL_URL);
+const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined;
+const localUrl = "https://dev.askmymoney.ai";
+
+// Use the Vercel URL if it exists (for Vercel deployments), otherwise default to the local reverse proxy URL.
+export const baseURL = vercelUrl || localUrl;
+

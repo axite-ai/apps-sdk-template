@@ -3,19 +3,29 @@
 This guide helps agents contribute to AskMyMoney's ChatGPT-ready Next.js repo confidently and consistently. Review the resources in `llm_context/`—Apps SDK docs/examples live under `llm_context/appssdk/`, Better Auth plugins live under `llm_context/betterauth/`, and the empty `llm_context/mcp/` folder is reserved for MCP-specific notes you might add—to fully understand how the Apps SDK and MCP integrations work with this project.
 
 ## Project Structure & Module Organization
-- `app/` holds Next.js routes; `app/mcp/route.ts` exposes MCP tools/resources consumed by ChatGPT.
+- `app/` holds Next.js routes; `app/mcp/route.ts` exposes MCP tools/resources consumed by ChatGPT and now registers the new `connect_item` tool that powers multi-item linking.
+- `app/connect-bank/` hosts the Plaid Link launcher UI plus the server actions (`actions.ts`) that enforce plan limits, duplicate detection, and initial sync triggers before Plaid tokens are exchanged.
+- `app/widgets/` contains server actions for widgets. `app/widgets/connect-item/actions.ts` powers both the MCP tool and the `src/components/connect-item` widget with `getConnectItemStatus()` and `deleteItem()`.
 - `lib/` centralizes auth, config, services, and shared types; prefer importing from here over duplicating logic.
-  - `lib/db/` contains Drizzle ORM setup: `index.ts` exports db instance and pool, `schema.ts` defines all tables
+  - `lib/db/` contains Drizzle ORM setup: `index.ts` exports db instance and pool, `schema.ts` defines all tables (including `plaid_item_status` enum, `plaid_link_sessions`, and the `plaid_item_deletions` audit table used by the deletion service).
+  - `lib/services/` now hosts key flows:
+    - `plaid-service.ts` integrates Multi-Item Link (user tokens + `plaid_link_sessions` tracking) and exports Plaid API helpers.
+    - `user-service.ts` encrypts Plaid tokens and introduces `countUserItems()` for plan enforcement.
+    - `duplicate-detection-service.ts` guards against connecting the same institution/account masks twice.
+    - `item-deletion-service.ts` enforces one deletion per 30 days and writes to `plaid_item_deletions`.
+    - `webhook-service.ts` stores every webhook (no dedupe) and routes ITEM/TRANSACTIONS/AUTH events.
   - `lib/types/` contains TypeScript type definitions:
     - `mcp-responses.ts` - Core MCP response types (MCPContent, MCPToolResponse, OpenAIResponseMetadata)
-    - `tool-responses.ts` - Application-specific structured content types for each tool
+    - `tool-responses.ts` - Application-specific structured content types (add new widget/tool payloads here first)
   - `lib/utils/` contains utility functions:
     - `mcp-response-helpers.ts` - Type-safe response creation helpers
     - `mcp-auth-helpers.ts` - DRY auth check helper for MCP tools (`requireAuth()`)
+    - `plan-limits.ts` - Single source of truth for plan metadata used by tools, widgets, and webhook handlers
     - `auth-responses.ts` - Auth-specific response builders
-- `src/utils/widget-auth-check.tsx` - DRY auth helper for widgets (`checkWidgetAuth()`)
-- `widgets/` serves static HTML widgets for iframe rendering; keep assets self-contained with inline styles only.
-- Operational scripts live in `scripts/`; Drizzle migrations are in `drizzle/`. Static assets belong in `public/`.
+- `src/components/connect-item/` renders the Connect Item widget. Use inline props from MCP responses when possible, otherwise call the server actions.
+- `src/utils/widget-auth-check.tsx` - DRY auth helper for widgets (`checkWidgetAuth()`).
+- `widgets/` serves static HTML wrappers for iframe rendering; keep assets self-contained with inline styles only.
+- Operational scripts live in `scripts/`; schema pushes happen with `pnpm db:push` during development (see Build commands). Static assets belong in `public/`.
 - `docs/TRANSACTION_SYNC.md` documents the Plaid `/transactions/sync` flow, webhook triggers, and how MCP tools consume the cached transaction data—review it before touching Plaid-related services.
 
 ## Build, Test, and Development Commands
@@ -23,9 +33,8 @@ This guide helps agents contribute to AskMyMoney's ChatGPT-ready Next.js repo co
 - `pnpm build` followed by `pnpm start` produces and smoke-tests the production bundle.
 - `pnpm lint` runs Next.js ESLint rules; fix warnings before review.
 - `pnpm typecheck` (or `pnpm check`) enforces TypeScript contracts prior to CI.
-- `pnpm db:generate` generates Drizzle migration files from schema changes.
-- `pnpm db:migrate` applies pending Drizzle migrations to the database.
-- `pnpm db:push` pushes schema directly without migrations (development only).
+- **Schema syncing (current workflow):** we are in development and typically run `pnpm db:push` to apply schema changes directly rather than maintaining SQL migrations. If you do add a migration via `pnpm db:generate`, coordinate with the team before committing it.
+- `pnpm db:migrate` applies pending Drizzle migrations (mainly for CI or when migrations exist).
 - `pnpm db:studio` launches Drizzle Studio for visual database management.
 - `pnpm db:schema` regenerates `lib/db/schema.ts` from Better Auth config (run after changing auth plugins).
 
@@ -33,6 +42,7 @@ This guide helps agents contribute to AskMyMoney's ChatGPT-ready Next.js repo co
 - Favor TypeScript with 2-space indentation; use async/await and typed helpers.
 - Components/hooks use `PascalCase` / `camelCase`; route segments stay `kebab-case`.
 - Co-locate feature logic under `app/<feature>` directories and share utilities through `lib`.
+- For Plaid Link or widget work, reuse the services mentioned above (`UserService.countUserItems`, `DuplicateDetectionService`, `ItemDeletionService`, `plan-limits`) rather than re-implementing logic.
 - Run `pnpm lint` to auto-fix formatting and keep Tailwind classes aligned with existing patterns.
 
 ### MCP Tool Response Pattern
@@ -94,6 +104,70 @@ export default function MyWidget() {
 }
 ```
 
+### Widget Architecture Pattern
+1. **Widgets are View-Only Components:** Widgets render whatever the MCP tool already returned—they never issue their own fetches or lookups during initial render.
+2. **Single Source of Truth:** All state must come from `toolOutput` (structured content) and `toolMetadata` (widget-only data such as polling hints). If the data is missing there, the widget shows a message instead of trying to hydrate itself.
+3. **No Server Actions on Mount:** Never call server actions inside `useEffect` (or similar) when `toolOutput` is `null`. The ChatGPT/Claude iframe sandboxes those requests and they fail authentication, which causes the widget to display subscription/Plaid errors even when the account is valid.
+4. **Server Actions Only for User Interactions:** Server actions are allowed for button clicks, deletions, or refreshes initiated by the user after initial render because the Apps SDK forwards the session headers for those explicit actions.
+5. **Auth Checks:** Always call `checkWidgetAuth(toolOutput)` before rendering anything else so auth/subscription errors returned by the tool short-circuit consistently.
+6. **Handle Missing Data Gracefully:** When `toolOutput` is `null` or lacks certain fields, render an informative empty state (e.g., “No accounts yet. Launch Connect Item to add one.”) rather than invoking a server action.
+
+This pattern is critical for every widget; violating it causes hard auth errors inside ChatGPT and Claude iframe contexts where we cannot prompt the user again.
+
+**Connect Item Bug (What Happened):**
+- Bug: The Connect Item widget attempted to call the `getConnectItemStatus()` server action on mount whenever `toolOutput` was `null`.
+- Problem: Server actions cannot authenticate during iframe boot, so Better Auth rejected the call, we surfaced a subscription modal, and the widget never hydrated despite the user being paid.
+- Fix: Remove the mount-time server action call and rely entirely on the MCP tool props; the widget now matches the working `account-balances`, `transactions`, and other widgets that only read from `toolOutput`/`toolMetadata`.
+
+**✅ Correct Pattern (only hydrate from MCP props):**
+```tsx
+import { useWidgetProps, useWidgetMetadata } from "@openai/widget-sdk";
+import { deleteItem } from "@/app/widgets/connect-item/actions";
+import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
+import type { ConnectItemStatusResponse } from "@/lib/types/tool-responses";
+
+export default function ConnectItemWidget() {
+  const toolOutput = useWidgetProps<ConnectItemStatusResponse>();
+  const toolMetadata = useWidgetMetadata<{ baseUrl?: string }>();
+
+  const authComponent = checkWidgetAuth(toolOutput);
+  if (authComponent) return authComponent;
+
+  if (!toolOutput?.structuredContent) {
+    return <EmptyState message="No accounts yet. Launch Connect Item to add one." />;
+  }
+
+  const { items, deletionStatus } = toolOutput.structuredContent;
+
+  return (
+    <ConnectItemList
+      items={items}
+      deletionStatus={toolMetadata?.deletionStatusOverride ?? deletionStatus}
+      onDelete={async (itemId) => {
+        await deleteItem(itemId); // user-triggered server action
+      }}
+    />
+  );
+}
+```
+
+**❌ Incorrect Pattern (mount-time server action call):**
+```tsx
+useEffect(() => {
+  if (!toolOutput) {
+    void getConnectItemStatus(); // server action
+  }
+}, [toolOutput]);
+```
+The anti-pattern above replicates the original connect-item bug: it fetches outside of an interaction, so Better Auth rejects it in ChatGPT/Claude and users see a false “subscription required” message.
+
+## Multi-Item Link & Account Management Flow
+- **Link token creation:** `app/connect-bank/actions.ts` authenticates via Better Auth MCP sessions, enforces subscriptions, calls `UserService.countUserItems()` to include pending/error items, looks up plan limits via `getMaxAccountsForPlan()`, and blocks when users hit their quota (surfacing deletion info from `ItemDeletionService`).
+- **Duplicate detection:** before exchanging a public token we call `DuplicateDetectionService.checkForDuplicateItem()` with institution ID + account masks to prevent double connections.
+- **Webhook path:** `app/api/plaid/webhook/route.ts` listens for `LINK` webhooks (`ITEM_ADD_RESULT`, `SESSION_FINISHED`) to process each item in Multi-Item Link sessions. Every item exchange re-checks plan limits and stores metadata in `plaid_link_sessions`. Other webhook types are delegated to `WebhookService`, which intentionally records every event (no dedupe by type/code).
+- **Connect Item MCP tool:** the `connect_item` tool in `app/mcp/route.ts` feeds data from `getConnectItemStatus()` into the Connect Item widget (`src/components/connect-item`). Responses include `mcpToken` + `baseUrl` so the widget can open `/connect-bank?token=...` popups and refresh after success messages.
+- **Deletions:** `ItemDeletionService.deleteItemWithRateLimit()` enforces one deletion per 30 days, soft-deletes items (`status: 'deleted'` + `deleted_at`), calls Plaid `/item/remove`, and logs to `plaid_item_deletions`. Widgets should handle rate-limit errors by showing `deletionStatus.daysUntilNext`.
+
 ## Testing Guidelines
 
 ### Automated Testing
@@ -153,7 +227,7 @@ it('should create and query user', async () => {
 ## Commit & Pull Request Guidelines
 - Follow Conventional Commits (`feat(subscription): hook up stripe subscriptions`) as seen in the Git history.
 - Keep commits focused and rebased; avoid merge commits in feature branches.
-- PRs need a summary, tests run, environment/migration notes, and UI screenshots when surfaces change.
+- PRs need a summary, tests run, environment/migration notes (mention if you used `pnpm db:push`), and UI screenshots when surfaces change (widgets, connect-bank, etc.).
 - Link issues or tickets and request reviews early so security-sensitive updates receive double approval.
 
 ## Environment & Configuration

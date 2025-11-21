@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize2, Search, Filter, Calendar, TrendingDown, TrendingUp, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useWidgetProps } from "@/src/use-widget-props";
+import { useOpenAiGlobal } from "@/src/use-openai-global";
+import { useWidgetState } from "@/src/use-widget-state";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
 import { useTheme } from "@/src/use-theme";
@@ -16,11 +18,10 @@ interface TransactionWithEnrichment extends Transaction {
   // All fields from Plaid Transaction type are available
 }
 
-interface TransactionsData {
-  transactions: TransactionWithEnrichment[];
-  totalTransactions: number;
-  displayedTransactions: number;
-  dateRange: {
+interface ToolOutputData extends Record<string, unknown> {
+  totalTransactions?: number;
+  displayedTransactions?: number;
+  dateRange?: {
     start: string;
     end: string;
   };
@@ -44,6 +45,19 @@ interface TransactionsData {
       averageTransaction: number;
     };
   };
+}
+
+interface ToolMetadata {
+  transactions: TransactionWithEnrichment[];
+}
+
+interface TransactionsUIState extends Record<string, unknown> {
+  selectedCategory: string | null;
+  searchQuery: string;
+  showPendingOnly: boolean;
+  expandedTx: string | null;
+  showAllDates: boolean;
+  expandedDateGroups: string[]; // Use array for JSON serialization
 }
 
 // Category color mapping
@@ -80,7 +94,17 @@ function formatCategoryName(category: string): string {
 }
 
 export default function Transactions() {
-  const rawOutput = useWidgetProps();
+  const toolOutput = useWidgetProps<ToolOutputData>();
+  const toolMetadata = useOpenAiGlobal("toolResponseMetadata") as ToolMetadata | null;
+  const [uiState, setUiState] = useWidgetState<TransactionsUIState>({
+    selectedCategory: null,
+    searchQuery: "",
+    showPendingOnly: false,
+    expandedTx: null,
+    showAllDates: false,
+    expandedDateGroups: [],
+  });
+
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
   const theme = useTheme();
@@ -92,33 +116,26 @@ export default function Transactions() {
   // Max visible date groups in inline mode
   const MAX_DATE_GROUPS_INLINE = 3;
 
-  // All hooks must be called before any conditional returns
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showPendingOnly, setShowPendingOnly] = useState(false);
-  const [expandedTx, setExpandedTx] = useState<string | null>(null);
-  const [showAllDates, setShowAllDates] = useState(false);
-  const [expandedDateGroups, setExpandedDateGroups] = useState<Set<string>>(new Set());
-
-  // Type guard for TransactionsData
-  const toolOutput = rawOutput as unknown as TransactionsData | null | undefined;
-  const transactions = toolOutput?.transactions || [];
+  const transactions = toolMetadata?.transactions || [];
   const metadata = toolOutput?.metadata;
+
+  // Create a Set for expanded date groups for efficient lookups
+  const expandedDateGroupsSet = useMemo(() => new Set(uiState.expandedDateGroups), [uiState.expandedDateGroups]);
 
   // Filter transactions (must be called before any conditional returns)
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
 
     // Category filter
-    if (selectedCategory) {
+    if (uiState.selectedCategory) {
       filtered = filtered.filter(
-        (tx) => tx.personal_finance_category?.primary === selectedCategory
+        (tx) => tx.personal_finance_category?.primary === uiState.selectedCategory
       );
     }
 
     // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+    if (uiState.searchQuery) {
+      const query = uiState.searchQuery.toLowerCase();
       filtered = filtered.filter(
         (tx) =>
           (tx.merchant_name?.toLowerCase() || "").includes(query) ||
@@ -128,12 +145,12 @@ export default function Transactions() {
     }
 
     // Pending filter
-    if (showPendingOnly) {
+    if (uiState.showPendingOnly) {
       filtered = filtered.filter((tx) => tx.pending);
     }
 
     return filtered;
-  }, [transactions, selectedCategory, searchQuery, showPendingOnly]);
+  }, [transactions, uiState.selectedCategory, uiState.searchQuery, uiState.showPendingOnly]);
 
   // Group transactions by date
   const groupedTransactions = useMemo(() => {
@@ -150,10 +167,10 @@ export default function Transactions() {
 
   // Now we can do conditional returns after all hooks are called
   // Check for auth requirements
-  const authComponent = checkWidgetAuth(rawOutput);
+  const authComponent = checkWidgetAuth(toolOutput);
   if (authComponent) return authComponent;
 
-  if (!toolOutput || !toolOutput.transactions) {
+  if (!toolOutput && !toolMetadata) {
     return (
       <div
         className={cn(
@@ -206,11 +223,11 @@ export default function Transactions() {
           <h1 className={cn("text-2xl font-semibold mb-2", isDark ? "text-white" : "text-black")}>
             Transactions
           </h1>
-          <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
-            {toolOutput.dateRange
-              ? `${formatDate(toolOutput.dateRange.start)} - ${formatDate(toolOutput.dateRange.end)}`
-              : "Your transaction history"}
-          </p>
+          {toolOutput?.dateRange && (
+            <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+              {`${formatDate(toolOutput.dateRange.start)} - ${formatDate(toolOutput.dateRange.end)}`}
+            </p>
+          )}
         </div>
 
         {/* Summary Cards */}
@@ -371,8 +388,8 @@ export default function Transactions() {
               <input
                 type="text"
                 placeholder="Search transactions..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={uiState.searchQuery}
+                onChange={(e) => setUiState(s => ({ ...s, searchQuery: e.target.value }))}
                 className={cn(
                   "w-full pl-9 pr-4 py-2 rounded-lg border text-sm transition-all outline-none ring-0",
                   isDark
@@ -384,8 +401,8 @@ export default function Transactions() {
 
             {/* Category Filter */}
             <select
-              value={selectedCategory || ""}
-              onChange={(e) => setSelectedCategory(e.target.value || null)}
+              value={uiState.selectedCategory || ""}
+              onChange={(e) => setUiState(s => ({...s, selectedCategory: e.target.value || null}))}
               className={cn(
                 "px-4 py-2 rounded-lg border text-sm transition-all outline-none",
                 isDark
@@ -403,10 +420,10 @@ export default function Transactions() {
 
             {/* Pending Filter */}
             <button
-              onClick={() => setShowPendingOnly(!showPendingOnly)}
+              onClick={() => setUiState(s => ({...s, showPendingOnly: !s.showPendingOnly}))}
               className={cn(
                 "px-4 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap",
-                showPendingOnly
+                uiState.showPendingOnly
                   ? "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg"
                   : isDark
                   ? "bg-gray-800 text-white border border-white/10 hover:bg-gray-700"
@@ -414,7 +431,7 @@ export default function Transactions() {
               )}
             >
               <Filter strokeWidth={1.5} className="h-4 w-4 inline mr-2" />
-              {showPendingOnly ? "Show All" : "Pending"}
+              {uiState.showPendingOnly ? "Show All" : "Pending"}
             </button>
           </div>
         )}
@@ -428,7 +445,7 @@ export default function Transactions() {
           </div>
         ) : (
           <div className="space-y-6">
-            {(isFullscreen || showAllDates
+            {(isFullscreen || uiState.showAllDates
               ? groupedTransactions
               : groupedTransactions.slice(0, MAX_DATE_GROUPS_INLINE)
             ).map(([date, txs], groupIndex) => (
@@ -443,8 +460,8 @@ export default function Transactions() {
                 {/* Transaction Cards */}
                 <div className="space-y-2">
                   <AnimatePresence mode="popLayout">
-                    {(isFullscreen || expandedDateGroups.has(date) ? txs : txs.slice(0, MAX_VISIBLE_INLINE)).map((tx, txIndex) => {
-                      const isExpanded = expandedTx === tx.transaction_id;
+                    {(isFullscreen || expandedDateGroupsSet.has(date) ? txs : txs.slice(0, MAX_VISIBLE_INLINE)).map((tx, txIndex) => {
+                      const isExpanded = uiState.expandedTx === tx.transaction_id;
                       const merchantName = tx.merchant_name || tx.name || "Unknown";
                       const category = tx.personal_finance_category?.primary || "UNCATEGORIZED";
                       const categoryDetailed =
@@ -466,7 +483,7 @@ export default function Transactions() {
                               ? "bg-gray-800 border-white/10 hover:bg-gray-750"
                               : "bg-white border-black/5 hover:bg-gray-50"
                           )}
-                          onClick={() => setExpandedTx(isExpanded ? null : tx.transaction_id)}
+                          onClick={() => setUiState(s => ({...s, expandedTx: isExpanded ? null : tx.transaction_id}))}
                         >
                           {/* Main Row */}
                           <div className="p-4">
@@ -695,12 +712,12 @@ export default function Transactions() {
                   </AnimatePresence>
 
                   {/* "+# more" indicator for inline mode - expands this date group */}
-                  {!isFullscreen && !expandedDateGroups.has(date) && txs.length > MAX_VISIBLE_INLINE && (
+                  {!isFullscreen && !expandedDateGroupsSet.has(date) && txs.length > MAX_VISIBLE_INLINE && (
                     <motion.button
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       onClick={() => {
-                        setExpandedDateGroups((prev) => new Set(prev).add(date));
+                        setUiState(s => ({ ...s, expandedDateGroups: [...s.expandedDateGroups, date]}));
                       }}
                       className={cn(
                         "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
@@ -717,7 +734,7 @@ export default function Transactions() {
             ))}
 
             {/* Show More Date Groups Button - opens fullscreen */}
-            {!isFullscreen && !showAllDates && groupedTransactions.length > MAX_DATE_GROUPS_INLINE && (
+            {!isFullscreen && !uiState.showAllDates && groupedTransactions.length > MAX_DATE_GROUPS_INLINE && (
               <motion.button
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -737,7 +754,7 @@ export default function Transactions() {
 
         {/* Results Summary */}
         <div className={cn("mt-6 text-center text-sm", isDark ? "text-white/60" : "text-black/60")}>
-          Showing {filteredTransactions.length} of {transactions.length} transactions
+          Showing {filteredTransactions.length} of {toolOutput?.totalTransactions ?? transactions.length} transactions
         </div>
       </div>
     </div>

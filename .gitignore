@@ -45,3 +45,6 @@ next-env.d.ts
 /widgets/node_modules
 /widgets/dist
 /widgets/.vite
+
+.gemini/
+gha-creds-*.json
