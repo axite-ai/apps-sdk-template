@@ -1,0 +1,9733 @@
+# OpenAI Apps SDK UI Documentation
+# Source: https://openai.github.io/apps-sdk-ui/
+================================================================================
+
+
+================================================================================
+## Overview: Introduction
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/overview-introduction--docs
+================================================================================
+
+Apps SDK UI
+Design system for building high quality apps in ChatGPT
+
+Apps SDK UI is a design system tailored for ChatGPT Apps SDK, providing styling foundations with Tailwind, CSS variable design tokens, and a library of well-crafted, accessible components. Apps SDK UI includes:
+
+Design tokens – for colors, typography, spacing, sizing, shadows, surfaces, and more.
+Tailwind 4 – pre-configured with Apps SDK UI's design tokens.
+Component library – high-quality components built on top of Radix for consistent accessibility patterns.
+Utilities – for dark mode, responsiveness layouts, and more.
+Get started
+Installation
+
+Start using Apps SDK UI in your app
+
+Concepts
+
+Read about core concepts in Apps SDK UI
+
+Components
+
+Explore our library of composable components
+
+Design tokens
+
+See all available design tokens
+
+
+================================================================================
+## Overview: Installation
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/overview-installation--docs
+================================================================================
+
+Installation
+Quick tutorial for adding Apps SDK UI to your app
+Prerequisites
+
+Apps SDK UI is built on top of React and Tailwind 4. To use Apps SDK UI, you'll need to have both installed in your project, and configured with your build system.
+
+React 18 or 19 (install guide)
+Tailwind 4 (install guide)
+Install steps
+1. Install the package
+npm install @openai/apps-sdk-ui
+Copy
+2. Setup styles
+
+Add the foundation styles and Tailwind layers to the top of your global stylesheet (e.g. main.css):
+
+@import "tailwindcss";
+@import "@openai/apps-sdk-ui/css";
+/* Required for Tailwind to find class references in Apps SDK UI components. */
+@source "../node_modules/@openai/apps-sdk-ui";
+
+/* The rest of your application CSS */
+Copy
+
+Then import your stylesheet before rendering any components:
+
+// Must be imported first to ensure Tailwind layers and style foundations are defined before any potential component styles
+import "./main.css"
+
+import { StrictMode } from "react"
+import { createRoot } from "react-dom/client"
+import { App } from "./App"
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+Copy
+3. Configure router (optional)
+
+<AppsSDKUIProvider> helps define your default router link component, used in components like <TextLink> and <ButtonLink>.
+
+This provider is optional - router links can also be passed directly to components via the as prop.
+
+// Must be imported first to ensure Tailwind layers and style foundations are defined before component styles
+import "./main.css"
+
+import { AppsSDKUIProvider } from "@openai/apps-sdk-ui/components/AppsSDKUIProvider"
+import { StrictMode } from "react"
+import { createRoot } from "react-dom/client"
+import { Link } from 'react-router'
+import { App } from "./App"
+
+declare global {
+  interface AppsSDKUIConfig {
+    LinkComponent: typeof Link
+  }
+}
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <AppsSDKUIProvider linkComponent={Link}>
+      <App />
+    </AppsSDKUIProvider>
+  </StrictMode>,
+)
+Copy
+Start building
+
+Your project is now ready to use Apps SDK UI!
+
+Here's an example of a simple reservation card, using Tailwind classes and components.
+
+import { Badge } from "@openai/apps-sdk-ui/components/Badge"
+import { Button } from "@openai/apps-sdk-ui/components/Button"
+import {
+  Calendar,
+  Invoice,
+  Maps,
+  Members,
+  Phone,
+} from "@openai/apps-sdk-ui/components/Icon"
+
+export function ReservationCard() {
+  return (
+    <div className="w-full max-w-sm rounded-2xl border border-default bg-surface shadow-lg p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-secondary text-sm">
+            Reservation
+          </p>
+          <h2 className="mt-1 heading-lg">La Luna Bistro</h2>
+        </div>
+        <Badge color="success">Confirmed</Badge>
+      </div>
+      <div>
+        <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+          <dt className="flex items-center gap-1.5 font-medium text-secondary">
+            <Calendar className="size-4" />
+            Date
+          </dt>
+          <dd className="text-right">Apr 12 · 7:30 PM</dd>
+          <dt className="flex items-center gap-1.5 font-medium text-secondary">
+            <Members className="size-4" />
+            Guests
+          </dt>
+          <dd className="text-right">Party of 2</dd>
+          <dt className="flex items-center gap-1.5 font-medium text-secondary">
+            <Invoice className="size-4" />
+            Reference
+          </dt>
+          <dd className="text-right uppercase">4F9Q2K</dd>
+        </dl>
+      </div>
+      <div className="mt-4 grid gap-3 border-t border-subtle pt-4 sm:grid-cols-2">
+        <Button variant="soft" color="secondary" block>
+          <Phone />
+          Call
+        </Button>
+        <Button color="primary" block>
+          <Maps />
+          Directions
+        </Button>
+      </div>
+    </div>
+  )
+}
+Copy
+
+Previous
+
+Introduction
+
+Next
+
+Dark mode
+Prerequisites
+Install steps
+1. Install the package
+2. Setup styles
+3. Configure router (optional)
+Start building
+
+
+================================================================================
+## Concepts: Darkmode
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/concepts-dark-mode--docs
+================================================================================
+
+Dark mode
+Configure light & dark mode in your app
+Overview
+
+Light and dark mode are fully supported, but your app is in control of how the attribute is applied and persisted.
+
+To set a view mode, apply a [data-theme] attribute to the html element of your DOM.
+
+<html data-theme="dark">
+  <!-- ... -->
+</html>
+Copy
+
+Light and dark mode can also be nested within your content:
+
+<html data-theme="dark">
+  <body>
+    <div>Dark mode content (root scope)</div>
+    <div data-theme="light">Light mode content (nested scope)</div>
+  </body>
+</html>
+Copy
+Tailwind
+
+Tailwind is configured to look for the [data-theme] attribute, and will work as expected with dark mode classes.
+
+For more details, refer to the Tailwind documentation.
+
+<div class="bg-white dark:bg-black">
+  <!-- ... -->
+</div>
+Copy
+JavaScript
+applyDocumentTheme
+
+Helper for applying a given view state to the root element
+
+import { applyDocumentTheme } from "@openai/apps-sdk-ui/theme"
+
+applyDocumentTheme("dark")
+Copy
+getDocumentTheme
+
+Helper for reading the current view state on the root element.
+
+import { getDocumentTheme } from "@openai/apps-sdk-ui/theme"
+
+const currentTheme = getDocumentTheme() // "light" or "dark"
+Copy
+useDocumentTheme
+
+Hook for reading the latest view state on the root element. The hook will return a live value, as it listens to attribute changes on the html element via a MutationObserver.
+
+import { useDocumentTheme } from "@openai/apps-sdk-ui/theme"
+
+const SomeComponent = () => {
+  const currentTheme = useDocumentTheme() // "light" or "dark"
+}
+Copy
+Reference example
+
+Below is a full example of persistent light/dark mode using a Zustand store, handling applying the initial theme, listening for OS theme changes, subscribing to state changes, and storing user preferences in localStorage.
+
+The concepts can be ported to whichever ergonomic best suits your application.
+
+import { applyDocumentTheme } from "@openai/apps-sdk-ui/theme"
+import { create } from "zustand"
+import { createJSONStorage, persist } from "zustand/middleware"
+
+export type Theme = "light" | "dark" | "system"
+type ThemeState = {
+  theme: Theme
+}
+
+const INITIAL_STATE: ThemeState = {
+  theme: "system",
+}
+
+const store = create(
+  persist(() => INITIAL_STATE, {
+    name: "oai:user:theme",
+    storage: createJSONStorage(() => localStorage),
+  }),
+)
+
+// Apply when store is created / updated
+store.subscribe((state) => applyDocumentTheme(resolveTheme(state.theme)))
+
+// Apply when system theme changes
+window
+  .matchMedia("(prefers-color-scheme: dark)")
+  .addEventListener("change", () => applyDocumentTheme(resolveTheme(store.getState().theme)))
+
+function getSystemTheme(): "light" | "dark" {
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+}
+
+function resolveTheme(theme?: Theme): "light" | "dark" {
+  if (theme == null || theme === "system") {
+    return getSystemTheme()
+  }
+
+  return theme
+}
+
+export function setTheme(theme: Theme) {
+  store.setState({ theme })
+}
+
+export function useSelectedTheme() {
+  return store((state) => state.theme)
+}
+
+export function useCurrentTheme() {
+  return store((state) => resolveTheme(state.theme))
+}
+Copy
+
+Previous
+
+Installation
+
+Next
+
+Responsive design
+Overview
+Tailwind
+JavaScript
+applyDocumentTheme
+getDocumentTheme
+useDocumentTheme
+Reference example
+
+
+================================================================================
+## Concepts: Responsivedesign
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/concepts-responsive-design--docs
+================================================================================
+
+Responsive design
+Build adaptive interfaces with Apps SDK UI
+Approach
+
+Styles should be written mobile-first, meaning the base styles are applied to all screen sizes. Then, responsive styles are added that take effect at specific breakpoints and above.
+
+In practice this may look like starting with a single column layout, then introducing multiple columns at certain breakpoints, when sufficient screen width is available.
+
+Default breakpoints
+
+Default breakpoints are provided out-of-the-box with Apps SDK UI, and are integrated into Tailwind and React utilities.
+
+Name	Size	Common device	Example usage
+xs	380px	Portrait mobile	Applying styles to very small screens (by default), then using this breakpoint to override
+sm	576px	Landscape mobile, phablet	
+
+Collapsed mobile menu
+Single-column list/detail views
+
+md	768px	Tablet	
+
+Expanded primary navigation
+Fixed left sidebar navigation
+
+lg	1024px	Laptop	
+
+Tight column layouts
+Sticky sidebar in API Ref
+
+xl	1280px	Desktop	Spacious column layouts
+2xl	1536px	Widescreen	Largest screen sizes, widescreen viewing
+Usage
+Tailwind
+
+Use standard Tailwind paradigms for writing responsive utility classes. See the Tailwind documentation for more details.
+
+// Use flex columns by default, then convert to flex row at "lg" and up
+<div className="flex flex-col lg:flex-row"></div>
+Copy
+React
+
+Use our React hook for detecting breakpoints in your components.
+
+import { useBreakpoint } from "@openai/apps-sdk-ui/hooks/useBreakpoint";
+
+function SampleComponent() {
+  const isMediumBreakpoint = useBreakpoint("md"); // true or false
+}
+Copy
+
+Previous
+
+Dark mode
+
+Next
+
+Typography
+Approach
+Default breakpoints
+Usage
+Tailwind
+React
+
+
+================================================================================
+## Concepts: Typography
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/concepts-typography--docs
+================================================================================
+
+Typography
+Using type treatments in Apps SDK UI
+Scales
+
+Scales include sizing for heading and text sizes, with combinations of font-size,font-weight, and line-height.
+
+Name	Size	Weight	Tracking	Line
+heading-5xl	72px	600	0em	72px
+heading-4xl	60px	600	0em	60px
+heading-3xl	48px	600	0em	48px
+heading-2xl	36px	600	0em	42px
+heading-xl	32px	600	0em	38px
+heading-lg	24px	600	0em	28px
+heading-md	20px	600	0em	26px
+heading-sm	18px	600	0em	26px
+heading-xs	16px	600	0em	24px
+text-lg	18px	400	0em	29px
+text-md	16px	400	0em	24px
+text-sm	14px	400	0em	20px
+text-xs	12px	400	0em	18px
+text-2xs	10px	400	0em	14px
+text-3xs	8px	400	0em	12px
+
+All text sizes are exposed to Tailwind, with custom utilities for heading-* and text-* classes.
+
+Get started
+Building your first app
+
+Inline cards in Apps SDK UI keep copy short and actionable. Provide just enough context for the task, then pair it with a clear next step.
+
+<h5 className="text-secondary mb-1">Get started</h5>
+<h2 className="heading-xl mb-3">Building your first app</h2>
+<p className="text-md">
+  Inline cards in Apps SDK UI keep copy short and actionable. Provide just enough
+  context for the task, then pair it with a clear next step.
+</p>
+Copy
+
+The underlying CSS variables can be referenced directly in CSS, as needed.
+
+/* Headings */
+--font-heading-xl-size: 2rem; /* 32px  */
+--font-heading-xl-line-height: 2.375rem; /* 38px */
+--font-heading-xl-weight: var(--font-weight-semibold);
+/* Text */
+--font-text-md-size: 1rem; /* 16px  */
+--font-text-md-line-height: 1.5; /* 24px  */
+--font-text-md-weight: var(--font-weight-normal);
+Copy
+Colors
+
+Four semantic text colors are provided by default – base, emphasis, prose, secondary, and tertiary.
+
+text-default
+
+text-secondary
+
+text-tertiary
+
+<p className="text-default">text-default</p>
+<p className="text-secondary">text-secondary</p>
+<p className="text-tertiary">text-tertiary</p>
+Copy
+
+For more details on using semantic color variables directly,
+
+explore our design tokens
+
+.
+
+Weights
+
+The available weights are fairly standard. Semibold is the most common bolded value.
+
+font-normal
+
+font-medium
+
+font-semibold
+
+font-bold
+
+<p className="font-normal">font-normal</p>
+<p className="font-medium">font-medium</p>
+<p className="font-semibold">font-semibold</p>
+<p className="font-bold">font-bold</p>
+Copy
+
+CSS variables are exposed in the common Tailwind pattern of font-weight-*:
+
+--font-weight-normal: 400;
+--font-weight-medium: 500;
+--font-weight-semibold: 600;
+--font-weight-bold: 700;
+Copy
+Line height
+
+Line heights are optimized for readability and tailored to how each font-size sits on the baseline.
+
+Values are designed to create optimal centering with align-items: center for that given font-size, which ultimately means aligning to an odd or even pixel value.
+
+text-md
+
+Prose
+
+Typography is the silent art that shapes how we experience written language. Beyond mere letters, it orchestrates rhythm, hierarchy, and emotion—guiding the reader’s eye and setting the tone before a single word is read. The beauty of typography lies in its subtlety: the careful balance of space and form, the harmony between font size and line height, and the way thoughtfully chosen type can make content feel effortless, inviting, and human. When typography is done well, it disappears, letting the message shine—yet its influence is always felt, elevating both clarity and aesthetic pleasure.
+
+Icon & text
+
+Writing style
+
+Hyperlink
+
+Label
+
+Previous
+
+Responsive design
+
+Next
+
+Colors
+Scales
+Colors
+Weights
+Line height
+
+
+================================================================================
+## Foundations: Colors
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/foundations-colors--docs
+================================================================================
+
+Colors
+Primitive color palettes available in Apps SDK UI
+Grayscale
+0
+25
+50
+75
+100
+150
+200
+250
+300
+350
+400
+450
+500
+550
+600
+650
+700
+750
+800
+850
+900
+925
+950
+975
+1000
+Alphas
+0
+02
+04
+05
+06
+08
+10
+12
+15
+16
+20
+25
+30
+35
+40
+50
+Primary colors
+25
+50
+75
+100
+200
+300
+400
+500
+600
+700
+800
+900
+950
+1000
+a25
+a50
+a75
+a100
+a200
+a300
+25
+50
+75
+100
+200
+300
+400
+500
+600
+700
+800
+900
+950
+1000
+a25
+a50
+a75
+a100
+a200
+a300
+25
+50
+75
+100
+200
+300
+400
+500
+600
+700
+800
+900
+950
+1000
+a25
+a50
+a75
+a100
+a200
+a300
+25
+50
+75
+100
+200
+300
+400
+500
+600
+700
+800
+900
+950
+1000
+a25
+a50
+a75
+a100
+a200
+a300
+25
+50
+75
+100
+200
+300
+400
+500
+600
+700
+800
+900
+950
+1000
+a25
+a50
+a75
+a100
+a200
+a300
+25
+50
+75
+100
+200
+300
+400
+500
+600
+700
+800
+900
+950
+1000
+a25
+a50
+a75
+a100
+a200
+a300
+25
+50
+75
+100
+200
+300
+400
+500
+600
+700
+800
+900
+950
+1000
+a25
+a50
+a75
+a100
+a200
+a300
+
+
+================================================================================
+## Foundations: Designtokens
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/foundations-design-tokens--docs
+================================================================================
+
+Design Tokens
+Explore available tokens from Apps SDK UI
+All
+Text colors
+Semantic colors
+Fonts
+Radius
+Shadows
+Motion
+Text colors
+	
+color-text
+	gray-1000
+
+	
+color-text-secondary
+	gray-500
+
+	
+color-text-tertiary
+	gray-400
+
+	
+color-text-inverse
+	gray-0
+Semantic colors
+	
+color-text-primary
+	gray-1000
+
+	
+color-background-primary-soft
+	gray-100
+
+	
+color-background-primary-soft-hover
+	gray-150
+
+	
+color-background-primary-soft-active
+	gray-200
+
+	
+color-background-primary-soft-alpha
+	alpha-08
+
+	
+color-background-primary-soft-alpha-hover
+	alpha-12
+
+	
+color-background-primary-soft-alpha-active
+	alpha-16
+
+	
+color-text-primary-soft
+	color-text
+
+	
+color-background-primary-soft-alt
+	alpha-02
+
+	
+color-border-primary-soft-alt
+	alpha-06
+
+	
+color-text-primary-soft-alt
+	color-text
+
+	
+color-background-primary-surface
+	alpha-05
+
+	
+color-border-primary-surface
+	alpha-05
+
+	
+color-text-primary-surface
+	color-text
+
+	
+color-background-primary-solid
+	gray-900
+
+	
+color-background-primary-solid-hover
+	gray-700
+
+	
+color-background-primary-solid-active
+	gray-600
+
+	
+color-text-primary-solid
+	white
+
+	
+color-background-primary-outline-hover
+	alpha-02
+
+	
+color-background-primary-outline-active
+	alpha-04
+
+	
+color-border-primary-outline
+	alpha-16
+
+	
+color-border-primary-outline-hover
+	alpha-20
+
+	
+color-text-primary-outline
+	color-text
+
+	
+color-text-primary-outline-hover
+	color-text
+
+	
+color-background-primary-ghost-hover
+	alpha-08
+
+	
+color-background-primary-ghost-active
+	alpha-12
+
+	
+color-text-primary-ghost
+	color-text
+
+	
+color-text-primary-ghost-hover
+	color-text
+
+	
+color-ring-primary
+	color-ring
+
+	
+color-ring-primary-soft
+	color-ring-primary
+
+	
+color-ring-primary-solid
+	color-ring-primary
+
+	
+color-ring-primary-outline
+	color-ring-primary
+
+	
+color-ring-primary-ghost
+	color-ring-primary
+
+	
+color-background-secondary-soft
+	gray-100
+
+	
+color-background-secondary-soft-hover
+	gray-150
+
+	
+color-background-secondary-soft-active
+	gray-200
+
+	
+color-background-secondary-soft-alpha
+	alpha-08
+
+	
+color-background-secondary-soft-alpha-hover
+	alpha-12
+
+	
+color-background-secondary-soft-alpha-active
+	alpha-16
+
+	
+color-text-secondary-soft
+	color-text
+
+	
+color-background-secondary-soft-alt
+	alpha-02
+
+	
+color-border-secondary-soft-alt
+	alpha-06
+
+	
+color-text-secondary-soft-alt
+	color-text
+
+	
+color-background-secondary-solid
+	gray-500
+
+	
+color-background-secondary-solid-hover
+	gray-600
+
+	
+color-background-secondary-solid-active
+	gray-700
+
+	
+color-text-secondary-solid
+	white
+
+	
+color-background-secondary-outline-hover
+	alpha-02
+
+	
+color-background-secondary-outline-active
+	alpha-04
+
+	
+color-border-secondary-outline
+	alpha-16
+
+	
+color-border-secondary-outline-hover
+	alpha-20
+
+	
+color-text-secondary-outline
+	color-text-secondary
+
+	
+color-text-secondary-outline-hover
+	color-text
+
+	
+color-background-secondary-ghost-hover
+	alpha-08
+
+	
+color-background-secondary-ghost-active
+	alpha-12
+
+	
+color-text-secondary-ghost
+	color-text-secondary
+
+	
+color-text-secondary-ghost-hover
+	color-text
+
+	
+color-ring-secondary
+	color-ring
+
+	
+color-ring-secondary-soft
+	color-ring-secondary
+
+	
+color-ring-secondary-solid
+	color-ring-secondary
+
+	
+color-ring-secondary-outline
+	color-ring-secondary
+
+	
+color-ring-secondary-ghost
+	color-ring-secondary
+
+	
+color-text-info
+	blue-700
+
+	
+color-background-info-soft
+	blue-50
+
+	
+color-background-info-soft-hover
+	blue-75
+
+	
+color-background-info-soft-active
+	blue-75
+
+	
+color-background-info-soft-alpha
+	blue-a50
+
+	
+color-background-info-soft-alpha-hover
+	blue-a75
+
+	
+color-background-info-soft-alpha-active
+	blue-a75
+
+	
+color-text-info-soft
+	blue-600
+
+	
+color-background-info-surface
+	blue-a25
+
+	
+color-border-info-surface
+	blue-a25
+
+	
+color-text-info-surface
+	blue-600
+
+	
+color-background-info-solid
+	blue-400
+
+	
+color-background-info-solid-hover
+	blue-500
+
+	
+color-background-info-solid-active
+	blue-500
+
+	
+color-text-info-solid
+	white
+
+	
+color-background-info-outline-hover
+	blue-a25
+
+	
+color-background-info-outline-active
+	blue-a25
+
+	
+color-border-info-outline
+	blue-500
+
+	
+color-border-info-outline-hover
+	blue-500
+
+	
+color-text-info-outline
+	blue-500
+
+	
+color-text-info-outline-hover
+	blue-500
+
+	
+color-background-info-ghost-hover
+	blue-a50
+
+	
+color-background-info-ghost-active
+	blue-a50
+
+	
+color-text-info-ghost
+	blue-500
+
+	
+color-text-info-ghost-hover
+	blue-500
+
+	
+color-ring-info
+	color-ring
+
+	
+color-ring-info-soft
+	color-ring-info
+
+	
+color-ring-info-solid
+	color-ring-info
+
+	
+color-ring-info-outline
+	color-ring-info
+
+	
+color-ring-info-ghost
+	color-ring-info
+
+	
+color-text-warning
+	orange-700
+
+	
+color-background-warning-soft
+	orange-50
+
+	
+color-background-warning-soft-hover
+	orange-75
+
+	
+color-background-warning-soft-active
+	orange-75
+
+	
+color-background-warning-soft-alpha
+	orange-a50
+
+	
+color-background-warning-soft-alpha-hover
+	orange-a75
+
+	
+color-background-warning-soft-alpha-active
+	orange-a75
+
+	
+color-text-warning-soft
+	orange-700
+
+	
+color-background-warning-surface
+	orange-a25
+
+	
+color-border-warning-surface
+	orange-a25
+
+	
+color-text-warning-surface
+	orange-700
+
+	
+color-background-warning-solid
+	orange-500
+
+	
+color-background-warning-solid-hover
+	orange-600
+
+	
+color-background-warning-solid-active
+	orange-600
+
+	
+color-text-warning-solid
+	white
+
+	
+color-background-warning-outline-hover
+	orange-a25
+
+	
+color-background-warning-outline-active
+	orange-a25
+
+	
+color-border-warning-outline
+	orange-500
+
+	
+color-border-warning-outline-hover
+	orange-500
+
+	
+color-text-warning-outline
+	orange-500
+
+	
+color-text-warning-outline-hover
+	orange-500
+
+	
+color-background-warning-ghost-hover
+	orange-a50
+
+	
+color-background-warning-ghost-active
+	orange-a50
+
+	
+color-text-warning-ghost
+	orange-500
+
+	
+color-text-warning-ghost-hover
+	orange-500
+
+	
+color-ring-warning
+	color-ring
+
+	
+color-ring-warning-soft
+	color-ring-warning
+
+	
+color-ring-warning-solid
+	color-ring-warning
+
+	
+color-ring-warning-outline
+	color-ring-warning
+
+	
+color-ring-warning-ghost
+	color-ring-warning
+
+	
+color-text-caution
+	yellow-700
+
+	
+color-background-caution-soft
+	yellow-50
+
+	
+color-background-caution-soft-hover
+	yellow-75
+
+	
+color-background-caution-soft-active
+	yellow-75
+
+	
+color-background-caution-soft-alpha
+	yellow-a50
+
+	
+color-background-caution-soft-alpha-hover
+	yellow-a75
+
+	
+color-background-caution-soft-alpha-active
+	yellow-a75
+
+	
+color-text-caution-soft
+	yellow-800
+
+	
+color-background-caution-surface
+	yellow-a25
+
+	
+color-border-caution-surface
+	yellow-a25
+
+	
+color-text-caution-surface
+	yellow-800
+
+	
+color-background-caution-solid
+	yellow-600
+
+	
+color-background-caution-solid-hover
+	yellow-700
+
+	
+color-background-caution-solid-active
+	yellow-700
+
+	
+color-background-caution-outline-hover
+	yellow-a25
+
+	
+color-background-caution-outline-active
+	yellow-a25
+
+	
+color-border-caution-outline
+	yellow-700
+
+	
+color-border-caution-outline-hover
+	yellow-700
+
+	
+color-text-caution-outline
+	yellow-700
+
+	
+color-text-caution-outline-hover
+	yellow-700
+
+	
+color-background-caution-ghost-hover
+	yellow-a50
+
+	
+color-background-caution-ghost-active
+	yellow-a50
+
+	
+color-text-caution-ghost
+	yellow-700
+
+	
+color-text-caution-ghost-hover
+	yellow-700
+
+	
+color-ring-caution
+	color-ring
+
+	
+color-ring-caution-soft
+	color-ring-caution
+
+	
+color-ring-caution-solid
+	color-ring-caution
+
+	
+color-ring-caution-outline
+	color-ring-caution
+
+	
+color-ring-caution-ghost
+	color-ring-caution
+
+	
+color-text-danger
+	red-700
+
+	
+color-background-danger-soft
+	red-50
+
+	
+color-background-danger-soft-hover
+	red-75
+
+	
+color-background-danger-soft-active
+	red-75
+
+	
+color-background-danger-soft-alpha
+	red-a50
+
+	
+color-background-danger-soft-alpha-hover
+	red-a75
+
+	
+color-background-danger-soft-alpha-active
+	red-a75
+
+	
+color-text-danger-soft
+	red-600
+
+	
+color-background-danger-surface
+	red-a25
+
+	
+color-border-danger-surface
+	red-a25
+
+	
+color-text-danger-surface
+	red-600
+
+	
+color-background-danger-solid
+	red-500
+
+	
+color-background-danger-solid-hover
+	red-600
+
+	
+color-background-danger-solid-active
+	red-600
+
+	
+color-text-danger-solid
+	white
+
+	
+color-background-danger-outline-hover
+	red-a25
+
+	
+color-background-danger-outline-active
+	red-a25
+
+	
+color-border-danger-outline
+	red-500
+
+	
+color-border-danger-outline-hover
+	red-500
+
+	
+color-text-danger-outline
+	red-500
+
+	
+color-text-danger-outline-hover
+	red-500
+
+	
+color-background-danger-ghost-hover
+	red-a50
+
+	
+color-background-danger-ghost-active
+	red-a50
+
+	
+color-text-danger-ghost
+	red-500
+
+	
+color-text-danger-ghost-hover
+	red-500
+
+	
+color-ring-danger
+	red-200
+
+	
+color-ring-danger-soft
+	color-ring-danger
+
+	
+color-ring-danger-solid
+	color-ring-danger
+
+	
+color-ring-danger-outline
+	color-ring-danger
+
+	
+color-ring-danger-ghost
+	color-ring-danger
+
+	
+color-text-success
+	green-700
+
+	
+color-background-success-soft
+	green-50
+
+	
+color-background-success-soft-hover
+	green-75
+
+	
+color-background-success-soft-active
+	green-75
+
+	
+color-background-success-soft-alpha
+	green-a50
+
+	
+color-background-success-soft-alpha-hover
+	green-a75
+
+	
+color-background-success-soft-alpha-active
+	green-a75
+
+	
+color-text-success-soft
+	green-600
+
+	
+color-background-success-surface
+	green-a25
+
+	
+color-border-success-surface
+	green-a25
+
+	
+color-text-success-surface
+	green-600
+
+	
+color-background-success-solid
+	green-400
+
+	
+color-background-success-solid-hover
+	green-500
+
+	
+color-background-success-solid-active
+	green-500
+
+	
+color-text-success-solid
+	white
+
+	
+color-background-success-outline-hover
+	green-a25
+
+	
+color-background-success-outline-active
+	green-a25
+
+	
+color-border-success-outline
+	green-500
+
+	
+color-border-success-outline-hover
+	green-500
+
+	
+color-text-success-outline
+	green-500
+
+	
+color-text-success-outline-hover
+	green-500
+
+	
+color-background-success-ghost-hover
+	green-a50
+
+	
+color-background-success-ghost-active
+	green-a50
+
+	
+color-text-success-ghost
+	green-500
+
+	
+color-text-success-ghost-hover
+	green-500
+
+	
+color-ring-success
+	color-ring
+
+	
+color-ring-success-soft
+	color-ring-info
+
+	
+color-ring-success-solid
+	color-ring-info
+
+	
+color-ring-success-outline
+	color-ring-info
+
+	
+color-ring-success-ghost
+	color-ring-info
+
+	
+color-text-discovery
+	purple-700
+
+	
+color-background-discovery-soft
+	purple-50
+
+	
+color-background-discovery-soft-hover
+	purple-75
+
+	
+color-background-discovery-soft-active
+	purple-75
+
+	
+color-background-discovery-soft-alpha
+	purple-a50
+
+	
+color-background-discovery-soft-alpha-hover
+	purple-a75
+
+	
+color-background-discovery-soft-alpha-active
+	purple-a75
+
+	
+color-text-discovery-soft
+	purple-600
+
+	
+color-background-discovery-surface
+	purple-a25
+
+	
+color-border-discovery-surface
+	purple-a25
+
+	
+color-text-discovery-surface
+	purple-600
+
+	
+color-background-discovery-solid
+	purple-400
+
+	
+color-background-discovery-solid-hover
+	purple-500
+
+	
+color-background-discovery-solid-active
+	purple-500
+
+	
+color-text-discovery-solid
+	white
+
+	
+color-background-discovery-outline-hover
+	purple-a25
+
+	
+color-background-discovery-outline-active
+	purple-a25
+
+	
+color-border-discovery-outline
+	purple-500
+
+	
+color-border-discovery-outline-hover
+	purple-500
+
+	
+color-text-discovery-outline
+	purple-500
+
+	
+color-text-discovery-outline-hover
+	purple-500
+
+	
+color-background-discovery-ghost-hover
+	purple-a50
+
+	
+color-background-discovery-ghost-active
+	purple-a50
+
+	
+color-text-discovery-ghost
+	purple-500
+
+	
+color-text-discovery-ghost-hover
+	purple-500
+
+	
+color-ring-discovery
+	color-ring
+
+	
+color-ring-discovery-soft
+	color-ring
+
+	
+color-ring-discovery-solid
+	color-ring
+
+	
+color-ring-discovery-outline
+	color-ring
+
+	
+color-ring-discovery-ghost
+	color-ring
+
+	
+color-background-disabled
+	alpha-05
+
+	
+color-border-disabled
+	alpha-06
+
+	
+color-text-disabled
+	gray-400
+
+	
+color-ring
+	blue-500
+
+	
+color-border
+	alpha-10
+
+	
+color-border-subtle
+	alpha-05
+
+	
+color-border-strong
+	alpha-15
+
+	
+color-surface
+	gray-0
+
+	
+color-surface-secondary
+	gray-50
+
+	
+color-surface-tertiary
+	gray-75
+
+	
+color-surface-elevated
+	gray-0
+
+	
+color-surface-elevated-secondary
+	gray-50
+Fonts
+font-sans
+	ui-sans-serif, -apple-system, system-ui, ..., sans-serif
+
+font-mono
+	ui-monospace, "SFMono-Regular", "SF Mono", ..., monospace
+
+font-weight-normal
+	400
+
+font-weight-medium
+	500
+
+font-weight-semibold
+	600
+
+font-weight-bold
+	700
+
+font-tracking-wide
+	0em
+
+font-tracking-normal
+	-0.01em
+
+font-tracking-tight
+	-0.02em
+
+font-heading-5xl-size
+	4.5rem≈72px
+
+font-heading-5xl-line-height
+	4.5rem≈72px
+
+font-heading-5xl-weight
+	font-weight-semibold
+
+font-heading-5xl-tracking
+	tracking-tight
+
+font-heading-4xl-size
+	3.75rem≈60px
+
+font-heading-4xl-line-height
+	3.75rem≈60px
+
+font-heading-4xl-weight
+	font-weight-semibold
+
+font-heading-4xl-tracking
+	tracking-tight
+
+font-heading-3xl-size
+	3rem≈48px
+
+font-heading-3xl-line-height
+	3rem≈48px
+
+font-heading-3xl-weight
+	font-weight-semibold
+
+font-heading-3xl-tracking
+	tracking-tight
+
+font-heading-2xl-size
+	2.25rem≈36px
+
+font-heading-2xl-line-height
+	2.625rem≈42px
+
+font-heading-2xl-weight
+	font-weight-semibold
+
+font-heading-2xl-tracking
+	tracking-tight
+
+font-heading-xl-size
+	2rem≈32px
+
+font-heading-xl-line-height
+	2.375rem≈38px
+
+font-heading-xl-weight
+	font-weight-semibold
+
+font-heading-xl-tracking
+	tracking-tight
+
+font-heading-lg-size
+	1.5rem≈24px
+
+font-heading-lg-line-height
+	1.75rem≈28px
+
+font-heading-lg-weight
+	font-weight-semibold
+
+font-heading-lg-tracking
+	tracking-normal
+
+font-heading-md-size
+	1.25rem≈20px
+
+font-heading-md-line-height
+	1.625rem≈26px
+
+font-heading-md-weight
+	font-weight-semibold
+
+font-heading-md-tracking
+	tracking-normal
+
+font-heading-sm-size
+	1.125rem≈18px
+
+font-heading-sm-line-height
+	1.625rem≈26px
+
+font-heading-sm-weight
+	font-weight-semibold
+
+font-heading-sm-tracking
+	tracking-normal
+
+font-heading-xs-size
+	1rem≈16px
+
+font-heading-xs-line-height
+	1.5rem≈24px
+
+font-heading-xs-weight
+	font-weight-semibold
+
+font-heading-xs-tracking
+	tracking-normal
+
+font-text-lg-size
+	1.125rem≈18px
+
+font-text-lg-line-height
+	1.8125rem≈29px
+
+font-text-lg-weight
+	font-weight-normal
+
+font-text-lg-tracking
+	tracking-normal
+
+font-text-md-size
+	1rem≈16px
+
+font-text-md-line-height
+	1.5rem≈24px
+
+font-text-md-weight
+	font-weight-normal
+
+font-text-md-tracking
+	tracking-normal
+
+font-text-sm-size
+	0.875rem≈14px
+
+font-text-sm-line-height
+	1.25rem≈20px
+
+font-text-sm-weight
+	font-weight-normal
+
+font-text-sm-tracking
+	tracking-normal
+
+font-text-xs-size
+	0.75rem≈12px
+
+font-text-xs-line-height
+	1.125rem≈18px
+
+font-text-xs-weight
+	font-weight-normal
+
+font-text-xs-tracking
+	tracking-wide
+
+font-text-2xs-size
+	0.625rem≈10px
+
+font-text-2xs-line-height
+	0.875rem≈14px
+
+font-text-2xs-weight
+	font-weight-normal
+
+font-text-2xs-tracking
+	tracking-wide
+
+font-text-3xs-size
+	0.5rem≈8px
+
+font-text-3xs-line-height
+	0.75rem≈12px
+
+font-text-3xs-weight
+	font-weight-normal
+
+font-text-3xs-tracking
+	tracking-wide
+Radius
+	
+radius-2xs
+	0.125rem≈2px
+
+	
+radius-xs
+	0.25rem≈4px
+
+	
+radius-sm
+	0.375rem≈6px
+
+	
+radius-md
+	0.5rem≈8px
+
+	
+radius-lg
+	0.625rem≈10px
+
+	
+radius-xl
+	0.75rem≈12px
+
+	
+radius-2xl
+	1rem≈16px
+
+	
+radius-3xl
+	1.25rem≈20px
+
+	
+radius-4xl
+	1.5rem≈24px
+
+	
+radius-full
+	9999px
+Shadows
+shadow-hairline
+	
+
+shadow-100
+	
+
+shadow-100-strong
+	
+
+shadow-100-stronger
+	
+
+shadow-200
+	
+
+shadow-200-strong
+	
+
+shadow-200-stronger
+	
+
+shadow-300
+	
+
+shadow-300-strong
+	
+
+shadow-300-stronger
+	
+
+shadow-400
+	
+
+shadow-400-strong
+	
+
+shadow-400-stronger
+	
+Breakpoints
+breakpoint-xs
+	380px
+
+breakpoint-sm
+	576px
+
+breakpoint-md
+	768px
+
+breakpoint-lg
+	1024px
+
+breakpoint-xl
+	1280px
+
+breakpoint-2xl
+	1536px
+Motion
+cubic-enter
+	cubic-bezier(0.19, 1, 0.22, 1)
+
+cubic-exit
+	cubic-bezier(0.8, 0, 0.4, 1)
+
+cubic-exit-snappy
+	cubic-bezier(0.65, 0, 0.4, 1)
+
+cubic-move
+	cubic-bezier(0.65, 0, 0.35, 1)
+
+transition-duration-basic
+	150ms
+
+transition-ease-basic
+	ease
+
+
+================================================================================
+## Foundations: Icons
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/foundations-icons--docs
+================================================================================
+
+Icons
+Comprehensive list of all available icons
+Usage
+import { IconName } from "@openai/apps-sdk-ui/components/Icon"
+Copy
+List
+AddMember
+AddSources
+Agent
+AgentMode
+AllGizmos
+AllProductsExplore
+Analytics
+AnalyzeData
+ApiKey
+ApiKeyAdmin
+ApiKeyServiceAccount
+ApiKeys
+Archive
+Array
+ArrowBottomLeftSm
+ArrowBottomRightSm
+ArrowCurved
+ArrowCurvedLeft
+ArrowCurvedRight
+ArrowCurvedRightXs
+ArrowCurvedRightXs24px
+ArrowDown
+ArrowDownLg
+ArrowDownSm
+ArrowLeft
+ArrowLeftLg
+ArrowLeftSm
+ArrowRight
+ArrowRightLg
+ArrowRightSm
+ArrowRotateCcw
+ArrowRotateCw
+ArrowTopLeftSm
+ArrowTopRightSm
+ArrowUp
+ArrowUpLg
+ArrowUpRight
+ArrowUpSm
+AspectRatio11
+AspectRatio169
+AspectRatio34
+AspectRatio43
+AspectRatio916
+Assistant
+Astronout
+AtSign
+Atom
+AutoPairApps
+AutoSuggestedEdits
+Autocomplete
+AvatarFilledProfile
+AvatarProfile
+Back10s
+Back15s
+BackLarge
+BackSmall
+BackToApp
+BackgroundConversation
+BalancingScale
+BarChart
+BarChartFilled
+Batch
+Batches
+Bell
+BellFilled
+Beta
+Bills
+Blend
+BlendingCurveSharp
+BlendingCurveSmooth
+BlendingCurveSubtle
+Bolt
+Book
+BookBookmark
+BookClock
+BookClosed
+BookOpen
+BookWrench
+Boolean
+Brain
+Branch
+BranchAlt
+Bug
+BuilderProfileCard
+BuildingWorkspace
+Business
+BusinessFilled
+Cabinet
+Calendar
+CalendarAlt
+CalendarToday
+Camera
+CameraFilledPhoto
+CameraPhoto
+CaptionCcOff
+CaptionCcOn
+CaptionOff
+CaptionOn
+Card
+CaretDown
+CaretLeft
+CaretRight
+CaretUp
+Category
+Certificate
+Chart
+ChartXAxis
+ChartYAxis
+Chat
+ChatCompose
+ChatDashedCheckedTemp
+ChatDashedTemp
+ChatTemporary
+ChatTripleDots
+Chats
+Check
+CheckCircle
+CheckCircleDashed
+CheckCircleFilled
+CheckLg
+CheckMd
+ChevronDown
+ChevronDownLg
+ChevronDownMd
+ChevronDownUp
+ChevronDownVector
+ChevronLeft
+ChevronLeftLg
+ChevronLeftMd
+ChevronRight
+ChevronRightAlt
+ChevronRightLg
+ChevronRightMd
+ChevronSmallDown
+ChevronSmallLeft
+ChevronSmallRight
+ChevronSmallUp
+ChevronUp
+ChevronUpDown
+ChevronUpLg
+ChevronUpMd
+Circle
+CircleDashed
+CircleQuestion
+ClappingBoardClosed
+ClappingBoardOpen
+Cleanup
+Clear
+Click
+Clip
+Clipboard
+ClipboardCopy
+Clock
+Clock10s
+Clock15s
+Clock20s
+Clock5s
+ClockOff
+CloseBold
+Code
+CodeSquareSlash
+Collapse
+CollapseLarge
+CollapseLeft
+CollapseLg
+CollapseRight
+CollapseSm
+CollapseSmall
+ColorTheme
+Comment
+Commit
+Compare
+CompareArrows
+Compass
+Complete
+ComposeCanvasEditStar
+ComposeDashedTemporary
+ComposeEditSquare
+Confetti
+ConfettiParty
+Connect
+ConnectApps
+ConnectedDynamicGpt
+ConnectorsConnectedApps
+Copy
+CreditCard
+Credits
+Cube
+Cursor
+Customize
+DarkMode
+DataControls
+DeepSearchTelescope
+Delete
+DeleteAccount
+Desktop
+DiningEvents
+DisabledCursor
+Dock
+Document
+Documentation
+DollarCircle
+Dot
+DotsHorizontal
+DotsHorizontalCircle
+DotsHorizontalMoreMenu
+DotsVertical
+DotsVerticalCircle
+DotsVerticalMoreMenu
+DoubleChevronLeft
+DoubleChevronRight
+Download
+DownloadCircle
+DownloadGifWatermark
+DownloadSimple
+DownloadVideo
+DownloadVideoWatermark
+Dropdown
+DropdownVector
+Dumbbell
+EarthTravelWorld
+Edit
+EditAlt
+EditDalleImage
+EditPencil
+EditStar
+EditXs
+Education
+Email
+EmojiAdd
+EmojiLists
+EmojiRemove
+EmojiSections
+EmojiWords
+EmptyCircle
+EmptyCircleFilled
+EnterLogin
+Enum
+Equal
+Error
+ExclamationMarkCircle
+ExitLogout
+Expand
+ExpandLarge
+ExpandLg
+ExpandMd
+ExpandSm
+ExpandSmall
+Explore
+ExploreSora
+ExternalLink
+Eye
+EyeClosed
+EyeOff
+FeaturedWreath
+File
+File3d
+FileAudio
+FileBlank
+FileCode
+FileDocument
+FileImage
+FilePresentation
+FileSpreadsheet
+FileSpreedsheet
+FileUpload
+FileVideo
+FileZip
+Filter
+FineTuning
+FistBump
+Flag
+Flash
+Flask
+FlaskFilled
+Folder
+FolderDocumentsFinder
+FolderOpen
+FolderPlus
+FolderPlusAdd
+FolderShared
+FolderSharedOpen
+FolderStuffed
+FolderUnshare
+Folders
+Followup
+Forum
+Forward
+Forward10s
+Forward15s
+Frozen
+Function
+Functions
+GenerateSuggestedEdits
+Glasses
+Globe
+GlobeAltRealTimeSearch
+GlobeFilled
+GlobeOffRealTimeSearch
+GlobeRealTimeSearch
+GlobeSpin
+Go
+GoFilled
+Graduate
+GraduationCap
+Grid
+GridAlt
+Group
+GroupFilled
+Groups
+Hamburger
+HandBack
+HandFront
+HandPeace
+HandRaised
+HandRaisedHey
+HandWavingBye
+HapticFeedback
+Headphones
+Health
+Heart
+HeartFilled
+HeartFilledXs
+HeartXs
+Help
+History
+HistoryOff
+HistoryOn
+Home
+HomeAlt
+Identity
+IdentityMeSecure
+ImageCaption
+ImageSquare
+ImageSquarePictureLibrary
+ImageToText
+ImageWide
+ImageWideFilled
+ImageWidePictureLibrary
+Images
+Info
+InfoCircle
+Inpaint
+InpaintRespond
+Inspiration
+InspirationFilled
+Interactiv
+InternalKnowledge
+InternalKnowledgeOptimizedForCircle
+Invoice
+Io
+JumpToCaption
+Kettlebell
+Key
+Keyboard
+KeyboardShortcut
+Lab
+Language
+Latency
+Lifesaver
+LightMode
+Lightbulb
+Lightbulb20
+Lightbulb22
+Lightbulb22Filled
+LightbulbGlow
+Link
+LinkDisabledBold
+LinkExternalWebsite
+LocalServices
+Lock
+LockKeyHole
+Logout
+Loop
+LoopLong
+LoopNormal
+LoopShort
+LoopXs
+Lotus
+Love
+MagnifyingGlassSearch
+MagnifyingGlassSmSearch
+Mail
+ManageHistory
+MapPin
+Maps
+MapsAddress
+MapsDirections
+MarkerCode
+MarkerData
+MarkerMultiple
+MarkerQuote
+Mcp
+Members
+MembersFilled
+MemoryFilledSm
+MemoryOffRemember
+MemoryOnRemember
+MemoryWriteSm
+Menu
+MenuInverted
+MenuSidebar
+Menubar
+Messaging
+Mic
+MicFilled
+MicFilledOff
+MicLgDictate
+MicOff
+MinimizeDown
+MinimizeLeft
+MinimizeRight
+MinimizeTop
+Minus
+MinusCircle
+MinusCircleFilled
+Mobile
+Moon
+MoonSunSystem
+MoreCircleMenuDots
+Music
+MyGptProfileMe
+Name
+NewsPaper
+NoTraining
+Nodes
+Notebook
+NotebookCheck
+NotebookNarrow
+NotebookPencil
+Notepad
+NotificationBell
+NotificationOffBell
+Number
+Object
+On
+OpenLeft
+OpenRight
+OpenaiLogoBold
+OpenaiLogoBoldBoundingBox
+OpenaiLogoRegular
+OpenaiLogoRegularBoundingBox
+OpenaiLogoWebappVariable480
+Operator
+Order
+PageBlank
+Paid
+Paperclip
+PaperclipAttach
+ParentControl
+PastedText
+Pause
+PauseCircle
+PauseCircleFilled
+PauseOutline
+PauseSm
+Paw
+Pencil
+PencilSparkle
+PencilSquare
+Pens
+Phone
+PhoneMissed
+PhoneRing
+PhoneWaves
+PictureInPicture
+Pin
+PinFilled
+PinWindow
+Plane
+PlantDesk
+Play
+PlayCircle
+PlayCircleFilled
+PlayOutline
+PlaySm
+PlayTriangle
+Playground
+Plugin
+PluginPuzzle
+Plus
+Plus14px
+PlusCircle
+PlusCircleAdd
+PlusCircleFilled
+PlusComposer
+PlusFilled
+PlusLg
+PlusLg18pxAdd
+PlusSm12px
+PlusSquareAdd
+PopOutWindow
+PresetDefault
+PresetSelected
+PrivacyIntern
+ProDiamond
+ProFilledDiamond
+ProductTag
+PullRequestClosed
+PullRequestDraft
+PullRequestMerged
+PullRequestOpen
+Pulse
+Question
+QuestionMark
+QuestionMarkCircle
+QuickStart
+Quote
+QuoteReplyFilledQuoteXs
+RadioSelected
+ReadingLevel
+Record
+Regenerate
+RegenerateOff
+RegenerateStar
+Reload
+RemixMild
+RemixMildXs
+RemixStrong
+RemixSubtle
+RemoveForeverPermanently
+RemoveRedEye
+Reply
+Report
+Resend
+ResetChat
+Resolution1080p
+Resolution360p
+Resolution480p
+Resolution720p
+RestoreUntrash
+Rewind
+Robot
+RobotHead
+RobotHeadSad
+SavedFilledXs
+SavedXs
+Scales
+Scissor
+ScissorXs
+ScreenPosition
+Search
+SearchConnector
+SearchFeed
+SearchXs
+SelectText
+Settings
+SettingsCircle
+SettingsCog
+SettingsSlider
+SettingsWrench
+Share
+ShareChat
+ShareScreen
+ShareScreenFilled
+ShareScreenOff
+ShareScreenOffFilled
+ShieldCheck
+ShieldKey
+ShieldLock
+ShieldPerson
+ShoppingBag
+Shortcuts
+Shuffle
+Sidebar
+SidebarCollapseLeft
+SidebarCollapseRight
+SidebarFloatingLeft
+SidebarFloatingOpenLeft
+SidebarFloatingOpenRight
+SidebarFloatingRight
+SidebarLeft
+SidebarMenuMobile
+SidebarMenuMobileBadgeCutout
+SidebarOpenLeft
+SidebarOpenLeftAlt
+SidebarOpenRight
+SidebarOpenRightAlt
+SidebarRight
+SimpleRelax
+SimpleSad
+SimpleSmile
+Skip
+Sleep
+Snorkle
+Snowflake
+SoraBasicPopcorn
+SoraProDirector
+SoundOffSimpleMute
+SoundOffSpeaker
+SoundOnReadOutLoudSpeaker
+Sparkle
+SparkleDouble
+SparkleFilledPlus
+SparklePlus
+Sparkles
+SparklesFilled
+Speak
+SpeechToText
+Speed
+SpeedometerLatencySpeed
+Spelling
+Spin
+SquareCheckCheckboxChecked
+SquareCheckFilledCheckboxCheckedFilled
+SquareCheckboxUnchecked
+SquareCode
+SquareFilledTableLegend
+SquareImage
+SquarePlus
+SquarePlusAlt
+SquareTableLegend
+SquareText
+Stack
+Star
+StarFilled
+StartStrokeMd
+Status
+Stethoscope
+StickyNote
+Stop
+StopCircle
+StopCircleFilled
+StopOutline
+StopSm
+StopStrokeMd
+Stopwatch
+Storage
+Storyboard
+String
+Studio
+Stuff
+StuffTools
+SubscriptionPlan
+SuggestEdit
+Suitcase
+SuitcaseFilledWorkBusiness
+SuitcaseWorkBusiness
+Sun
+SystemMode
+TBoneRaw
+TableCellFilled
+TableCellsFilled
+TableColumnFilled
+TableFilled
+TableRowFilled
+Tag
+Tap
+Tasks
+Telescope
+Terminal
+TerminalLg
+Terms
+Text
+TextLonger
+TextPrompt
+TextShorter
+TextShorterConcise
+TextToSpeech
+ThumbDown
+ThumbDownFilled
+ThumbMixed
+ThumbUp
+ThumbUpFilled
+ThumbnailLarge
+ThumbnailMedium
+ThumbnailSmall
+Thumbs
+Timer
+Tools
+ToolsSkills
+Translate
+Trash
+TrashRemove
+Trending
+TriangleExclamationErrorWarning
+TriangleExclamationFilledErrorWarning
+TrophyTop
+TuningFork
+Unarchive
+Undo
+Unlink
+Unpin
+Upgrade
+UpgradePlan
+UploadDocuments
+Upscale
+UpscaleXs
+Usage
+User
+UserAdd
+UserGpts
+UserHeart
+UserLock
+UserVoice
+Users
+Variation2v2
+VariationV21
+VariationV31
+VariationV32
+VariationV33
+VariationV41
+VariationV42
+VariationV43
+VariationV44
+VersionsV1
+Video
+VideoCaption
+VideoFilled
+VideoFilledOff
+VideoGrid
+VideoList
+VideoToText
+Videos
+Voice
+Voice4Bars
+Voice5BarsSoundwave
+VoiceBold
+VoiceInputAreaMobileFilledVoiceXs
+VoiceLight
+Warning
+WarningFilledWrapCenteredForCircle
+WarningWrapCenteredForCircle
+Wave
+WebsiteNetwork
+Whisk
+WhisperAutoSubmit
+Widget
+WidgetAdd
+WorkWithApps
+Workspace
+Wreath
+WriteAlt
+WriteAlt2
+Writing
+X
+XCircle
+XCircleCrossedClose
+XCircleFilled
+XCircleFilledCrossedClose
+XCrossed
+XSquareCrossed
+XSquareFilledCrossed
+XXs
+XXsCrossed
+
+
+================================================================================
+## Components: Alert
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-alert--docs
+================================================================================
+
+Alert
+Call attention to a specific message or warning
+Usage
+import { Alert } from "@openai/apps-sdk-ui/components/Alert";
+Copy
+Scheduled maintenance
+We'll be offline 2 - 4 AM UTC on July 14 while we upgrade our database.
+Dismiss
+View story
+<Alert
+  actions={<Button color="primary" pill variant="soft">Dismiss</Button>}
+  description="We'll be offline 2 - 4 AM UTC on July 14 while we upgrade our database."
+  title="Scheduled maintenance"
+/>
+Copy
+Reference
+Name	Description	Default
+title	
+Title displayed in the alert.
+ReactNode
+	-
+description	
+Description text displayed in the alert
+ReactNode
+	-
+actions	
+Actions associated with the Alert.
+ReactNode
+	-
+color	
+Color for the button
+"primary"
+"success"
+"info"
+"discovery"
+"danger"
+"warning"
+"caution"
+	
+"primary"
+
+variant	
+Style variant for the Button
+"soft"
+"solid"
+"outline"
+	
+"outline"
+
+actionsPlacement	
+Sets the placement of actions always on the end or the bottom. Default behavior is automatic placement based on sizing.
+"end"
+"bottom"
+	-
+indicator	
+Optional override for the default indicator of the alert. When false, no indicator is shown.
+ReactNode
+	-
+className	
+Class applied to the alert container
+string
+	-
+actionsClassName	
+Class applied to the actions container
+string
+	-
+ref	
+Ref applied to the alert container
+Ref<HTMLDivElement>
+	-
+Examples
+Colors & variants
+
+You can stylize the display of the alert using the color and variant props.
+
+primary
+Scheduled maintenance on Saturday, 2-4 AM PT
+Track status updates on status.openai.com
+success
+Scheduled maintenance on Saturday, 2-4 AM PT
+Track status updates on status.openai.com
+danger
+Scheduled maintenance on Saturday, 2-4 AM PT
+Track status updates on status.openai.com
+warning
+Scheduled maintenance on Saturday, 2-4 AM PT
+Track status updates on status.openai.com
+caution
+Scheduled maintenance on Saturday, 2-4 AM PT
+Track status updates on status.openai.com
+info
+Scheduled maintenance on Saturday, 2-4 AM PT
+Track status updates on status.openai.com
+discovery
+Scheduled maintenance on Saturday, 2-4 AM PT
+Track status updates on status.openai.com
+variant	
+Choose option...
+soft
+solid
+outline
+Title
+
+You can optionally include a title for your alert with the title prop.
+
+Your current access level limits what you can view or modify
+<Alert title="Your current access level limits what you can view or modify" />
+Copy
+Description
+
+You can optionally include description text for your alert with the description prop.
+
+We're working on centralizing SCIM and invite settings. For now, setup is handled within individual product settings. Learn more
+<Alert description={<>We're working on centralizing SCIM and invite settings. For now, setup is handled within individual product settings.{' '}<TextLink href="#">Learn more</TextLink></>} />
+Copy
+Actions
+
+You can add actions to the alert with the actions prop, which accepts ReactNode.
+
+Password expires in 3 days
+Update it now to avoid losing access to your account.
+Update password
+<Alert
+  variant="soft"
+  color="warning"
+  title="Password expires in 3 days"
+  description="Update it now to avoid losing access to your account."
+  actions={<Button color="primary" pill>Update password</Button>}
+/>
+Copy
+Action placement
+
+Actions are automatically, intelligently positioned in the alert by default.
+
+You can force a specific position with the actionsPlacement prop, by passing either 'end' or 'bottom'. This would be ideal for long alert messages with multiple actions.
+
+Our terms of service has been updated
+We've updated our terms to clarify how we handle data, billing, and user permissions. Please review and accept the latest terms to avoid impacting your service.
+Set reminder
+Review terms
+<Alert
+  title="Our terms of service has been updated"
+  description="We've updated our terms to clarify how we handle data, billing, and user permissions. Please review and accept the latest terms to avoid impacting your service."
+  actions={(
+    <>
+      <Button color="primary" pill variant="soft">Set reminder</Button>
+      <Button color="primary" pill variant="solid">Review terms</Button>
+    </>
+  )}
+  actionsPlacement="bottom"
+/>
+Copy
+Indicator
+
+Alert provides an indicator icon by default, which changes based on the color passed to the component (e.g., success, warning, error).
+
+You can override the default indicator by passing a custom icon to indicator.
+
+We're working on centralizing SCIM and invite settings. For now, setup is handled within individual product settings. Learn more
+<Alert
+  indicator={<Lightbulb />}
+  description={(
+    <>
+      We're working on centralizing SCIM and invite settings. For now, setup is handled within
+      individual product settings. <TextLink href="#">Learn more</TextLink>
+    </>
+  )}
+/>
+Copy
+
+To hide the indicator entirely, pass indicator={false}.
+
+Version 2.18.5 rolls out behind-the-scenes tweaks to caching and background sync. You don’t need to do anything—updates apply automatically the next time you open the app. Most changes are performance-related; if you notice smoother scrolling or slightly faster load times, that's why.
+<Alert
+  indicator={false}
+  description="Version 2.18.5 rolls out behind-the-scenes tweaks to caching and background sync. You don’t need to do anything—updates apply automatically the next time you open the app. Most changes are performance-related; if you notice smoother scrolling or slightly faster load times, that's why."
+/>
+Copy
+Dismissible
+
+The suggested approach for dismissible notices is to use labeled buttons via actions.
+
+Try our new dashboard layout
+We've introduced a streamlined layout that makes using the dashboard even easier. You can switch back any time.
+Dismiss
+Try it
+<Alert
+  className="items-start"
+  title="Try our new dashboard layout"
+  description="We've introduced a streamlined layout that makes using the dashboard even easier. You can switch back any time."
+  actions={(
+    <>
+      <Button color="primary" variant="soft" pill>
+        Dismiss
+      </Button>
+      <Button color="primary" variant="solid" pill>
+        Try it
+      </Button>
+    </>
+  )},
+/>
+Copy
+Usage
+Reference
+Examples
+Colors & variants
+Title
+Description
+Actions
+Action placement
+Indicator
+Dismissible
+
+
+================================================================================
+## Components: Avatar
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-avatar--docs
+================================================================================
+
+Avatar
+Display user identities with either text, photo, or an icon
+W
+Usage
+import { Avatar } from "@openai/apps-sdk-ui/components/Avatar";
+Copy
+J
+View story
+<Avatar
+  name="Jane"
+  size={48}
+/>
+Copy
+Reference
+Name	Description	Default
+name	
+Name used to display initials from
+string
+	
+""
+
+size	
+Size of the avatar's width & height, in pixels.
+number
+	-
+className	
+Class name applied to the avatar
+string
+	-
+overflowCount	
+Display a formatted count of overflow objects.
+number
+	-
+color	
+Color used for the avatar
+"primary"
+"secondary"
+"success"
+"info"
+"discovery"
+"danger"
+	
+"secondary"
+
+variant	
+Style variant of the avatar
+"soft"
+"solid"
+	
+"soft"
+
+imageUrl	
+URL of the image to display as the avatar
+string
+	-
+Icon	
+Icon to render in the avatar circle
+ComponentType<SVGProps<SVGSVGElement>>
+	-
+onClick	
+Optional click handler, which also enables semantic interactions
+(() => void)
+	-
+onPointerDown	
+Optional pointer handler, which also enables semantic interactions
+(() => void)
+	-
+Examples
+Text
+
+For text-based avatars, a single initial is displayed based on the name prop passed to the component.
+
+D
+<Avatar
+  name="David"
+  size={48}
+/>
+Copy
+Image
+
+To display an image avatar, provide an absolute URL to the image with imageUrl. Images will have a soft fade entrance once loaded, or fallback to a text display if the image fail to load.
+
+<Avatar
+  imageUrl="https://gravatar.com/avatar/9531b260b9693f3394bea8646c6ea141ce58fe5a138b7db7729d60a4c5dde552"
+  name="Tyler"
+  size={48}
+/>
+Copy
+Icon
+
+To display an icon avatar, provide an icon to render to the Icon prop. The name prop is not used in this case, and can be omitted.
+
+<Avatar
+  Icon={Robot}
+  size={48}
+/>
+Copy
+Overflow count
+
+To display an overflow avatar, provide a number to the overflowCount prop. The number will be automatically formatted and scaled to fit.
+
++9
+<Avatar
+  overflowCount={9}
+  size={48}
+/>
+Copy
+Sizing
+
+To size the avatar, pass a number to the size property, which will set the width and height in pixels. Text and icon avatars will scale their sizes dynamically based on this value.
+
+D
+<Avatar
+  name="David"
+  size={48}
+/>
+Copy
+size	
+14
+48 / 80
+Colors & variants
+
+You can stylize the display of the avatar using the color and variant props.
+
+primary
+secondary
+success
+danger
+info
+discovery
+soft
+S
+E
+C
+L
+T
+U
+solid
+S
+E
+C
+L
+T
+U
+Roundness
+
+By default, avatars are fully rounded. You can override this by passing a Tailwind rounding class to className.
+
+A
+<Avatar
+  className="rounded-lg"
+  color="primary"
+  name="Acme, co."
+  size={48}
+  variant="solid"
+/>
+Copy
+Interactive
+
+Avatars can be used as interactive elements by passing an onClick handler. The avatar will automatically apply semantic and visual interaction styles.
+
+W
+<Avatar
+  name="Will"
+  size={48}
+  onClick={saySup}
+/>
+Copy
+Usage
+Reference
+Examples
+Text
+Image
+Icon
+Overflow count
+Sizing
+Colors & variants
+Roundness
+Interactive
+
+
+================================================================================
+## Components: Avatargroup
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-avatargroup--docs
+================================================================================
+
+AvatarGroup
+Display avatars as a single stack
++5
+W
+Usage
+import { AvatarGroup } from "@openai/apps-sdk-ui/components/Avatar";
+Copy
++5
+J
+<AvatarGroup size={42}>
+  <Avatar name="Tyler" imageUrl="https://gravatar.com/avatar/xyz" />
+  <Avatar name="Jane" color="primary" variant="solid" />
+  <Avatar name="Tech support" Icon={Robot} variant="solid" />
+  <Avatar overflowCount={5} />
+</AvatarGroup>
+Copy
+Reference
+Name	Description	Default
+stack	
+Determines stacking layer order
+"start"
+"end"
+	
+"start"
+
+size	
+Size all avatars in the group, in pixels.
+number
+	-
+className	
+Class name passed to the group container
+string
+	-
+Examples
+Stacking direction
+
+You can control the stacking direction using the stack prop, as either "start" or "end".
+
+W
++5
+stack	
+Choose option...
+start
+end
+Group sizing
+
+You can control the size of all avatars in the group by passing size directly to the <AvatarGroup> component.
+
++5
+W
+J
+T
+<AvatarGroup
+  size={48}
+  stack="start"
+>
+  <Avatar
+    color="info"
+    name="Tyler"
+  />
+  <Avatar
+    color="discovery"
+    name="Jane"
+  />
+  <Avatar
+    color="danger"
+    name="Will"
+  />
+  <Avatar overflowCount={5} />
+</AvatarGroup>
+Copy
+size	
+14
+48 / 80
+Usage
+Reference
+Examples
+Stacking direction
+Group sizing
+
+
+================================================================================
+## Components: Badge
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-badge--docs
+================================================================================
+
+Badge
+Emphasize details with a status indicator
+Successful
+In progress
+Failed
+Beta
+Usage
+import { Badge } from "@openai/apps-sdk-ui/components/Badge";
+Copy
+New
+View story
+<Badge
+  color="success"
+  size="md"
+>
+  New
+</Badge>
+Copy
+Reference
+Name	Description	Default
+children*	
+Content rendered inside the badge
+ReactNode
+	-
+color	
+Color of the badge, related to its meaning or intent
+"secondary"
+"success"
+"info"
+"discovery"
+"danger"
+"warning"
+	
+"secondary"
+
+size	
+
+Size scale of the badge
+
+"sm"
+"md"
+"lg"
+	
+"sm"
+
+pill	
+Determines if the badge should be a fully rounded pill shape
+boolean
+	
+false
+
+className	
+Class applied to the badge
+string
+	-
+variant	
+Visual style of the badge
+"soft"
+"solid"
+"outline"
+	
+"soft"
+Examples
+Colors & variants
+
+You can stylize the display of the badge using the color and variant props.
+
+secondary
+success
+warning
+danger
+info
+discovery
+soft
+Sample
+Sample
+Sample
+Sample
+Sample
+Sample
+solid
+Sample
+Sample
+Sample
+Sample
+Sample
+Sample
+outline
+Sample
+Sample
+Sample
+Sample
+Sample
+Sample
+Size & roundness
+
+You can control the size and roundness of the badge with size and pill props. When pill is set, extra horizontal gutter is dynamically applied to the badge.
+
+New
+sm
+New
+md
+New
+lg
+pill	
+FalseTrue
+Icon
+
+Content within the badge can be composed, like showing icons. Color, sizing, and spacing adapt by default.
+
+Beta
+<Badge color="warning" size="lg">
+  <Beta /> Beta
+</Badge>
+Copy
+Loading
+
+In this example, additional gap is added with a Tailwind gap-1.5 class to provide the appropriate visual spacing.
+
+In progress
+<Badge
+  className="gap-1.5"
+  color="secondary"
+  size="lg"
+>
+  <LoadingIndicator />
+  In progress
+</Badge>
+Copy
+Usage
+Reference
+Examples
+Colors & variants
+Size & roundness
+Icon
+Loading
+
+
+================================================================================
+## Components: Button
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-button--docs
+================================================================================
+
+Button
+Create actions in many different styles
+Submit
+Cancel
+Next
+Compare
+Usage
+import { Button } from "@openai/apps-sdk-ui/components/Button";
+Copy
+Submit
+View story
+<Button
+  color="primary"
+  size="md"
+  variant="solid"
+>
+  Submit
+</Button>
+Copy
+Reference
+Name	Description	Default
+children	
+Content rendered inside of the Button
+ReactNode
+	-
+variant	
+Style variant for the Button
+"soft"
+"solid"
+"outline"
+"ghost"
+	
+"\"solid\""
+
+color	
+Color for the button
+"primary"
+"secondary"
+"success"
+"info"
+"discovery"
+"danger"
+"warning"
+"caution"
+	
+"secondary"
+
+size	
+
+Controls size of the button, specifically height, but also includes defaults for gutterSize, iconSize, font-size, etc.
+
+"sm"
+"md"
+"lg"
+"3xs"
+"2xs"
+"xs"
+"xl"
+"2xl"
+Show 1 more...
+	
+"md"
+
+pill	
+Determines if the button should be a fully rounded pill shape
+boolean
+	
+false
+
+disabled	
+Disables the button visually and from interactions
+boolean
+	
+false
+
+disabledTone	
+Controls the visual tone when the button is disabled. "relaxed" will use a default cursor instead of not-allowed.
+"relaxed"
+	-
+block	
+Determines if the button should take up 100% of available width
+boolean
+	
+false
+
+opticallyAlign	
+
+Applies a negative margin using the current gutter to optically align the button with surrounding content.
+
+"start"
+"end"
+	-
+iconSize	
+
+Controls the size of icons within the button, defaults to value from size.
+
+"sm"
+"md"
+"lg"
+"xl"
+"2xl"
+	-
+gutterSize	
+
+Controls gutter on the edges of the button, defaults to value from size.
+
+"sm"
+"md"
+"lg"
+"3xs"
+"2xs"
+"xs"
+"xl"
+	-
+className	
+Custom class applied to the Button element
+string
+	-
+uniform	
+Determines if the button should have matching width and height, based on the size.
+boolean
+	
+false
+
+selected	
+Displays selected styles on the button, varying by `variant
+boolean
+	
+false
+
+loading	
+Displays loading indicator on top of button contents
+boolean
+	
+false
+
+inert	
+Determines whether the button should be made inert, without introducing visual change.
+boolean
+	
+false
+
+ref	
+Ref for the button
+Ref<HTMLButtonElement | null>
+	-
+Examples
+Colors & variants
+
+You can stylize the display of the button using the color and variant props.
+
+primary
+secondary
+danger
+info
+discovery
+success
+caution
+warning
+soft
+Submit
+Submit
+Submit
+Submit
+Submit
+Submit
+Submit
+Submit
+solid
+Submit
+Submit
+Submit
+Submit
+Submit
+Submit
+Submit
+Submit
+outline
+Submit
+Submit
+Submit
+Submit
+Submit
+Submit
+Submit
+Submit
+ghost
+Submit
+Submit
+Submit
+Submit
+Submit
+Submit
+Submit
+Submit
+Sizing & roundness
+
+Sizing of the button is controlled with size and gutterSize props. size sets the button to a specific control height, and gutterSize sets the horizontal padding.
+
+Each size provides default values for gutterSize and iconSize props, as well as font-size. Each of these values can be overridden independently.
+
+Create fully rounded buttons with the pill prop. When pill is set, extra horizontal gutter is dynamically applied to the button.
+
+Button
+Button
+Button
+Button
+size	
+Choose option...
+sm
+md
+lg
+3xs
+2xs
+xs
+xl
+2xl
+3xl
+
+pill	
+FalseTrue
+Icons
+
+Icon sizing is controlled by the iconSize prop, which makes it easy to add icons as children of button without additional props.
+
+Default values for iconSize are provided through the size prop, but you can pass the prop directly to change the defaults.
+
+For icon-only buttons, there are two common approaches:
+
+Square – create perfect square icon buttons with the uniform prop. When uniform is passed, gutterSize is ignored. Combine with pill to make circular icons.
+Tighter gutters – applying a smaller gutterSize than size can create well-sized, but not exactly square, icon buttons.
+<Button
+  color="secondary"
+  size="lg"
+  uniform
+  variant="ghost"
+>
+  <PlusLg />
+</Button>
+Copy
+size	
+Choose option...
+sm
+md
+lg
+3xs
+2xs
+xs
+xl
+2xl
+3xl
+
+uniform	
+FalseTrue
+variant	
+Choose option...
+soft
+solid
+outline
+ghost
+
+iconSize	
+Choose option...
+sm
+md
+lg
+xl
+2xl
+
+gutterSize	
+Choose option...
+sm
+md
+lg
+3xs
+2xs
+xs
+xl
+Block
+
+Create full-width buttons with the block prop.
+
+Continue
+<div className="w-[290px] text-center p-2 border border-dashed border-alpha/20 rounded-md">
+  <Button
+    block
+    size="lg"
+  >
+    Continue
+  </Button>
+</div>
+Copy
+block	
+FalseTrue
+Disabled
+
+Use disabled to both visually and accessibly disable a button.
+
+Submit
+<Button
+  disabled
+  onClick={function Xs(){}}
+>
+  Submit
+</Button>
+Copy
+disabled	
+FalseTrue
+Inert
+
+Use inert to accessibly disable a button without any visual changes.
+
+Note: For accessibility reasons, disabled is used instead of applying inert directly to the button. Visual disablement in the disabled prop is applied via [data-disable].
+
+Submit
+<Button
+  inert
+  onClick={function Xs(){}}
+>
+  Submit
+</Button>
+Copy
+inert	
+FalseTrue
+Loading
+
+Use loading to display a loading indicator in the button, fading out the current content.
+
+Interactions will be prevented by default during this state, by providing a default value for inert to true. You can override this behavior directly with inert, or use disabled to add visual disablement.
+
+Click to load
+<Button loading {...restProps} />
+Copy
+Selected
+
+Use selected to indicate that a given button is correctly in an open or selected state. The exact visual behavior differs across each variant.
+
+This behavior is automatically configured with components like Menu that apply [aria-expanded="true"] or [data-state="open"] attributes.
+
+Click to open
+<Button selected {...restProps} />
+Copy
+selected	
+FalseTrue
+variant	
+Choose option...
+soft
+solid
+outline
+ghost
+Optical alignment
+
+Use opticallyAlign with either "start" or "end" to offset the gutter of the button.
+
+Default gutters
+Ghost button
+opticallyAlign="start"
+Ghost button
+Usage
+Reference
+Examples
+Colors & variants
+Sizing & roundness
+Icons
+Block
+Disabled
+Inert
+Loading
+Selected
+Optical alignment
+
+
+================================================================================
+## Components: Buttonlink
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-buttonlink--docs
+================================================================================
+
+ButtonLink
+<Button> as a semantic anchor element
+Usage
+import { ButtonLink } from "@openai/apps-sdk-ui/components/Button";
+Copy
+View API Keys
+View story
+<ButtonLink
+  color="primary"
+  href="https://platform.openai.com"
+>
+  View API Keys
+  <ArrowRight />
+</ButtonLink>
+Copy
+Reference
+Name	Description	Default
+children	
+Content rendered inside of the Button
+ReactNode
+	-
+color	
+Color for the button
+string
+	
+"secondary"
+
+size	
+
+Controls size of the button, specifically height, but also includes defaults for gutterSize, iconSize, font-size, etc.
+
+"sm"
+"md"
+"lg"
+"3xs"
+"2xs"
+"xs"
+"xl"
+"2xl"
+Show 1 more...
+	
+"md"
+
+href	
+string
+	-
+block	
+Determines if the button should take up 100% of available width
+boolean
+	
+false
+
+disabled	
+Disables the button visually and from interactions
+boolean
+	
+false
+
+pill	
+Determines if the button should be a fully rounded pill shape
+boolean
+	
+false
+
+className	
+Custom class applied to the Button element
+string
+	-
+variant	
+Style variant for the Button
+"soft"
+"solid"
+"outline"
+"ghost"
+	
+"\"solid\""
+
+disabledTone	
+Controls the visual tone when the button is disabled. "relaxed" will use a default cursor instead of not-allowed.
+"relaxed"
+	-
+opticallyAlign	
+
+Applies a negative margin using the current gutter to optically align the button with surrounding content.
+
+"start"
+"end"
+	-
+iconSize	
+
+Controls the size of icons within the button, defaults to value from size.
+
+"sm"
+"md"
+"lg"
+"xl"
+"2xl"
+	-
+gutterSize	
+
+Controls gutter on the edges of the button, defaults to value from size.
+
+"sm"
+"md"
+"lg"
+"3xs"
+"2xs"
+"xs"
+"xl"
+	-
+external	
+
+Explicity specify that the link is an external link. This should be automatically detected based on the URL, but in some cases (e.g. my-app://foo) you may want to explicitly set this.
+
+boolean
+	-
+as	
+
+Override the default component used for the link. This is useful for using a routing library, or SSR rendering. purposes.
+
+"a" | ComponentType<any>
+	
+'a'
+Examples
+Internal link
+
+When a relative href or to is provided, ButtonLink automatically uses the configured LinkComponent from AppsSDKUIProvider so your router handles navigation and prefetching.
+
+Internal link
+() => <ButtonLink href="/some-path" color="primary">
+    Internal link <ArrowRight />
+  </ButtonLink>
+Copy
+External link
+
+When linking to an external URL (or when external is set), <a> is used with target="_blank" and rel="noopener noreferrer" added automatically.
+
+If your link is not being automatically identified, you can force external link behavior with the external prop.
+
+External link
+() => <ButtonLink href="https://openai.com" color="primary">
+    External link <ArrowUpRight />
+  </ButtonLink>
+Copy
+Colors & variants
+
+You can stylize the display of the link using the color and variant props.
+
+primary
+secondary
+danger
+info
+discovery
+success
+caution
+warning
+soft
+Button
+Button
+Button
+Button
+Button
+Button
+Button
+Button
+solid
+Button
+Button
+Button
+Button
+Button
+Button
+Button
+Button
+outline
+Button
+Button
+Button
+Button
+Button
+Button
+Button
+Button
+ghost
+Button
+Button
+Button
+Button
+Button
+Button
+Button
+Button
+Sizing & roundness
+
+Sizing of the link is controlled with size and gutterSize props. size sets the control height, and gutterSize sets the horizontal padding.
+
+Create fully rounded links with the pill prop. When pill is set, extra horizontal gutter is dynamically applied to the link.
+
+View account
+View account
+size	
+Choose option...
+sm
+md
+lg
+3xs
+2xs
+xs
+xl
+2xl
+3xl
+
+pill	
+FalseTrue
+Icons
+
+Icon sizing is controlled by the iconSize prop, which makes it easy to add icons as children without additional props.
+
+size will provide a default value for iconSize, but setting the prop will force the specified size.
+
+View website
+<ButtonLink
+  color="info"
+  href="https://platform.openai.com"
+  size="lg"
+  variant="soft"
+>
+  <Globe />
+  {' '}View website
+</ButtonLink>
+Copy
+size	
+Choose option...
+sm
+md
+lg
+3xs
+2xs
+xs
+xl
+2xl
+3xl
+
+iconSize	
+Choose option...
+sm
+md
+lg
+xl
+2xl
+Block
+
+Create full-width links with the block prop.
+
+Continue to dashboard
+<div className="w-[290px] text-center p-2 border border-dashed border-alpha/20 rounded-md">
+  <ButtonLink
+    as="a"
+    block
+    color="primary"
+    href="https://platform.openai.com"
+    size="lg"
+  >
+    Continue to dashboard
+  </ButtonLink>
+</div>
+Copy
+block	
+FalseTrue
+Disabled
+
+Use disabled to both visually and accessibly disable a link. The component renders as a span[role="link"], and onClick handles are not bound.
+
+View API Keys
+<ButtonLink
+  href="https://platform.openai.com"
+  color="primary"
+  disabled
+  onClick={alertMsg}
+>
+  <Key />
+  View API Keys
+</ButtonLink>
+Copy
+disabled	
+FalseTrue
+Configure your Router
+Provider
+// In the root of your App
+import {AppsSDKUIProvider} from "@openai/apps-sdk-ui/components/AppsSDKUIProvider"
+import {Link} from "react-router"
+
+// Set up types 
+declare global {
+  interface AppsSDKUIConfig {
+    LinkComponent: typeof Link
+  }
+}
+
+// Wrap your app in AppsSDKUIProvider and pass in your router's Link component.
+export function App() {
+  return (
+    <AppsSDKUIProvider linkComponent={Link}>
+      {/* other providers... */}
+    </AppsSDKUIProvider>
+  )
+}
+
+// elsewhere - everything just works!
+<ButtonLink to={{ pathname: "/help" }} prefetch="intent">
+  Get Help
+</ButtonLink>
+Copy
+Component-level
+
+You can also pass your Link component to the as prop.
+
+import {Link} from "next/link"
+
+<ButtonLink as={Link} href="/dashboard">
+  View Dashboard
+</ButtonLink>
+Copy
+Usage
+Reference
+Examples
+Internal link
+External link
+Colors & variants
+Sizing & roundness
+Icons
+Block
+Disabled
+Configure your Router
+Provider
+Component-level
+
+
+================================================================================
+## Components: Checkbox
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-checkbox--docs
+================================================================================
+
+Checkbox
+Toggle control for on and off states
+Usage
+import { Checkbox } from "@openai/apps-sdk-ui/components/Checkbox";
+Copy
+Same as billing address
+<Checkbox
+  label="Same as billing address"
+/>
+Copy
+Reference
+Name	Description	Default
+disabled	
+When true, prevents the user from interacting with the checkbox.
+boolean
+	-
+defaultChecked	
+The state of the checkbox when it is initially rendered. Use when you do not need to control its state.
+boolean
+"indeterminate"
+	-
+label	
+Optional accessible label rendered to the right of the checkbox.
+ReactNode
+	-
+id	
+The id of the checkbox.
+string
+	-
+checked	
+The controlled state of the checkbox. Must be used in conjunction with onCheckedChange.
+boolean
+"indeterminate"
+	-
+onCheckedChange	
+Event handler called when the state of the checkbox changes.
+((nextState: boolean) => void)
+	-
+onBlur	
+Event handler called when the checkbox looses focus.
+FocusEventHandler<HTMLButtonElement>
+	-
+onFocus	
+Event handler called when the checkbox gains focus.
+FocusEventHandler<HTMLButtonElement>
+	-
+required	
+When true, indicates that the user must check the checkbox before the owning form can be submitted.
+boolean
+	-
+name	
+The name of the checkbox. Submitted with its owning form as part of a name/value pair.
+string
+	-
+value	
+The value given as data when submitted with a name.
+string
+	-
+className	
+CSS classes applied to wrapper node
+string
+	-
+orientation	
+The orientation of the checkbox relative to the label.
+"right"
+"left"
+	
+"left"
+Examples
+Indeterminate
+
+Use checked="indeterminate" to indicate that the checkbox is partially selected.
+
+<Checkbox
+  checked="indeterminate"
+/>
+Copy
+Usage
+Reference
+Examples
+Indeterminate
+
+
+================================================================================
+## Components: Codeblock
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-codeblock--docs
+================================================================================
+
+CodeBlock
+Display syntax-highlighted code snippets
+Usage
+import { CodeBlock } from "@openai/apps-sdk-ui/components/CodeBlock";
+Copy
+import OpenAI from "openai";
+const openai = new OpenAI();
+
+const stream = await openai.chat.completions.create({
+    model: "gpt-4.1",
+    messages: [
+        {
+            role: "user",
+            content: "Say 'double bubble bath' ten times fast." ,
+        }
+    ],
+    stream: true,
+});
+
+for await (const chunk of stream) {
+    console.log(chunk);
+    alert(chunk);
+    console.log(chunk.choices[0].delta);
+}
+const codeSnippet = '...'
+
+return (
+  <CodeBlock language="javascript">{codeSnippet}</CodeBlock>
+)
+Copy
+Reference
+Name	Description	Default
+language	
+string
+	-
+children	
+string
+	-
+className	
+string
+	-
+Examples
+Custom composition
+
+Custom code blocks can be created by using <CodeBlockBase> component composition. <CodeBlockBase.Code> can be used to render code within the base container, with custom markup around it.
+
+<CodeBlockBase.CopyButton> is also exposed, however it won't always make sense to re-use.
+
+In this example, a header is being added above the code block with a bespoke <CopyButton>.
+
+typescript
+interface Point {
+  x: number
+  y: number
+}
+
+function printPoint(p: Point) {
+  console.log('Point(' + p.x + ', ' + p.y + ')');
+}
+const codeSnippet = '...'
+
+return (
+  <CodeBlockBase>
+    <div className="flex items-center justify-between bg-(--alpha-02) border-b border-b-(--alpha-06) px-4 py-1">
+      <span className="text-sm font-semibold text-secondary">typescript</span>
+      <CopyButton
+        variant="ghost"
+        color="secondary"
+        size="md"
+        uniform
+        copyValue={codeSnippet}
+        className="-mr-2"
+      />
+    </div>
+    <CodeBlockBase.Code language="typescript">
+      {codeSnippet}
+    </CodeBlockBase.Code>
+  </CodeBlockBase>
+)
+Copy
+Supported languages
+
+A pragmatic set of Prism grammars are pre-registered out of the box: javascript, jsx, typescript, tsx, python, json, jsonc, bash, markup, css, scss, sql, markdown, yaml, java, go, c, clike, php, ruby, docker, diff, toml, kotlin
+
+JavaScript
+
+Use the javascript language to highlight JavaScript code.
+
+// Fetch data from an API using async/await
+async function fetchData(url) {
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    console.log(data);
+  } catch (error) {
+    console.error('Error fetching data:', error);
+  }
+}
+
+// Usage
+fetchData('https://api.example.com/data');
+JSX
+
+Use the jsx language for React components.
+
+// A simple React component (JSX)
+const App = () => (
+  <div>
+    <h1>Hello, world!</h1>
+  </div>
+);
+
+// Render to DOM
+ReactDOM.render(<App />, document.getElementById('root'));
+TypeScript
+
+Use the typescript language for typed JavaScript code.
+
+// TypeScript interface and function
+interface User {
+  id: number;
+  name: string;
+}
+
+const createUser = (id: number, name: string): User => ({
+  id,
+  name,
+});
+
+// Create and log user
+console.log(createUser(1, 'Alice'));
+TSX
+
+Use the tsx language for typed React components.
+
+import React from 'react';
+
+// Props type
+type Props = {
+  title: string;
+  count: number;
+};
+
+const Header: React.FC<Props> = ({ title, count }) => (
+  <h1>{title} ({count})</h1>
+);
+
+export default Header;
+Python
+
+Highlight Python code snippets with the python language.
+
+class Person:
+    def __init__(self, name, age):
+        self.name = name
+        self.age = age
+
+    def greet(self):
+        print(f"Hi, I'm {self.name} and I'm {self.age} years old.")
+
+# Create and use
+person = Person("Alice", 30)
+person.greet()
+JSON
+
+Highlight JSON data structures with the json language.
+
+{
+  "user": {
+    "id": 1,
+    "name": "Alice",
+    "contact": {
+      "email": "alice@example.com",
+      "phones": ["123-456-7890"]
+    }
+  },
+  "roles": ["admin", "editor"],
+  "active": true
+}
+JSONC
+
+Highlight JSON with comments using the jsonc language.
+
+{
+  // allowed comment
+  "name": "Alice",
+  /* multi-line
+     comment */
+  "age": 30
+}
+Bash
+
+Use the bash language for shell scripts.
+
+# Initialize a new git feature branch
+git checkout -b feature/new-feature
+git add .
+git commit -m "Add new feature"
+git push origin feature/new-feature
+
+# Build and run Docker container
+docker build -t myapp:latest .
+docker run -d -p 3000:3000 myapp:latest
+Markup
+
+Use the markup language to highlight HTML and XML.
+
+<html>
+  <body>
+    <h1>Hello, world!</h1>
+    <p>This is a simple HTML page.</p>
+    <ul>
+      <li>It has a heading (<code>&lt;h1&gt;</code>)</li>
+      <li>Some text</li>
+      <li>And a bulleted list</li>
+    </ul>
+  </body>
+</html>
+CSS
+
+Use the css language to highlight CSS styles.
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e3f2fd 0%, #90caf9 100%);
+}
+
+.button {
+  padding: 0.75rem 1.5rem;
+  color: #fff;
+  background-color: #1976d2;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+  transition: background 0.2s;
+}
+
+.button:hover,
+.button:focus {
+  background-color: #1565c0;
+  cursor: pointer;
+}
+
+SCSS
+
+Use the scss language to highlight SCSS styles.
+
+$primary-color: #3498db;
+$secondary-color: #2ecc71;
+$padding: 1rem;
+
+@mixin button-base {
+  padding: $padding;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.button {
+  @include button-base;
+  background-color: $primary-color;
+  color: #fff;
+
+  &:hover, &:focus {
+    background-color: darken($primary-color, 10%);
+  }
+
+  &.secondary {
+    background-color: $secondary-color;
+    color: #222;
+
+    &:hover {
+      background-color: lighten($secondary-color, 5%);
+    }
+  }
+}
+
+SQL
+
+Highlight SQL queries with the sql language.
+
+-- List users with their order counts
+SELECT
+  u.id,
+  u.name,
+  COUNT(o.id) AS orders_count
+FROM users u
+JOIN orders o ON u.id = o.user_id
+WHERE u.active = TRUE
+GROUP BY u.id, u.name
+ORDER BY orders_count DESC;
+Markdown
+
+Use the markdown language to highlight Markdown.
+
+# Hello, world!
+
+This is **Markdown** example. It has [links](https://example.com), *italic text*, and code blocks:
+YAML
+
+Use the yaml language to highlight YAML files.
+
+version: "3"
+
+services:
+  app:
+    image: myapp
+    ports:
+      - "3000:3000"
+    environment:
+      - LOG_LEVEL=DEBUG
+      - DATABASE_URL=postgres://user:pass@host:port/db
+    depends_on:
+      - postgres
+    restart: always
+Java
+
+Use the java language to highlight Java code.
+
+// Java class with fields, constructor, and a method
+public class Person {
+  private String name;
+  private int age;
+
+  public Person(String name, int age) {
+    this.name = name;
+    this.age = age;
+  }
+
+  public void greet() {
+    System.out.printf("Hello, my name is %s and I am %d years old.%n", name, age);
+  }
+
+  public static void main(String[] args) {
+    Person alice = new Person("Alice", 30);
+    alice.greet();
+  }
+}
+
+Go
+
+Use the go language to highlight Go code.
+
+package main
+
+import (
+  "fmt"
+  "time"
+)
+
+// User struct with fields
+type User struct {
+  ID   int
+  Name string
+}
+
+func greet(user User) string {
+  return fmt.Sprintf("Hello, %s! (ID: %d)", user.Name, user.ID)
+}
+
+func main() {
+  users := []User{
+    {ID: 1, Name: "Alice"},
+    {ID: 2, Name: "Bob"},
+  }
+
+  for _, user := range users {
+    fmt.Println(greet(user))
+  }
+
+  fmt.Println("Current time:", time.Now().Format(time.RFC1123))
+}
+
+C
+
+Use the c language to highlight C code.
+
+#include <stdio.h>
+
+// Function prototype
+void greet(const char *name);
+
+int main() {
+  int year = 2024;
+  char name[] = "Alice";
+
+  printf("Year: %d\n", year);
+  greet(name);
+
+  // Conditional example
+  if (year > 2000) {
+    printf("Welcome to the 21st century!\n");
+  } else {
+    printf("You're in the 20th century.\n");
+  }
+
+  return 0;
+}
+
+void greet(const char *name) {
+  printf("Hello, %s!\n", name);
+}
+
+C-like
+
+Use the clike language to highlight C-like syntax (C, C++, Java).
+
+// Example of a simple class with a method and control flow
+public class Hello {
+  private String name;
+
+  public Hello(String name) {
+    this.name = name;
+  }
+
+  public void greet(int times) {
+    for (int i = 0; i < times; i++) {
+      System.out.printf("Hello, %s! (%d)%n", name, i + 1);
+    }
+  }
+
+  public static void main(String[] args) {
+    Hello hello = new Hello("World");
+    hello.greet(3);
+  }
+}
+
+PHP
+
+Use the php language to highlight PHP code.
+
+<?php
+
+namespace Foo;
+
+class Bar
+{
+    public const BAZ = 'qux';
+
+    public function __construct(private array $args)
+    {
+        // Initialize with $args if needed
+    }
+
+    public function doSomething(): void
+    {
+        echo self::BAZ;
+    }
+}
+
+$bar = new Bar(['arg1', 'arg2']);
+$bar->doSomething();
+
+Ruby
+
+Use the ruby language to highlight Ruby code.
+
+class Greeter
+  def initialize(name)
+    @name = name
+  end
+
+  def salute
+    puts "Hello, #{@name}!"
+  end
+end
+
+g = Greeter.new("World")
+g.salute
+Docker
+
+Use the docker language for Dockerfiles.
+
+FROM node:14
+WORKDIR /app
+COPY . .
+RUN npm install
+CMD ["npm", "start"]
+Diff
+
+Use the diff language for diff outputs.
+
+diff --git a/README.md b/README.md
+index e69de29..b6fc4c6 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,7 @@
++# Project Title
++
++This is a project description.
++
++## Features
++- Feature 1
++- Feature 2
+@@ -10,7 +17,9 @@
+-Old line to be removed
++New line added
++Another new line
+ context line unchanged
+
+TOML
+
+Use the toml language to highlight TOML files.
+
+[
+package
+]
+name = "example"
+version = "0.1.0"
+
+[
+dependencies
+]
+serde = "1.0.117"
+
+[[
+bin
+]]
+name = "example"
+path = "src/main.rs"
+Kotlin
+
+Use the kotlin language to highlight Kotlin code.
+
+// Simple data class and function in Kotlin
+data class User(val name: String, val age: Int)
+
+fun greet(user: User): String {
+  return "Hello, ${user.name}! You are ${user.age} years old."
+}
+
+fun main() {
+  val user = User("Alice", 30)
+  println(greet(user))
+}
+Usage
+Reference
+Examples
+Custom composition
+Supported languages
+
+
+================================================================================
+## Components: Datepicker
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-datepicker--docs
+================================================================================
+
+DatePicker
+Select a single date with an interactive calendar
+Usage
+import { DatePicker } from "@openai/apps-sdk-ui/components/DatePicker";
+Copy
+Select date...
+<DatePicker
+  value={selectedDate}
+  onChange={(nextDate) => {
+    setSelectedDate(nextDate);
+  }}
+  clearable
+  pill
+/>
+Copy
+Reference
+Name	Description	Default
+size	
+
+Determines size of the size and spacing of the control.
+
+"sm"
+"md"
+"lg"
+"3xs"
+"2xs"
+"xs"
+"xl"
+"2xl"
+Show 1 more...
+	
+"md"
+
+pill	
+Determines if the select trigger should be a fully rounded pill shape
+boolean
+	
+false
+
+clearable	
+Display a clear action that allows the select to be unset.
+boolean
+	
+false
+
+id*	
+Allow targeting the input for forms and accessibility.
+string
+	-
+value*	
+The selected date value.
+DateTime<boolean> | null
+	-
+onChange*	
+Handler that is triggered when the date changes.
+(nextValue: DateTime<boolean> | null) => void
+	-
+min	
+Defines the earliest selectable date (inclusive).
+DateTime<boolean>
+	-
+max	
+Defines the latest selectable date (inclusive).
+DateTime<boolean>
+	-
+side	
+The preferred side of the trigger to render against when open. Will be reversed when collisions occur.
+"top"
+"right"
+"bottom"
+"left"
+	
+"bottom"
+
+sideOffset	
+The distance in pixels from the trigger.
+number
+	
+8
+
+align	
+The preferred alignment against the trigger. May change when collisions occur.
+"start"
+"end"
+"center"
+	
+"center"
+
+alignOffset	
+An offset in pixels from the "start" or "end" alignment options.
+number
+	
+0
+
+disabled	
+Disables the select visually and from interactions
+boolean
+	
+false
+
+placeholder	
+Placeholder text for the select
+string
+	
+"Select date..."
+
+variant	
+Style variant for the select trigger
+"soft"
+"outline"
+"ghost"
+	
+"outline"
+
+dropdownIconType	
+Icon displayed in the far right of the select trigger
+"none"
+"chevronDown"
+"dropdown"
+	
+"dropdown"
+
+triggerClassName	
+Custom class applied to the select trigger
+string
+	-
+triggerShowIcon	
+Display calendar icon at the start of the trigger
+boolean
+	
+true
+
+triggerDateFormat*	
+Format of dates displayed in the trigger
+string
+	-
+block	
+Extends select to 100% of available width.
+boolean
+	
+true
+Examples
+Limits
+
+Use min and max to limit selectable dates to a specific timeframe.
+
+11/24/25
+const today = DateTime.local()
+const minDate = today.minus({ days: 30 }).startOf("day")
+const maxDate = today.plus({ days: 30 }).endOf("day")
+const [selectedDate, setSelectedDate] = useState<DateTime | null>(today)
+
+return (
+  <DatePicker
+    ...
+    min={minDate}
+    max={maxDate}
+  />
+)
+Copy
+Without Icon
+
+Remove the calendar icon from the trigger by setting triggerShowIcon to false.
+
+Choose a date
+<DatePicker
+  ...
+  triggerShowIcon={false}
+  placeholder="Choose a date"
+/>
+Copy
+Disabled
+
+Disable the picker to prevent user interaction.
+
+11/24/25
+<DatePicker
+  ...
+  disabled
+/>
+Copy
+Usage
+Reference
+Examples
+Limits
+Without Icon
+Disabled
+
+
+================================================================================
+## Components: Daterangepicker
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-daterangepicker--docs
+================================================================================
+
+DateRangePicker
+Select a date range with an interactive calendar
+Usage
+import { DateRangePicker } from "@openai/apps-sdk-ui/components/DateRangePicker";
+Copy
+Select date range...
+<DateRangePicker
+  value={selectedDateRange}
+  onChange={(nextDateRange) => {
+    setSelectedDateRange(nextDateRange);
+  }}
+  shortcuts={dayShortcuts}
+  clearable
+  pill
+/>
+Copy
+Reference
+Name	Description	Default
+size	
+
+Determines size of the size and spacing of the control.
+
+"sm"
+"md"
+"lg"
+"3xs"
+"2xs"
+"xs"
+"xl"
+"2xl"
+Show 1 more...
+	
+"md"
+
+pill	
+Determines if the select trigger should be a fully rounded pill shape
+boolean
+	
+false
+
+clearable	
+Display a clear action that allows the select to be unset.
+boolean
+	
+false
+
+value*	
+The selected date range value.
+DateRange
+null
+	-
+onChange*	
+Handler that is triggered when the date range changes.
+(nextValue: DateRange | null, shortcut?: DateRangeShortcut | undefined) => void
+	-
+min	
+Defines the earliest selectable date (inclusive).
+DateTime<boolean>
+	-
+max	
+Defines the latest selectable date (inclusive).
+DateTime<boolean>
+	-
+maxRangeDays	
+
+Maximum length of the selectable range in days (inclusive). When set, the end date cannot be more than this many days after the start date.
+
+number
+	-
+shortcuts	
+List of date range shortcuts displayed for quick selection, shown to the left of the calendar.
+DateRangeShortcut[]
+	-
+side	
+The preferred side of the trigger to render against when open. Will be reversed when collisions occur.
+"top"
+"right"
+"bottom"
+"left"
+	
+"bottom"
+
+sideOffset	
+The distance in pixels from the trigger.
+number
+	
+8
+
+align	
+The preferred alignment against the trigger. May change when collisions occur.
+"start"
+"end"
+"center"
+	
+"center"
+
+alignOffset	
+An offset in pixels from the "start" or "end" alignment options.
+number
+	
+0
+
+disabled	
+Disables the select visually and from interactions
+boolean
+	
+false
+
+placeholder	
+Placeholder text for the select
+string
+	
+"Select date range..."
+
+variant	
+Style variant for the select trigger
+"soft"
+"outline"
+"ghost"
+	
+"outline"
+
+dropdownIconType	
+Icon displayed in the far right of the select trigger
+"none"
+"chevronDown"
+"dropdown"
+	
+"dropdown"
+
+triggerClassName	
+Custom class applied to the select trigger
+string
+	-
+triggerShowIcon	
+Display calendar icon at the start of the trigger
+boolean
+	
+true
+
+triggerStepperUnit	
+
+Allows the trigger to display as a stepper when the selected date matches the unit. Currently 'month' is the only supported unit.
+
+"month"
+	-
+triggerDateFormat	
+Format of dates displayed in the trigger
+string
+	
+"\"MM/dd/yy\""
+
+block	
+Extends select to 100% of available width.
+boolean
+	
+true
+Examples
+Limits
+
+Use min and max to limit date ranges to a specific timeframe.
+
+You can also use maxRangeDays to limit the range of days allowed.
+
+11/01/25-11/24/25
+const today = DateTime.local()
+const minDate = today.minus({ days: 120 }).startOf("day")
+const maxDate = today.endOf("day")
+const [selectedDateRange, setSelectedDateRange] = useState<DateRange | null>(() =>
+  getMonthStartAndEnd(today, { min: minDate, max: maxDate }),
+)
+
+return (
+  <DateRangePicker
+    ...
+    min={minDate}
+    max={maxDate}
+  />
+)
+Copy
+Shortcuts
+
+Use the shortcuts array to provide a list of quick data shortcuts.
+
+When a given shortcut is selected, it's label is displayed in the trigger.
+
+Select date range...
+<DateRangePicker
+  ...
+  shortcuts={dayShortcuts}
+/>
+Copy
+Month stepper
+
+Enable a stepper view in the trigger by passing stepperUnit. When the selected date matches the unit (e.g., a month), the trigger view will convert into the stepper view.
+
+When the range does not match the stepper unit, the normal trigger is displayed.
+
+November 2025
+<DateRangePicker
+  ...
+  triggerStepperUnit: "month",
+/>
+Copy
+Usage
+Reference
+Examples
+Limits
+Shortcuts
+Month stepper
+
+
+================================================================================
+## Components: Emptymessage
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-emptymessage--docs
+================================================================================
+
+EmptyMessage
+Gracefully inform users when there's nothing to see
+Usage
+import { EmptyMessage } from "../EmptyMessage"
+Copy
+Reference
+Your evaluations will appear here
+Create an evaluation to assess your model's responses
+Create
+() => <EmptyMessage>
+    <EmptyMessage.Icon>
+      <Explore />
+    </EmptyMessage.Icon>
+    <EmptyMessage.Title>Your evaluations will appear here</EmptyMessage.Title>
+    <EmptyMessage.Description>
+      Create an evaluation to assess your model's responses
+    </EmptyMessage.Description>
+    <EmptyMessage.ActionRow>
+      <Button color="primary" onClick={() => {}} size="lg">
+        <Plus className="mr-[-2px]" />
+        Create
+      </Button>
+    </EmptyMessage.ActionRow>
+  </EmptyMessage>
+Copy
+EmptyMessage
+Name	Description	Default
+className	
+string
+	-
+fill	
+Determines how the container fills available space
+"none"
+"static"
+"absolute"
+	
+"static"
+EmptyMessage.Icon
+Name	Description	Default
+size	
+"sm"
+"md"
+	
+"md"
+
+color	
+"secondary"
+"danger"
+"warning"
+	
+"secondary"
+
+className	
+string
+	-
+Examples
+Error message
+
+The color property enables you to display clearer intent with the message, such as showing an error state.
+
+Enable microphone access in your browser's settings.
+() => <EmptyMessage>
+    <EmptyMessage.Icon color="danger">
+      <Mic />
+    </EmptyMessage.Icon>
+    <EmptyMessage.Title color="danger">
+      Enable microphone access in your browser's settings.
+    </EmptyMessage.Title>
+  </EmptyMessage>
+Copy
+No results
+
+The components of EmptyMessage are both composable and optional. This example omits the EmptyMessage.Title component, using only an icon and description for a simpler message style.
+
+No icons found matching "pizza"
+() => <EmptyMessage fill="none">
+    <EmptyMessage.Icon size="sm">
+      <Search />
+    </EmptyMessage.Icon>
+    <EmptyMessage.Description>
+      No icons found matching <span className="font-semibold">"pizza"</span>
+    </EmptyMessage.Description>
+  </EmptyMessage>
+Copy
+Usage
+Reference
+Examples
+Error message
+No results
+
+
+================================================================================
+## Components: Indicators
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-indicators--docs
+================================================================================
+
+Indicators
+Display loading and progress states to users
+LoadingIndicator
+
+Simple spinning indicator for general loading states.
+
+Usage
+import { LoadingIndicator } from "@openai/apps-sdk-ui/components/Indicator";
+Copy
+<LoadingIndicator size={24} />
+Copy
+Reference
+Name	Description	Default
+size	
+Size of the indicator, in pixels
+string
+number
+	
+1em
+
+className	
+Classname applied to the indicator
+string
+	-
+strokeWidth	
+Stroke width of the indicator, in pixels
+number
+	
+2
+Sizing & stroke
+
+By default, the indicator adapts to the surrounding font-size and color of text.
+
+You can control the size of the LoadingIndicator using the --indicator-size CSS custom property.
+
+<LoadingIndicator
+  size={30}
+  strokeWidth={2}
+/>
+Copy
+size	
+10
+30 / 50
+
+strokeWidth	
+1
+2 / 10
+Color
+
+The indicator defaults to currentcolor, inheriting the surrounding text color. This can also be customized by altering the --indicator-color variable around the DOM scope of the component.
+
+Destroying forever...
+<div className="flex items-center gap-2 text-danger">
+  <LoadingIndicator />
+  Destroying forever...
+</div>
+Copy
+Duration
+
+You can control the rotation speed of the spinner with --indicator-rotate-duration.
+
+<div
+  style={{
+    '--indicator-rotate-duration': '3s'
+  }}
+>
+  <LoadingIndicator />
+</div>
+Copy
+CircularProgress
+
+Circular progress ring with simulated progress animation.
+
+Usage
+import { CircularProgress } from "@openai/apps-sdk-ui/components/Indicator";
+Copy
+<CircularProgress />
+Copy
+Name	Description	Default
+className	
+Classname applied to the indicator
+string
+	-
+size	
+Size of the indicator, in pixels
+string
+number
+	
+1em
+
+strokeWidth	
+Stroke width of the indicator, in pixels
+number
+	
+2
+Progress
+
+Use progress to define a static progress and prevent the animation.
+
+<CircularProgress progress={25} />
+Copy
+Sizing & stroke
+
+Use size and strokeWidth to control the sizing and thickness of the loader.
+
+You can also control these values with CSS variables by targeting --circular-progress-size and --circular-progress-stroke.
+
+<o
+  size={30}
+  strokeWidth={2}
+/>
+Copy
+size	
+10
+30 / 50
+
+strokeWidth	
+1
+2 / 4
+Color
+
+Customize the color of the indicator with the --circular-progress-track-color and --circular-progress-track-active-color variables.
+
+<o
+  trackActiveColor="var(--gray-1000)"
+  trackColor="var(--alpha-15)"
+/>
+Copy
+LoadingDots
+
+Indicate typing progress with staggered pulsing dot animation.
+
+Usage
+import { LoadingDots } from "@openai/apps-sdk-ui/components/Indicator";
+Copy
+<LoadingDots />
+Copy
+Color
+
+The indicator defaults to currentcolor, inheriting the surrounding text color.
+
+You can customize the color by providing a different color value or context.
+
+<LoadingDots className="text-danger" />
+Copy
+LoadingIndicator
+Usage
+Reference
+Sizing & stroke
+Color
+Duration
+CircularProgress
+Usage
+Progress
+Sizing & stroke
+Color
+LoadingDots
+Usage
+Color
+
+
+================================================================================
+## Components: Input
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-input--docs
+================================================================================
+
+Input
+Semantic input text collection
+Usage
+import { Input } from "@openai/apps-sdk-ui/components/Input";
+Copy
+<Input
+  placeholder="Enter text..."
+/>
+Copy
+Reference
+Name	Description	Default
+placeholder	
+string
+	-
+allowAutofillExtensions	
+Allow autofill extensions to appear in the input
+boolean
+	
+false
+
+disabled	
+Disables the select visually and from interactions
+boolean
+	
+false
+
+invalid	
+Mark the input as invalid
+boolean
+	
+false
+
+variant	
+Visual style of the input
+"soft"
+"outline"
+	
+"outline"
+
+size	
+
+Controls the size of the input
+
+"sm"
+"md"
+"lg"
+"3xs"
+"2xs"
+"xs"
+"xl"
+"2xl"
+Show 1 more...
+	
+"md"
+
+gutterSize	
+
+Controls gutter on the edges of the input, defaults to value from size.
+
+"sm"
+"md"
+"lg"
+"2xs"
+"xs"
+"xl"
+	-
+autoSelect	
+Select all contents of the input when mounted.
+boolean
+	
+false
+
+onAutofill	
+Callback invoked when the input is autofilled by the browser
+(() => void)
+	-
+startAdornment	
+Content rendered at the start of the input
+ReactNode
+	-
+endAdornment	
+Content rendered at the end of the input
+ReactNode
+	-
+pill	
+Determines if the button should be a fully rounded pill shape
+boolean
+	
+false
+
+opticallyAlign	
+
+Applies a negative margin using the current gutter to optically align the input with surrounding content.
+
+"start"
+"end"
+	-
+Examples
+Variants
+
+Use variant to stylize the input.
+
+outline
+soft
+Sizing & roundness
+
+Sizing of the input is controlled with size and gutterSize props. size sets the input to a specific control height, and gutterSize sets the horizontal padding.
+
+Each size provides default values for gutterSize, as well as font-size. Each of these values can be overridden independently.
+
+0/16
+size	
+Choose option...
+sm
+md
+lg
+3xs
+2xs
+xs
+xl
+2xl
+3xl
+
+pill	
+FalseTrue
+gutterSize	
+Choose option...
+sm
+md
+lg
+2xs
+xs
+xl
+Start adornment
+
+You can add arbitrary content to the beginning of an input with startAdornment – like a search icon.
+
+Ideally, the spacing will look pretty good by default. If you need to customize the spacing:
+
+gutterSize determines the amount of spacing on the edges of the container, which you can fine-tune as needed.
+If you need precise spacing not supported by gutterSize, use negative left margin on your adornment directly (e.g., -ml-2).
+The spacing between the adornment and the input is controlled with gap on the container, which you can customize as needed with Tailwind classes.
+<Input
+  placeholder="Start adornment"
+  startAdornment={<Search className="fill-tertiary" />}
+/>
+Copy
+End adornment
+
+You can add arbitrary content to the end of an input with endAdornment – like a clear button.
+
+The same spacing guidance from startAdornment applies here.
+
+End adornments are most commonly actions that are tucked tightly into the container frame. In these cases, you'll likely reach for negative right margin (e.g., -mr-2.5) to achieve that aesthetic.
+
+<Input
+  placeholder="Enter text..."
+  value={value}
+  onChange={(evt) => setValue(evt.target.value)}
+  pill
+  endAdornment={
+    value ? (
+      <Button
+        className="-mr-2.5"
+        color="secondary"
+        variant="soft"
+        uniform
+        size="3xs"
+        onClick={() => setValue("")}
+        pill
+      >
+        <X />
+      </Button>
+    ) : undefined
+  }
+/>
+Copy
+Disabled
+
+Use the disabled prop to disable the input, greying it out and preventing user interactions.
+
+<Input
+  defaultValue="Jane Doe"
+  disabled
+  placeholder="Enter text..."
+/>
+Copy
+disabled	
+FalseTrue
+Invalid
+
+Use the invalid prop to mark the input as invalid. You decide how this state is removed, whether that's through onFocus, onChange, an onSubmit handler, etc.
+
+Default visual styles will be applied, based on the variant. Additionally, [data-invalid] is applied to the container for custom styling.
+
+<Input
+  invalid
+  placeholder="Invalid input"
+/>
+Copy
+invalid	
+FalseTrue
+Auto select text
+
+Pass autoSelect to select all text in the input – useful when pairing with other copy actions. This prop behaves like an imperative action when toggled and allows selection to change.
+
+<Input
+  defaultValue="Toggle to auto select"
+  placeholder="Add text..."
+/>
+Copy
+autoSelect	
+FalseTrue
+Autofill extensions
+
+By default, autofill extensions are prevented by Input. For the occasions where you want browser extensions to be present, pass allowAutofillExtensions to remove the disabling.
+
+When name is passed, or type is set to "password", this value will default to true.
+
+<Input
+  key="true"
+  allowAutofillExtensions
+  name="email"
+  placeholder="Allowed"
+/>
+Copy
+allowAutofillExtensions	
+FalseTrue
+With button
+
+You can pair Input and Button components together by using the same size value.
+
+Subscribe
+<div className="flex gap-2">
+  <Input
+    placeholder="jane.doe@gmail.com"
+    size="lg"
+    variant="outline"
+  />
+  <Button
+    color="primary"
+    size="lg"
+    variant="outline"
+  >
+    Subscribe
+  </Button>
+</div>
+Copy
+variant	
+Choose option...
+soft
+outline
+
+size	
+Choose option...
+sm
+md
+lg
+3xs
+2xs
+xs
+xl
+2xl
+3xl
+Optical alignment
+
+Use opticallyAlign with either "start" or "end" to offset the gutter of the input.
+
+Default
+Field 1
+Field 2
+Submit
+opticallyAlign="start"
+Field 1
+Field 2
+Submit
+Usage
+Reference
+Examples
+Variants
+Sizing & roundness
+Start adornment
+End adornment
+Disabled
+Invalid
+Auto select text
+Autofill extensions
+With button
+Optical alignment
+
+
+================================================================================
+## Components: Markdown
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-markdown--docs
+================================================================================
+
+Markdown
+Render rich formatted content
+Usage
+import { Markdown } from "@openai/apps-sdk-ui/components/Markdown"
+Copy
+Headers
+Heading 1
+Heading 2
+Heading 3
+Heading 4
+Heading 5
+Heading 6
+Text samples
+
+Emphasis, aka italics, with asterisks or underscores.
+
+Strong emphasis, aka bold, with asterisks or underscores.
+
+Combined emphasis with asterisks and underscores.
+
+Strikethrough uses two tildes. Scratch this.
+
+Lists
+Unordered List
+Item 1
+Item 2
+Nested Item 1
+Nested Item 2
+Ordered List
+First item
+Second item
+Subitem 1
+Subitem 2
+
+Sample paragraph breaking up multiple <ol>.
+
+Third item
+Subitem 1
+Subitem 2
+Fourth item
+Poorly formatted
+Item 1
+Item 2
+Item 3
+Item 4
+Item 5
+Item 10
+Item 11
+Blockquote
+
+This is a blockquote.
+
+It can span multiple lines and include other elements like lists or even code.
+
+Table
+ID	Title	Owner	Updated	Progress
+UX-17	Notebook typography polish	Tyler	2025-09-07	65%
+API-24	Realtime auth fallback	David	2025-09-05	30%
+MD-09	Markdown emoji coverage	Jane	2025-09-06	95%
+PL-42	Storybook doc search	Zach	2025-09-03	50%
+ACC-12	Keyboard trap audit	Priya	2025-09-04	80%
+DOC-11	Design token glossary	Jonah	2025-09-02	45%
+INF-15	Bundle size smoke tests	Elise	2025-09-01	25%
+Links
+
+Here is a sample link.
+
+Inline Code
+
+Here is some inline code: var x = 10;
+
+Nested Elements
+Nested Blockquote with Code Block
+# Code inside a blockquote
+print("Hello from blockquote code block")
+<Markdown>{markdownContent}</Markdown>
+Copy
+Reference
+Name	Description	Default
+directives	
+MarkdownDirective<any>[]
+	-
+includeMath	
+Determines if remark-math plugins should be loaded for rendering LaTeX
+boolean
+	
+false
+
+breakNewLines	
+Determines whether single newlines should insert
+tags
+boolean
+	
+false
+
+components	
+Record<string, MarkdownComponent>
+	-
+remarkPlugins	
+PluggableList
+null
+	-
+rehypePlugins	
+PluggableList
+null
+	-
+allowedElements	
+readonly string[] | null
+	-
+disallowedElements	
+readonly string[] | null
+	-
+urlTransform	
+UrlTransform
+null
+	(url: string) => { if (url.startsWith("tel:") || url.startsWith("sms:")) { return url } return reactMarkdownDefaultUrlTransform(url) }
+skipHtml	
+boolean
+	-
+className	
+string
+	-
+copyableCodeBlocks	
+boolean
+	
+true
+
+children	
+-
+	-
+Math
+
+Use includeMath to enable LaTeX rendering.
+
+Display integral
+∫
+0
+∞
+𝑒
+−
+𝑥
+ 
+𝑑
+𝑥
+=
+1
+∫
+0
+∞
+	​
+
+e
+−x
+dx=1
+Basel problem
+∑
+𝑛
+=
+1
+∞
+1
+𝑛
+2
+=
+𝜋
+2
+6
+n=1
+∑
+∞
+	​
+
+n
+2
+1
+	​
+
+=
+6
+π
+2
+	​
+
+Matrix (bmatrix)
+[
+1
+	
+2
+
+3
+	
+4
+]
+[
+1
+3
+	​
+
+2
+4
+	​
+
+]
+Piecewise (cases)
+𝑓
+(
+𝑥
+)
+=
+{
+𝑥
+2
+	
+𝑥
+≥
+0
+
+−
+𝑥
+	
+𝑥
+<
+0
+f(x)={
+x
+2
+−x
+	​
+
+x≥0
+x<0
+	​
+
+<Markdown includeMath>{markdownWithLatex}</Markdown>
+Copy
+Usage
+Reference
+Math
+
+
+================================================================================
+## Components: Menu
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-menu--docs
+================================================================================
+
+Menu
+Structured actions in a dropdown list
+Usage
+import { Menu } from "@openai/apps-sdk-ui/components/Menu"
+Copy
+Sample menu
+() => <Menu>
+    <Menu.Trigger>
+      <Button color="primary" size="lg" variant="ghost">
+        Sample menu <ChevronDown />
+      </Button>
+    </Menu.Trigger>
+    <Menu.Content width={210} minWidth={210}>
+      <Menu.Item>
+        <p className="font-semibold">Sam Smith</p>
+        <p className="text-secondary">sam.smith@gmail.com</p>
+      </Menu.Item>
+      <Menu.Separator />
+      <Menu.Link href="/settings">Your profile</Menu.Link>
+      <Menu.Link href="https://openai.com/policies/">Terms & policies</Menu.Link>
+      <Menu.Item disabled onSelect={() => {}}>
+        Feature flags
+      </Menu.Item>
+      <Menu.Separator />
+      <Menu.Item onSelect={() => {}}>Logout</Menu.Item>
+    </Menu.Content>
+  </Menu>
+Copy
+
+Note: Menu prevents Tab presses from advancing focus. Because of this, Menu isn't suitable for generic popover use-cases – use Popover instead.
+
+Reference
+Menu
+Name	Description	Default
+forceOpen	
+Force the menu to remain open or closed
+boolean
+	-
+onOpen	
+Callback triggered when the modal is opened
+(() => void)
+	-
+onClose	
+Callback triggered when the modal is closed
+(() => void)
+	-
+modal	
+When set to true, interaction with outside elements will be disabled and only menu content will be visible to screen readers.
+boolean
+	
+false
+Menu.Trigger
+
+Renders the element that toggles the menu open and closed. You can use any interactive element (e.g., a button or icon) as the trigger. The trigger should be the user's point of interaction for revealing the menu options.
+
+Menu.Content
+
+Renders the dynamic content for the menu. Menu.Content is mounted only while the menu is open.
+
+Name	Description	Default
+side	
+The preferred side of the trigger to render against when open. Will be reversed when collisions occur.
+"top"
+"right"
+"bottom"
+"left"
+	
+"bottom"
+
+sideOffset	
+The distance in pixels from the trigger.
+number
+	
+4
+
+align	
+The preferred alignment against the trigger. May change when collisions occur.
+"start"
+"end"
+"center"
+	
+"center"
+
+alignOffset	
+An offset in pixels from the "start" or "end" alignment options.
+number
+	
+-6
+
+width	
+Defines the width property of the content
+number
+"auto"
+	
+auto
+
+minWidth	
+Defines the min-width property of the content, in pixels.
+number
+"auto"
+	
+auto
+
+maxHeight	
+Defines the max-width property of the content, in pixels.
+number
+	-
+Menu.Item
+
+Most common component for rendering menu list items. When onSelect is omitted, the item is rendered as non-interactive.
+
+Name	Description	Default
+className	
+string
+	-
+onSelect	
+Callback triggered when the item is pressed
+((event: Event) => void)
+	-
+onClick	
+Callback triggered when the item is clicked
+MouseEventHandler<HTMLDivElement>
+	-
+disabled	
+Disables the menu item
+boolean
+	-
+Menu.Link
+
+Renders a menu item as a navigational link. Use Menu.Link to create items that navigate to another page or route when selected. Accepts all props supported by the application's router link component, such as to or href, and ensures proper accessibility roles and keyboard behavior within the menu.
+
+Menu.Separator
+
+Renders a divider between menu items
+
+Name	Description	Default
+className	
+string
+	-
+Menu.Sub
+
+Renders a wrapper for nested submenus within a menu. Use Menu.Sub to group a Menu.SubTrigger and a Menu.SubContent.
+
+Name	Description	Default
+forceOpen	
+Force the menu to remain open or closed
+boolean
+	-
+onOpen	
+Callback triggered when the modal is opened
+(() => void)
+	-
+onClose	
+Callback triggered when the modal is closed
+(() => void)
+	-
+Menu.SubTrigger
+
+Renders a menu item that toggles its associated submenu. Must be used inside a Menu.Sub.
+
+Name	Description	Default
+className	
+string
+	-
+disabled	
+boolean
+	-
+Menu.SubContent
+
+Renders the content panel for a submenu. Must follow a Menu.SubTrigger within a Menu.Sub.
+
+Name	Description	Default
+sideOffset	
+number
+	
+4
+
+alignOffset	
+number
+	
+-6
+
+width	
+number
+"auto"
+	
+auto
+
+minWidth	
+number
+"auto"
+	
+auto
+
+maxHeight	
+number
+	-
+Menu.CheckboxItem
+
+Renders a menu item with a checkbox indicator.
+
+Name	Description	Default
+checked	
+Controlled checked state of the checkbox item
+CheckedState
+	-
+onCheckedChange	
+Event handler called when the checked state changes
+((checked: boolean) => void)
+	-
+className	
+Class applied to the checkbox item
+string
+	-
+onSelect	
+Callback triggered when the checkbox item is pressed
+((event: Event) => void)
+	-
+disabled	
+Disables the checkbox item
+boolean
+	-
+indicatorPosition	
+The orientation of the indicator within the checkbox item.
+"start"
+"end"
+	
+"end"
+
+indicatorVariant	
+Visual treatment for the checkbox indicator.
+"solid"
+"ghost"
+	
+"solid"
+Menu.RadioGroup
+
+Renders a group of radio items in a menu.
+
+Name	Description	Default
+value*	
+Controlled value
+string
+	-
+onChange*	
+Fired when selection changes
+(value: T) => void
+	-
+indicatorPosition	
+The orientation of the indicator within the radio item.
+"start"
+"end"
+	
+"end"
+Menu.RadioItem
+
+Renders a menu item with a radio indicator – used inside Menu.RadioGroup.
+
+Name	Description	Default
+value*	
+string
+	-
+className	
+Class applied to the radio item
+string
+	-
+onSelect	
+Callback triggered when the radio item is pressed
+((event: Event) => void)
+	-
+disabled	
+Disables the radio item
+boolean
+	-
+Menu.ItemActions
+
+Renders a container for additional actions that appear on the menu item. Menu.ItemActions automatically handles visibility of the actions based on hover, and will not trigger the item's onSelect behavior.
+
+Name	Description	Default
+className	
+string
+	-
+Menu.ItemAction
+
+Renders an action for use in the hover Menu.ItemActions container. Child is most likely to be a simple icon, which is passed to a Button component.
+
+Name	Description	Default
+onClick*	
+(evt: MouseEvent<Element, MouseEvent>) => void
+	-
+Examples
+Sizing the menu
+Natural sizing – use minWidth="auto" to have the menu fit naturally to the size of the content.
+Fixed size – use width and minWidth to set the menu to a fixed size, regardless of content size.
+Flexible sizing – minWidth can be used by itself to describe a menu that must be a given size, but can grow larger depending on its content.
+Max sizing – apply max-width to the children of Menu.Content. maxWidth isn't exposed to props because it's reserved for Radix variables to limit width in collision detection.
+Tools
+<Menu.Content minWidth="auto">
+  <Menu.Item onSelect={handleSelect}>
+    <Functions height={16} width={16} /> Function
+  </Menu.Item>
+  ...
+</Menu.Content>
+Copy
+Submenus
+
+Use Menu.Sub, Menu.SubTrigger, and Menu.SubContent to create nested menu items.
+
+Options
+() => <Menu>
+    <Menu.Trigger>
+      <Button color="primary" size="lg" variant="ghost">
+        Options <ChevronDown />
+      </Button>
+    </Menu.Trigger>
+    <Menu.Content minWidth={180}>
+      <Menu.Item onSelect={() => {}}>Edit</Menu.Item>
+      <Menu.Item onSelect={() => {}}>Duplicate</Menu.Item>
+      <Menu.Separator />
+      <Menu.Sub>
+        <Menu.SubTrigger>More</Menu.SubTrigger>
+        <Menu.SubContent>
+          <Menu.Item onSelect={() => {}}>Move to project…</Menu.Item>
+          <Menu.Item onSelect={() => {}}>Move to folder…</Menu.Item>
+          <Menu.Separator />
+          <Menu.Item onSelect={() => {}}>Advanced options…</Menu.Item>
+        </Menu.SubContent>
+      </Menu.Sub>
+      <Menu.Separator />
+      <Menu.Item onSelect={() => {}}>Share</Menu.Item>
+      <Menu.Item onSelect={() => {}}>Add to favorites</Menu.Item>
+      <Menu.Separator />
+      <Menu.Item onSelect={() => {}}>Delete</Menu.Item>
+    </Menu.Content>
+  </Menu>
+Copy
+Checkbox items
+
+You can render selectable menu items with Menu.CheckboxItem.
+
+Use indicatorPosition to control whether the indicator appears before or after the content of the item.
+Use indicatorVariant to switch between a solid and ghost checkmark indicator.
+Pass onSelect={(evt) => evt.preventDefault()} to prevent the menu from closing when selecting.
+Checkbox menu
+const [settings, setSettings] = useState({
+  showGrid: true,
+  showLabels: false,
+  enableShadows: false,
+})
+
+return (
+  <Menu>
+    <Menu.Trigger>
+      <Button variant="ghost" color="primary">
+        Checkbox menu <ChevronDown />
+      </Button>
+    </Menu.Trigger>
+    <Menu.Content minWidth={200}>
+      <Menu.CheckboxItem
+        checked={settings.showGrid}
+        onCheckedChange={(checked) => setSettings((s) => ({ ...s, showGrid: checked }))}
+        onSelect={(evt) => evt.preventDefault()}
+        indicatorPosition="end"
+        indicatorVariant="filled"
+      >
+        Show grid lines
+      </Menu.CheckboxItem>
+      <Menu.CheckboxItem
+        checked={settings.showLabels}
+        onCheckedChange={(checked) => setSettings((s) => ({ ...s, showLabels: checked }))}
+        onSelect={(evt) => evt.preventDefault()}
+        indicatorPosition="end"
+        indicatorVariant="filled"
+      >
+        Display labels
+      </Menu.CheckboxItem>
+      <Menu.CheckboxItem
+        checked={settings.enableShadows}
+        onCheckedChange={(checked) => setSettings((s) => ({ ...s, enableShadows: checked }))}
+        onSelect={(evt) => evt.preventDefault()}
+        indicatorPosition="end"
+        indicatorVariant="filled"
+      >
+        Enable shadows
+      </Menu.CheckboxItem>
+    </Menu.Content>
+  </Menu>
+)
+Copy
+indicatorPosition	
+Choose option...
+start
+end
+
+indicatorVariant	
+Choose option...
+solid
+ghost
+Radio items
+
+You can render radio options within a menu with Menu.RadioGroup and Menu.RadioItem.
+
+Use indicatorPosition to control whether the indicator appears before or after the content of the item.
+Pass onSelect={(evt) => evt.preventDefault()} to prevent the menu from closing when selecting.
+Radio menu
+<Menu>
+  <Menu.Trigger>
+    <Button color="primary" variant="ghost">
+      Radio menu <ChevronDown />
+    </Button>
+  </Menu.Trigger>
+  <Menu.Content align="start" minWidth="auto" width="auto">
+    <Menu.RadioGroup
+      indicatorPosition="end"
+      value={value}
+      onChange={setValue}
+    >
+      <Menu.RadioItem value="any">Any time</Menu.RadioItem>
+      <Menu.RadioItem value="today">Today</Menu.RadioItem>
+      <Menu.RadioItem value="last7d">Last 7 days</Menu.RadioItem>
+      <Menu.RadioItem value="last30d">Last 30 days</Menu.RadioItem>
+      <Menu.RadioItem value="last3m">Last 3 months</Menu.RadioItem>
+    </Menu.RadioGroup>
+  </Menu.Content>
+</Menu>
+Copy
+indicatorPosition	
+Choose option...
+start
+end
+Item actions
+
+You can render additional actions on Menu.Item by using the Menu.ItemActions and Menu.ItemAction components. This will render a special set of actions that display when a given item is highlighted.
+
+Accessibility note: These actions are not keyboard accessible due to how Radix Menu works, so these should not be critical actions with no other parity.
+
+Conversations
+<Menu.Content>
+  <Menu.Item onSelect={handleSelect}>
+    <span className="flex-1 truncate">Sample thread title</span>
+    <Menu.ItemActions>
+      <Menu.ItemAction>
+        <Edit />
+      </Menu.ItemAction>
+      <Menu.ItemAction>
+        <Delete />
+      </Menu.ItemAction>
+    </Menu.ItemActions>
+  </Menu.Item>
+  ...
+</Menu.Content>
+Copy
+Usage
+Reference
+Root
+Trigger
+Content
+Item
+Link
+Separator
+Sub
+SubTrigger
+SubContent
+CheckboxItem
+RadioGroup
+RadioItem
+ItemActions
+ItemAction
+Examples
+Sizing the menu
+Submenus
+Checkbox items
+Radio items
+Item actions
+Upload image
+Link to image
+
+Supported formats: .jpeg .jpg .gif .png
+
+
+================================================================================
+## Components: Popover
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-popover--docs
+================================================================================
+
+Popover
+Generic floating UI utility for contextual actions
+Usage
+import { Popover } from "@openai/apps-sdk-ui/components/Popover";
+Copy
+Generate
+() => <Popover>
+    <Popover.Trigger>
+      <Button color="primary">Generate</Button>
+    </Popover.Trigger>
+    <Popover.Content side="right">
+      <Textarea />
+      <ActionBar />
+    </Popover.Content>
+  </Popover>
+Copy
+Reference
+Popover
+Name	Description	Default
+open	
+Sets controlled visibility state
+boolean
+	-
+onOpenChange	
+Callback invoked when visibility state changes
+((nextState: boolean) => void)
+	-
+showOnHover	
+boolean
+	
+false
+
+hoverOpenDelay	
+number
+	
+150
+Popover.Trigger
+
+Renders the element that toggles the popover. The trigger should be the user's point of interaction for revealing the popup.
+
+Popover.Content
+Name	Description	Default
+avoidCollisions	
+Whether to avoid collisions with vieport/scroll containersw.
+boolean
+	
+true
+
+width	
+Set the width of the popover, in pixels.
+number
+"auto"
+	
+auto
+
+minWidth	
+Set the min-width of the popover, in pixels.
+number
+"auto"
+	
+300
+
+maxWidth	
+Set the max-width of the popover, in pixels.
+number
+	-
+side	
+The preferred side of the trigger to render against when open. Will be reversed when collisions occur.
+"top"
+"right"
+"bottom"
+"left"
+	
+"bottom"
+
+sideOffset	
+The distance in pixels from the trigger.
+number
+	
+8
+
+align	
+The preferred alignment against the trigger. May change when collisions occur.
+"start"
+"end"
+"center"
+	
+"center"
+
+alignOffset	
+An offset in pixels from the "start" or "end" alignment options.
+number
+	
+0
+
+translucent	
+Whether the popover surface should be translucent.
+boolean
+	
+false
+
+className	
+Additional class name to apply to the popover content, you usually don't want to set this, but ag-grid needs it to render a custom editor properly
+string
+	-
+autoFocus	
+Auto focus the popover content when it is opened.
+boolean
+	
+true
+Examples
+Sizing the popover
+
+The popover can be sized with any combination of width, minWidth, or maxWidth. All popovers default to a minWidth of 300px, and a maxWidth of Radix's viewport detection.
+
+Actions
+<Popover>
+  <Popover.Trigger>
+    ...
+  </Popover.Trigger>
+  <Popover.Content minWidth="auto" side="top">
+    ...
+  </Popover.Content>
+</Popover>
+Copy
+Open on hover
+
+Use showOnHover to create popovers that appear on hover and focus events. This should be used sparingly and with clear intention.
+
+By default, hover popovers will not alter the focused element on the page, nor restore focus to the trigger on close. However, if interactive content is present in the popover, and tab is used to navigate into the popover, focus will be restored to the trigger on close.
+
+Static content
+Interactive content
+<Popover showOnHover>
+  <Popover.Trigger>
+    ...
+  </Popover.Trigger>
+  <Popover.Content>
+    ...
+  </Popover.Content>
+</Popover>
+Copy
+Using the controller
+
+You can access usePopoverController() controller context from components within Popover.Content. The hook exposes two methods, close() and shake(). They do exactly what you think they do.
+
+Attempting to submit an empty form calls the shake() method
+After async submission occurs (faked loading state), the close() method is called to close the popup imperatively.
+Generate
+const Example = () => {
+  return (
+    <Popover>
+      <Popover.Trigger>
+        <Button color="primary">Generate</Button>
+      </Popover.Trigger>
+      <Popover.Content side="right" surface="glass">
+        <ControllerForm />
+      </Popover.Content>
+    </Popover>
+  )
+}
+
+const ControllerForm = () => {
+  const [value, setValue] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const { shake, close } = usePopoverController()
+
+  const handleSubmit = (evt: FormEvent) => {
+    evt.preventDefault()
+
+    if (!value) {
+      shake()
+      return
+    }
+
+    setSubmitting(true)
+    setTimeout(close, 2000)
+  }
+  return (
+    <form onSubmit={handleSubmit}>
+      <Textarea value={value} onChange={setValue} />
+      <ActionBar loading={submitting} />
+    </form>
+  )
+}
+Copy
+Nesting
+
+All floating UI components in Apps SDK UI can be infinitely nested by relying on z-index: auto; and natural stacking order.
+
+Additionally, esc keypresses are handled independently as a stacking order.
+
+Usage
+Reference
+Root
+Trigger
+Content
+Examples
+Sizing the popover
+Open on hover
+Using the controller
+Nesting
+
+
+================================================================================
+## Components: Radiogroup
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-radiogroup--docs
+================================================================================
+
+RadioGroup
+Semantic radio option selection
+Chocolate
+Vanilla
+Yes
+Usage
+import { RadioGroup } from "@/components/ui/RadioGroup";
+Copy
+Notification frequency
+Daily
+Weekly
+Monthly
+Never
+() => {
+  const [frequency, setFrequency] = useState("daily");
+  return <div>
+      <h3 className="font-semibold text-sm mb-3">Notification frequency</h3>
+      <RadioGroup direction="col" value={frequency} onChange={setFrequency} aria-label="Notification frequency">
+        <RadioGroup.Item value="daily">Daily</RadioGroup.Item>
+        <RadioGroup.Item value="weekly">Weekly</RadioGroup.Item>
+        <RadioGroup.Item value="monthly">Monthly</RadioGroup.Item>
+        <RadioGroup.Item value="never">Never</RadioGroup.Item>
+      </RadioGroup>
+    </div>;
+}
+Copy
+Reference
+RadioGroup
+Name	Description	Default
+disabled	
+Controls whether the entire radio group is disabled
+boolean
+	
+false
+
+defaultValue	
+string
+	-
+value	
+string
+	-
+name	
+string
+	-
+onChange	
+((value: T) => void)
+	-
+aria-label*	
+Accessible label for the radio options
+string
+	-
+direction	
+Determines the layout direction of the radio items
+"col"
+"row"
+	
+"row"
+
+className	
+Class applied to the radio group container
+string
+	-
+required	
+boolean
+	-
+RadioGroup.Item
+Name	Description	Default
+value*	
+string
+	-
+disabled	
+Determines if a given radio item is disabled
+boolean
+	
+false
+
+required	
+boolean
+	-
+block	
+boolean
+	
+false
+
+className	
+string
+	-
+Examples
+Direction
+
+Use direction to control whether the items flow in a column or row. An optimal gap will be dynamically applied based on the orientation.
+
+Option 1
+Option 2
+Option 3
+<RadioGroup
+  aria-label="Sample options"
+  direction="col"
+>
+  <RadioGroup.Item value="option1">
+    Option 1
+  </RadioGroup.Item>
+  <RadioGroup.Item value="option2">
+    Option 2
+  </RadioGroup.Item>
+  <RadioGroup.Item value="option3">
+    Option 3
+  </RadioGroup.Item>
+</RadioGroup>
+Copy
+direction	
+Choose option...
+col
+row
+Group disabled
+
+Use disabled on RadioGroup to disable all radio options.
+
+Option 1
+Option 2
+Option 3
+<RadioGroup disabled>
+  ...
+</RadioGroup>
+Copy
+disabled	
+FalseTrue
+Item disabled
+
+Use disabled on single RadioGroup.Item to disable only that option.
+
+Option 1
+Option 2
+This is long content that will wrap multiple lines to demonstrate how line-height affects rendering of the radio group
+<RadioGroup>
+  <RadioGroup.Item disabled>
+  ...
+</RadioGroup>
+Copy
+disabled	
+FalseTrue
+Complex layout
+
+Instrument complex layouts by leveraging component composition and className overrides.
+
+Basic Plan
+
+5 GB storage • Email support • Free
+
+Standard Plan
+
+100 GB storage • Priority email support • $9.99/m
+
+Enterprise Plan
+
+Unlimited storage • 24/7 phone support • Custom pricing
+
+() => <RadioGroup className="flex-col w-[390px] gap-4" onChange={() => {}} aria-label="Sample options">
+    <RadioGroup.Item className="gap-2.5" value="basic">
+      <div>
+        <h4 className="font-semibold mb-1">Basic Plan</h4>
+        <p className="text-secondary text-sm">5 GB storage • Email support • Free</p>
+      </div>
+    </RadioGroup.Item>
+    <hr className="border-default" />
+    <RadioGroup.Item className="gap-2.5" value="standard">
+      <div>
+        <h4 className="font-semibold mb-1">Standard Plan</h4>
+        <p className="text-secondary text-sm">100 GB storage • Priority email support • $9.99/m</p>
+      </div>
+    </RadioGroup.Item>
+    <hr className="border-default" />
+    <Tooltip maxWidth={258} content={<>
+          Contact our <TextLink href="#">support team</TextLink> for more information on enterprise
+          plans.
+        </>} interactive>
+      <Tooltip.Trigger>
+        <RadioGroup.Item className="gap-2.5" value="enterprise" disabled>
+          <div>
+            <h4 className="font-semibold mb-1">Enterprise Plan</h4>
+            <p className="text-secondary text-sm">
+              Unlimited storage • 24/7 phone support • Custom pricing
+            </p>
+          </div>
+        </RadioGroup.Item>
+      </Tooltip.Trigger>
+    </Tooltip>
+  </RadioGroup>
+Copy
+Usage
+Reference
+Root
+Item
+Examples
+Direction
+Group disabled
+Item disabled
+Complex layout
+
+
+================================================================================
+## Components: Segmentedcontrol
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-segmentedcontrol--docs
+================================================================================
+
+SegmentedControl
+Toggle through grouped options
+Usage
+import { SegmentedControl } from "@openai/apps-sdk-ui/components/SegmentedControl";
+Copy
+All
+Failed
+Successful
+View story
+<SegmentedControl
+  aria-label="Select view"
+  onChange={function Xs(){}}
+  value="all"
+>
+  <SegmentedControl.Option value="all">
+    All
+  </SegmentedControl.Option>
+  <SegmentedControl.Option value="failed">
+    Failed
+  </SegmentedControl.Option>
+  <SegmentedControl.Option value="successful">
+    Successful
+  </SegmentedControl.Option>
+</SegmentedControl>
+Copy
+Reference
+SegmentedControl
+Name	Description	Default
+value*	
+Controlled value for the group
+string
+	-
+onChange	
+Callback for when a new value is selected
+((nextValue: T) => void)
+	-
+onClick	
+Callback any time the control is clicked (even if a new value was not selected)
+(() => void)
+	-
+aria-label*	
+Text read aloud to screen readers when the control is focused
+string
+	-
+size	
+
+Controls the size of the segmented control
+
+"sm"
+"md"
+"lg"
+"3xs"
+"2xs"
+"xs"
+"xl"
+"2xl"
+Show 1 more...
+	
+"md"
+
+gutterSize	
+
+Controls gutter on the edges of the button, defaults to value from size.
+
+"sm"
+"md"
+"lg"
+"2xs"
+"xs"
+"xl"
+	-
+disabled	
+Disable the entire group
+boolean
+	-
+block	
+Display the control as a block element with equal width segments
+boolean
+	
+false
+
+pill	
+Determines if the segment control, and its options, should be a fully rounded pill shape.
+boolean
+	
+true
+
+className	
+string
+	-
+SegmentedControl.Option
+Name	Description	Default
+value*	
+Option value
+string
+	-
+aria-label	
+Text read aloud to screen readers when the option is focused
+string
+	-
+children*	
+Content to render in the option
+ReactNode
+	-
+disabled	
+Disable the individual option
+boolean
+	-
+Examples
+Sizing & roundness
+
+Sizing of the control is controlled with size and gutterSize props. size sets the control to a specific height, and gutterSize sets the horizontal padding of the inner options.
+
+Each size provides default values for gutterSize, as well as font-size and border-radius. Each of these values can be overridden independently.
+
+Create a fully rounded control with the pill prop. When pill is set, extra horizontal gutter is dynamically applied to the inner options.
+
+All
+Failed
+Successful
+size	
+Choose option...
+sm
+md
+lg
+3xs
+2xs
+xs
+xl
+2xl
+3xl
+
+pill	
+FalseTrue
+gutterSize	
+Choose option...
+sm
+md
+lg
+2xs
+xs
+xl
+Block
+
+Create full-width controls with the block prop.
+
+All
+Failed
+Successful
+<SegmentedControl block>
+  <SegmentedControl.Option />
+  <SegmentedControl.Option />
+  <SegmentedControl.Option />
+</SegmentedControl>
+Copy
+block	
+FalseTrue
+Disabled group
+
+Use disabled on the SegmentedControl root to disable all options.
+
+All
+Failed
+Successful
+<SegmentedControl disabled>
+  <SegmentedControl.Option />
+  <SegmentedControl.Option />
+  <SegmentedControl.Option />
+</SegmentedControl>
+Copy
+disabled	
+FalseTrue
+Disabled option
+
+Use disabled on a given SegmentedControl.Option to disable only that option.
+
+All
+Failed
+Successful
+<SegmentedControl>
+  <SegmentedControl.Option />
+  <SegmentedControl.Option />
+  <SegmentedControl.Option disabled />
+</SegmentedControl>
+Copy
+disabled	
+FalseTrue
+Scrollable
+
+SegmentedControl can support scrolling, but is not enabled by default.
+
+To create a scrollable segmented control, wrap the component in a simple flex wrapper, which will then cause the control to create inner scrolling when applicable. When scrollable, the selected option will automatically be scrolled into view.
+
+Weird
+use
+of this
+component
+but showing
+it can
+become
+scrollable
+<div className="flex">
+  <SegmentedControl>
+    {...}
+  </SegmentedControl>
+</div>
+Copy
+Usage
+Reference
+Root
+Option
+Examples
+Sizing & roundness
+Block
+Disabled group
+Disabled option
+Scrollable
+
+
+================================================================================
+## Components: Select
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-select--docs
+================================================================================
+
+Select
+Choose from a dropdown of options
+Usage
+import { Select } from "@openai/apps-sdk-ui/components/Select";
+Copy
+Select a fruit...
+<Select
+  value={fruit}
+  options={fruits}
+  onChange={handleChange}
+  placeholder="Select a fruit..."
+  variant="solid"
+/>
+Copy
+Reference
+Name	Description	Default
+onChange*	
+CallbackWithOption<T> | CallbackWithOptions<T>
+	-
+options*	
+Options<T>
+	-
+value*	
+string | string[]
+	-
+actions	
+Actions to display below the options list.
+Actions
+	-
+align	
+The preferred alignment against the trigger. May change when collisions occur.
+"start"
+"end"
+"center"
+	
+"center"
+
+alignOffset	
+An offset in pixels from the "start" or "end" alignment options.
+number
+	
+0
+
+block	
+Extends select to 100% of available width.
+boolean
+	
+true
+
+clearable	
+Display a clear action that allows the select to be unset.
+boolean
+	
+false
+
+disabled	
+Disables the select visually and from interactions
+boolean
+	
+false
+
+dropdownIconType	
+Icon displayed in the far right of the select trigger
+"none"
+"chevronDown"
+"dropdown"
+	
+"dropdown"
+
+id	
+Allows the select to be targeted with htmlFor
+string
+	-
+listMaxWidth	
+Defines the max-width property of the custom select menu, in pixels.
+number
+"auto"
+	
+auto
+
+listMinWidth	
+Defines the min-width property of the custom select menu, in pixels.
+number
+"auto"
+	
+auto
+
+listWidth	
+Set the width of the custom select menu
+number
+"auto"
+	
+auto
+
+loading	
+Displays loading indicator on top of button contents
+boolean
+	
+false
+
+loadingPlaceholder	
+Placeholder text for the select while loading. Behaves exactly like placeholder, and value will be shown if provided.
+string
+	
+"Loading..."
+
+multiple	
+Determines if the select should support multiple selection
+boolean
+	
+false false
+
+name	
+Creates the ability to query the value with [name="${name}"]
+string
+	-
+opticallyAlign	
+
+Applies a negative margin using the current gutter to optically align the trigger with surrounding content.
+
+"start"
+"end"
+	-
+optionClassName	
+Custom class applied to option containers
+string
+	-
+OptionView	
+
+Customize the rendered output of individual options NOTE: Must be passed as a stable reference, not created line.
+
+FC<T>
+	-
+pill	
+Determines if the select trigger should be a fully rounded pill shape
+boolean
+	
+false
+
+placeholder	
+Placeholder text for the select
+string
+	
+"Select..."
+
+required	
+Marks the select as a required field when using native form submission
+boolean
+	-
+searchEmptyMessage	
+Message displayed when search results are empty. Can be a simple string, or custom JSX.
+ReactNode
+	-
+searchPlaceholder	
+Placeholder of the search input
+string
+	-
+searchPredicate	
+Predicate used to filter searches
+SearchPredicate<T>
+	-
+side	
+The preferred side of the trigger to render against when open. Will be reversed when collisions occur.
+"top"
+"bottom"
+	
+"bottom"
+
+size	
+
+Controls size of the select trigger, and several other aspects of trigger styling.
+
+"sm"
+"md"
+"lg"
+"3xs"
+"2xs"
+"xs"
+"xl"
+"2xl"
+Show 1 more...
+	
+"md"
+
+triggerClassName	
+Custom class applied to the select trigger
+string
+	-
+TriggerStartIcon	
+Icon displayed at the start of the select trigger
+ComponentType<SVGProps<SVGSVGElement>>
+	-
+TriggerView	
+
+Customize the rendered output of the trigger NOTE: Must be passed as a stable reference, not created inline. Customize the rendered output of the trigger NOTE: Must be passed as a stable reference, not created line.
+
+FC<T> | FC<MultiSelectTriggerViewProps<T>>
+	-
+variant	
+Style variant for the select trigger
+"soft"
+"outline"
+"ghost"
+	
+"outline"
+Examples
+Custom views
+
+You can fully customize the styling and rendering of select's trigger and options:
+
+Trigger – triggerClassName, TriggerStartIcon, and TriggerView
+Options – optionClassName, OptionView, as well as description and tooltip fields in options
+Reader
+const RoleOptionDescription = ({ children }: { children: React.ReactNode }) => (
+  <div className="font-normal text-secondary py-px text-[0.935em] leading-[1.45]">
+    {children}
+  </div>
+);
+
+const roles: Role[] = [
+  {
+    value: "owner",
+    label: "Owner",
+    description: (
+      <RoleOptionDescription>
+        Can modify project information and manage project members
+      </RoleOptionDescription>
+    ),
+  },
+  {
+    value: "reader",
+    label: "Reader",
+    description: (
+      <RoleOptionDescription>
+        Can make API requests that read or modify data
+      </RoleOptionDescription>
+    ),
+  },
+];
+
+const CustomSelect = () => (
+  <Select
+    value={role}
+    options={roles}
+    placeholder="Select role..."
+    align="start"
+    listMinWidth={260}
+    variant="ghost"
+    size="lg"
+    onChange={({ value }) => setRole(value)}
+    TriggerStartIcon={role === "owner" ? UserLock : User}
+    triggerClassName="font-semibold"
+    optionClassName="font-semibold"
+  />
+)
+Copy
+Actions
+
+Custom, arbitrary actions can be displayed below the options list via the actions prop.
+
+Select...
+<Select
+  value={value}
+  onChange={handleChange}
+  options={items}
+  placeholder="Select..."
+  align="start"
+  listMinWidth={240}
+  triggerClassName="font-semibold"
+  actions={[
+    {
+      id: "create",
+      label: "Create project",
+      Icon: Plus,
+      onSelect: () => {},
+    },
+    {
+      id: "overview",
+      label: "Organization overview",
+      Icon: Workspace,
+      onSelect: () => {},
+    },
+  ]}
+/>
+Copy
+Grouped options
+
+Select supports option groups, similar to All selects are searchable by default, but will only present a searchbox when it makes sense. Currently, this means when there are 15 or more options.
+
+gpt-4o
+const groupedItems = [
+  {
+    label: "Models",
+    options: [
+      ...
+    ],
+    // Custom limits
+    optionsLimit: {
+      limit: 7,
+      label: "Show all models",
+    },
+  },
+  {
+    label: "Fine-tunes",
+    options: [
+      ...
+    ],
+    // Default
+    optionsLimit: {
+      limit: 100,
+      label: "Show all",
+    },
+  },
+];
+
+const GroupedOptions = () => {
+  const [value, setValue] = useState<string>("");
+
+  return (
+    <Select
+      value={value}
+      options={groupedItems}
+      onChange={(v) => setValue(v.value)}
+      variant="outline"
+      size="lg"
+      side="bottom"
+      listMinWidth={300}
+      searchPlaceholder="Select a model..."
+      clearable
+    />
+  );
+};
+Copy
+Multiple selection
+
+Multiple selection is supported through the multiple property. This changes how value, onChange, and TriggerView are typed, accepting and returning arrays of values.
+
+Select fruits...
+const MultiFruitTriggerView = ({
+  values,
+  selectedAll,
+}: {
+  values: { label: string }[];
+  selectedAll: boolean;
+}) => {
+  const displayValue = selectedAll
+    ? "All fruits"
+    : values.length === 1
+    ? values[0].label
+    : `${values.length} fruits`;
+
+  return <>{displayValue}</>;
+};
+
+const MultiFruitSelect = () => {
+  const [fruits, setFruits] = useState<string[]>([]);
+
+  return (
+    <Select
+      variant="solid"
+      placeholder="Select fruits..."
+      options={fruitsOptions}
+      name="fruits"
+      multiple
+      clearable
+      value={fruits}
+      onChange={(values) => {
+          setFruits(values.map(({ value }) => value));
+      }}
+      TriggerView={MultiFruitTriggerView}
+    />
+  );
+};
+Copy
+Usage
+Reference
+Examples
+Custom views
+Actions
+Grouped options
+Multiple selection
+
+
+================================================================================
+## Components: Selectcontrol
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-selectcontrol--docs
+================================================================================
+
+SelectControl
+Customizable select control for use with any type of floating UI
+Usage
+import { SelectControl } from "@openai/apps-sdk-ui/components/SelectControl";
+Copy
+Select date...
+View story
+const [value, setValue] = useState("")
+const placeholder = "Select date..."
+
+return (
+  // Use any floating UI, like <Menu>, <Popover>, etc.
+  <Menu>
+    <Menu.Trigger>
+      <SelectControl
+        selected={!!value}
+        onClearClick={() => setValue("")}
+        StartIcon={CalendarAlt}
+      >
+        {value || placeholder}
+      </SelectControl>
+    </Menu.Trigger>
+    <Menu.Content>
+      <Menu.RadioGroup value={value} onChange={setValue}>
+        ...
+      </Menu.RadioGroup>
+    </Menu.Content>
+  </Menu>
+)
+Copy
+Reference
+Name	Description	Default
+variant	
+Style variant for the Button
+"soft"
+"outline"
+"ghost"
+	
+"outline"
+
+pill	
+Determines if the control should be a fully rounded pill shape
+boolean
+	
+true
+
+size	
+
+Determines size of the size and spacing of the control.
+
+"sm"
+"md"
+"lg"
+"3xs"
+"2xs"
+"xs"
+"xl"
+"2xl"
+Show 1 more...
+	
+"md"
+
+block	
+Extends the control to 100% of available width.
+boolean
+	
+true
+
+opticallyAlign	
+
+Applies a negative margin using the current gutter to optically align the control with surrounding content.
+
+"start"
+"end"
+	-
+disabled	
+Disables the control visually and from interactions
+boolean
+	
+false
+
+invalid	
+Visually indicates that the control is in an invalid state
+boolean
+	
+false
+
+selected	
+Indicates that the control is selected. An unselected state will display placeholder styles.
+boolean
+	
+false
+
+onClearClick	
+Display a clear action that allows the select to be unset.
+(() => void)
+	
+false
+
+onInteract	
+Primary handler for when the control is selected with pointer or keyboard events
+(() => void)
+	-
+loading	
+Displays loading indicator on top of button contents
+boolean
+	
+false
+
+dropdownIconType	
+Icon displayed in the far right of the select trigger
+"none"
+"chevronDown"
+"dropdown"
+	
+"dropdown"
+
+StartIcon	
+Icon displayed at the start of the control
+ComponentType<SVGProps<SVGSVGElement>>
+	-
+ref	
+Ref<HTMLSpanElement | null>
+	-
+Examples
+Variants
+
+Use the variant prop to stylize the select control. Available variant styles are similar to <Button>, but aligned with subtle differences from <Input> variant treatments.
+
+soft
+Sample value
+outline
+Sample value
+ghost
+Sample value
+invalid	
+FalseTrue
+disabled	
+FalseTrue
+Sizing & roundness
+
+Sizing of the control is determined with the size prop. Each size provides dynamic values for various aspects of the control, including icon and indicator placement, as well font-size and gutter values.
+
+Create fully rounded controls with the pill prop. When pill is set, extra horizontal gutter is dynamically applied, and the clear action is also set to pill.
+
+Select...
+Select...
+Select...
+Tool calls
+With tool calls
+Today
+Today
+size	
+Choose option...
+sm
+md
+lg
+3xs
+2xs
+xs
+xl
+2xl
+3xl
+
+pill	
+FalseTrue
+variant	
+Choose option...
+soft
+outline
+ghost
+Selected
+
+Use selected to indicate if the control has a selected value, which toggles visual placeholder styling.
+
+As you'll notice here, this doesn't do anything to the content of the control – that's up to you.
+
+Select...
+<SelectControl>
+  Select...
+</SelectControl>
+Copy
+selected	
+FalseTrue
+Start icon
+
+Use StartIcon to display an icon in the control. Sizing, spacing, and coloring are handled automatically.
+
+Select date...
+<SelectControl StartIcon={CalendarAlt}>
+  Reader
+</SelectControl>
+Copy
+Dropdown icon
+
+Use dropdownIconType to control the presentation of the dropdown indicator.
+
+Select...
+<SelectControl dropdownIconType="dropdown">
+  Select...
+</SelectControl>
+Copy
+dropdownIconType	
+Choose option...
+none
+chevronDown
+dropdown
+Clearable
+
+Pass a callback onClearClick to enable the clearable action.
+
+Sample value
+<SelectControl
+  onClearClick={function Xs(){}}
+  onInteract={function Xs(){}}
+  selected
+>
+  Sample value
+</SelectControl>
+Copy
+Loading
+
+During loading, dropdown icon and clear actions are automatically hidden.
+
+Interactions will be prevented by default during this state, by providing a default value for inert to true. You can override this behavior directly with inert, or use disabled to add visual disablement.
+
+Loading models...
+<SelectControl loading>
+  Loading models...
+</SelectControl>
+Copy
+loading	
+FalseTrue
+Invalid
+
+Use invalid to visually indicate the control is in an invalid state.
+
+Pineapple on pizza
+<SelectControl invalid>
+  Pineapple on pizza
+</SelectControl>
+Copy
+invalid	
+FalseTrue
+Disabled
+
+Use disabled to both visually and accessibly disable the control.
+
+Reader
+<SelectControl disabled>
+  Reader
+</SelectControl>
+Copy
+disabled	
+FalseTrue
+Block
+
+Create full-width controls with the block prop.
+
+Select...
+<div className="w-[290px] text-center p-2 border border-dashed border-alpha/20 rounded-md">
+  <SelectControl
+    block
+    size="lg"
+  >
+    Select...
+  </SelectControl>
+</div>
+Copy
+block	
+FalseTrue
+Optical alignment
+
+Use opticallyAlign with either "start" or "end" to offset the gutter of the control.
+
+Default
+Ghost control
+opticallyAlign="start"
+Ghost control
+Usage
+Reference
+Examples
+Variants
+Sizing & roundness
+Selected
+Start icon
+Dropdown icon
+Clearable
+Loading
+Invalid
+Disabled
+Block
+Optical alignment
+
+
+================================================================================
+## Components: Slider
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-slider--docs
+================================================================================
+
+Slider
+Fine-tune values within a set range
+Usage
+import { Slider } from "@openai/apps-sdk-ui/components/Slider";
+Copy
+Reference
+Example field
+ms
+<div
+  style={{
+    width: 300
+  }}
+>
+  <Slider
+    label="Example field"
+    max={2000}
+    min={0}
+    onChange={function Xs(){}}
+    resetValue={1000}
+    step={10}
+    unit="ms"
+    value={1000}
+  />
+</div>
+Copy
+Name	Description	Default	
+Control
+
+label	
+Optional label for the slider, which can be a string or React node.
+ReactNode
+	-	
+
+min*	
+The minimum value the slider can have
+number
+	-	
+
+max*	
+The maximum value the slider can have
+number
+	-	
+
+resetValue	
+Value that will be offered as a "reset to default" option
+number
+	-	
+
+step*	
+The step increment between slider values
+number
+	-	
+
+unit	
+Unit to display next to the slider value (e.g., ms, px)
+string
+	-	
+
+disabled	
+boolean
+	-	
+FalseTrue
+value*	
+The current value of the slider
+number
+	-	-
+resetTooltip	
+String that will be displayed in the tooltip
+string
+	
+"Reset to default"
+	Set string
+prefixUnit	
+Unit to display to the right of the slider value (e.g., $)
+string
+	-	Set string
+marks	
+List of marks to display below the slider track
+SliderMark[]
+	-	-
+trackColor	
+Color of the slider track
+string
+	-	
+
+rangeColor	
+Color of the slider progress along the track
+string
+	-	
+
+className	
+string
+	-	-
+onChange*	
+Callback function invoked when the slider value changes.
+(value: number) => void
+	-	-
+onBlur	
+FocusEventHandler<HTMLInputElement>
+	-	-
+onFocus	
+FocusEventHandler<HTMLInputElement>
+	-	-
+Examples
+Adding a tooltip
+
+A tooltip can easily be added to the Slider label by providing JSX instead of a simple string.
+
+Example field
+ms
+<Slider
+    label={(
+        <Tooltip content="More details about this field">
+            <TriggerDecorator>Example field</TriggerDecorator>
+        </Tooltip>
+    )}
+    max={2000}
+    min={0}
+    onChange={() => {}}
+    resetValue={1000}
+    step={10}
+    unit="ms"
+    value={1000}
+  />
+Copy
+Marks
+
+Slider marks can be easily added by passing an array of values to the marks prop. Responsive behaviors are handled automatically.
+
+Passing grade
+1
+2
+3
+4
+5
+Select the lowest passing grade
+Inaccurate
+Some inaccuracies
+Accurate
+Select the lowest passing grade
+Inaccurate
+Some inaccuracies
+Accurate
+Select the lowest passing grade
+<Slider
+    value={value}
+    onChange={() => {}}
+    label="Passing grade"
+    min={1}
+    max={3}
+    step={1}
+    marks={[
+        { value: 1, label: "Inaccurate" },
+        { value: 2, label: "Some inaccuracies" },
+        { value: 3, label: "Accurate" },
+    ]}
+    trackColor="#61C454"
+    rangeColor="#EF4146"
+/>
+Copy
+Usage
+Reference
+Examples
+Adding a tooltip
+Marks
+
+
+================================================================================
+## Components: Switch
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-switch--docs
+================================================================================
+
+Switch
+Toggle control for on and off states
+Usage
+import { Switch } from "@openai/apps-sdk-ui/components/Switch";
+Copy
+<Switch />
+Copy
+Reference
+Name	Description	Default
+id	
+The id of the switch.
+string
+	-
+defaultChecked	
+The state of the switch when it is initially rendered. Use when you do not need to control its state.
+boolean
+	-
+checked	
+The controlled state of the switch. Must be used in conjunction with onCheckedChange.
+boolean
+	-
+label	
+Optional accessible label rendered to the right of the checkbox.
+ReactNode
+	-
+onCheckedChange	
+Event handler called when the state of the switch changes.
+((nextState: boolean) => void)
+	-
+onBlur	
+Event handler called when the checkbox looses focus.
+FocusEventHandler<HTMLButtonElement>
+	-
+onFocus	
+Event handler called when the checkbox gains focus.
+FocusEventHandler<HTMLButtonElement>
+	-
+disabled	
+When true, prevents the user from interacting with the switch.
+boolean
+	-
+required	
+When true, indicates that the user must check the switch before the owning form can be submitted.
+boolean
+	-
+name	
+The name of the switch. Submitted with its owning form as part of a name/value pair.
+string
+	-
+value	
+The value given as data when submitted with a name.
+string
+	-
+className	
+CSS classes applied to wrapper node
+string
+	-
+labelPosition	
+The position of the label relative to the switch.
+"start"
+"end"
+	
+"end"
+Examples
+With label
+
+You can add a label to the component by using the label prop. The label will automatically connect to the switch with id.
+
+Notifications
+<Switch label="Notifications" />
+Copy
+Label position
+
+Set labelPosition="start" to place the label on the left side of the switch control.
+
+Right aligned
+<Switch
+  label="Right aligned"
+  labelPosition="start"
+/>
+Copy
+Default checked
+
+Initialize the switch with defaultChecked when you don't need to control its state. You can then use the name prop to read the value later on.
+
+<Switch
+  defaultChecked
+  name="field-set-as-default"
+/>
+Copy
+Controlled
+
+Pass checked and onCheckedChange to manage the state in a controlled manner.
+
+const [checked, setChecked] = useState(false)
+
+<Switch checked={checked} onCheckedChange={setChecked} />
+Copy
+Disabled
+
+Use disabled to prevent the user from toggling the control.
+
+<div className="flex gap-6">
+  <Switch disabled />
+  <Switch
+    checked
+    disabled
+  />
+</div>
+Copy
+Usage
+Reference
+Examples
+With label
+Label position
+Default checked
+Controlled
+Disabled
+
+
+================================================================================
+## Components: Taginput
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-taginput--docs
+================================================================================
+
+TagInput
+Enter multiple unique tags
+Usage
+import { TagInput } from "@openai/apps-sdk-ui/components/TagInput";
+Copy
+Reference
+<div
+  style={{
+    width: 350
+  }}
+>
+  <TagInput
+    autoFocus
+    placeholder="example@openai.com"
+    rows={3}
+    validator={function Xs(){}}
+  />
+</div>
+Copy
+Name	Description	Default	
+Control
+
+placeholder	
+Placeholder text for the input
+string
+	-	
+
+validator	
+
+A function that returns whether a given value is a valid tag. Invalid tags are highlighted in red. Tags are evaluated for validity only on creation; changing the validator function later has no effect
+
+((value: string) => boolean)
+	-	-
+rows	
+The minimum number of rows for the tag input
+number
+	
+1
+	
+
+autoFocus	
+Whether to focus this input on mount
+boolean
+	
+false
+	
+FalseTrue
+defaultValue	
+The state of the tag input when it is initially rendered, used when uncontrolled
+Tag[]
+	-	Set object
+value	
+The value of the tag input, used to control the tag input
+Tag[]
+	-	Set object
+id	
+Allows the tag input to be targeted with htmlFor
+string
+	-	Set string
+size	
+Corresponds with Input height when rows=1
+"md"
+"lg"
+"xl"
+"2xl"
+"3xl"
+	
+"xl"
+	
+md
+lg
+xl
+2xl
+3xl
+
+onChange	
+Callback function invoked when the tag list changes
+((tags: Tag[]) => void)
+	-	-
+maxTags	
+The maximum number of tags allowed before the input is disabled; displays a counter below the input
+number
+	-	Set number
+delimiters	
+Controls what characters will count towards creating a new tag
+string[]
+	[',', ' ']	Set object
+disabled	
+Disables the tag input visually and from interactions
+boolean
+	-	Set boolean
+Usage
+Reference
+
+
+================================================================================
+## Components: Textlink
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-textlink--docs
+================================================================================
+
+TextLink
+Semantic link used for both internal and external links
+Read more
+External link
+Usage
+import { TextLink } from "@openai/apps-sdk-ui/components/TextLink"
+Copy
+
+You can use the responses endpoint to generate text. You can either use the API directly from an HTTP client of your choice, or use one of OpenAI's official SDKs for your preferred language.
+
+<p>
+  You can use the{' '}
+  <TextLink href="#">responses endpoint</TextLink>{' '}
+  to generate text. You can either use the API directly from an HTTP client of your choice, or use one of OpenAI's{' '}
+  <TextLink href="#">official SDKs</TextLink>{' '}
+  for your preferred language.
+</p>
+Copy
+Reference
+Name	Description	Default
+href	
+string
+	-
+primary	
+Applies a primary color to the link and removes the default underline.
+boolean
+	
+false
+
+underline	
+Apply text-decoration: underline to the Link
+boolean
+	
+true
+
+forceExternal	
+Force external link behavior, which is automatically detected based on the URL.
+boolean
+	-
+as	
+
+Override the default component used for the link. This is useful for using a routing library, or SSR rendering. purposes.
+
+"a" | ComponentType<any>
+	
+'a'
+Examples
+Default inheritance
+
+By default, TextLink uses currentcolor inheritance and text-decoration: underline to create subtle visual differentiation from surrounding text. The hover effect is a dynamic deemphasis of the currentcolor, with some special cases for text-secondary and text-tertiary contexts.
+
+You can see this behavior by changing the text color context of the paragraph the links are in below:
+
+You can use the responses endpoint to generate text. You can either use the API directly from an HTTP client of your choice, or use one of OpenAI's official SDKs for your preferred language.
+
+<p className="text-secondary">
+  You can use the{' '}
+  <TextLink href="#">
+    responses endpoint
+  </TextLink>
+  {' '}to generate text. You can either use the API directly from an HTTP client of your choice, or use one of OpenAI's{' '}
+  <TextLink href="#">
+    official SDKs
+  </TextLink>
+  {' '}for your preferred language.
+</p>
+Copy
+colorClassName	
+Choose option...
+text-default
+text-base
+text-secondary
+text-tertiary
+text-primary
+text-info
+text-discovery
+text-danger
+text-warning
+text-caution
+Primary color
+
+You can create a colorful link style with the primary prop, which uses color for visual differentiation.
+
+Primary links also remove the default underline treatment - pass underline re-apply that style.
+
+Sample text with a primary link
+
+<p>
+  Sample text with a{' '}
+  <TextLink
+    href="#"
+    primary
+  >
+    primary link
+  </TextLink>
+</p>
+Copy
+primary	
+FalseTrue
+Underline
+
+Links have an underlined aesthetic by default.
+
+Pass underline={false} to remove the underline from the link.
+
+Sample text with a subtle link
+
+<p className="text-secondary">
+  Sample text with a{' '}
+  <TextLink
+    href="#"
+  >
+    subtle link
+  </TextLink>
+</p>
+Copy
+underline	
+FalseTrue
+External links
+
+When external paths are provided, <a> will be used with target="_blank" and rel="noopener noreferrer" included by default. You can also compose icons along with the text to add visual indication.
+
+External link
+<TextLink primary underline href="https://openai.com">
+  External link <ArrowUpRight />
+</TextLink>
+Copy
+Font weight
+
+To customize the font weight, pass a Tailwind class to the className prop.
+
+Contact support
+<TextLink className="font-semibold" underline={false} href="#">
+  Contact support <ArrowRight />
+</TextLink>
+Copy
+Configure your Router
+Provider
+// In the root of your App
+import {AppsSDKUIProvider} from "@openai/apps-sdk-ui/components/AppsSDKUIProvider"
+import {Link} from "react-router"
+
+// Set up types 
+declare global {
+  interface AppsSDKUIConfig {
+    LinkComponent: typeof Link
+  }
+}
+
+// Wrap your app in AppsSDKUIProvider and pass in your router's Link component.
+export function App() {
+  return (
+    <AppsSDKUIProvider linkComponent={Link}>
+      {/* other providers... */}
+    </AppsSDKUIProvider>
+  )
+}
+
+// elsewhere - everything just works!
+<TextLink to={{ pathname: "/help" }} prefetch="intent">
+  Get Help
+</TextLink>
+Copy
+Component-level
+
+You can also pass your Link component to the as prop.
+
+import {Link} from "next/link"
+
+<TextLink as={Link} href="/dashboard">
+  View Dashboard
+</TextLink>
+Copy
+Usage
+Reference
+Examples
+Default inheritance
+Primary color
+Underline
+External links
+Font weight
+Configure your Router
+Provider
+Component-level
+
+
+================================================================================
+## Components: Textarea
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-textarea--docs
+================================================================================
+
+Textarea
+Semantic multi-line text input collection
+Usage
+import { Textarea } from "@openai/apps-sdk-ui/components/Textarea";
+Copy
+<div className="w-[400px]">
+  <Textarea
+    autoResize
+    placeholder="Enter text..."
+    rows={3}
+  />
+</div>
+Copy
+Reference
+Name	Description	Default
+placeholder	
+string
+	-
+allowAutofillExtensions	
+Allow autofill extensions to appear in the textarea
+boolean
+	
+false
+
+disabled	
+Disables the textarea visually and from interactions
+boolean
+	
+false
+
+invalid	
+Mark the textarea as invalid
+boolean
+	
+false
+
+rows	
+Default number of rows to display
+number
+	
+3
+
+autoResize	
+Automatically adjust the height of the textarea based on its contents.
+boolean
+	
+false
+
+variant	
+Visual style of the textarea
+"soft"
+"outline"
+	
+"outline"
+
+size	
+
+Controls the size of the textarea
+
+"sm"
+"md"
+"lg"
+"3xs"
+"2xs"
+"xs"
+"xl"
+"2xl"
+Show 1 more...
+	
+"md"
+
+gutterSize	
+
+Controls gutter on the edges of the textarea, defaults to value from size.
+
+"sm"
+"md"
+"lg"
+"2xs"
+"xs"
+"xl"
+	-
+autoSelect	
+Select all contents of the textarea when mounted.
+boolean
+	
+false
+
+onAutofill	
+Callback invoked when the textarea is autofilled by the browser
+(() => void)
+	-
+maxRows	
+Maximum number of rows that can be displayed when autoResize is enabled.
+number
+	Math.max(rows, 10)
+Examples
+Variants
+
+Use variant to stylize the textarea.
+
+outline
+soft
+Auto resize
+
+Enable autoResize to automatically grow/shrink the textarea as the user types. Control the bounds with rows (initial height) and maxRows.
+
+<div className="w-[400px]">
+  <Textarea
+    autoResize
+    maxRows={8}
+    onChange={function Xs(){}}
+    placeholder="Type to grow..."
+    rows={3}
+    value="Line 1
+Line 2
+Line 3"
+  />
+</div>
+Copy
+rows	
+
+autoResize	
+FalseTrue
+maxRows	
+Sizing
+
+Sizing of the textarea is controlled with size and gutterSize props. size sets the textarea to a specific control height for single-line equivalent, and gutterSize sets the horizontal padding.
+
+Each size provides default values for gutterSize, as well as font-size and border-radius. Each of these values can be overridden independently.
+
+size	
+Choose option...
+sm
+md
+lg
+3xs
+2xs
+xs
+xl
+2xl
+3xl
+
+gutterSize	
+Choose option...
+sm
+md
+lg
+2xs
+xs
+xl
+Disabled
+
+Use the disabled prop to disable the textarea, greying it out and preventing user interactions.
+
+<div className="w-[400px]">
+  <Textarea
+    defaultValue="Jane Doe"
+    disabled
+    placeholder="Enter text..."
+    rows={3}
+  />
+</div>
+Copy
+disabled	
+FalseTrue
+Invalid
+
+Use the invalid prop to mark the textarea as invalid. You decide how this state is removed, whether that's through onFocus, onChange, an onSubmit handler, etc.
+
+Default visual styles will be applied, based on the variant. Additionally, [data-invalid] is applied to the container for custom styling.
+
+<div className="w-[400px]">
+  <Textarea
+    invalid
+    placeholder="Invalid textarea"
+    rows={3}
+  />
+</div>
+Copy
+invalid	
+FalseTrue
+Auto select text
+
+Pass autoSelect to select all text in the textarea – useful when pairing with other copy actions. This prop behaves like an imperative action when toggled and allows selection to change.
+
+<div className="w-[400px]">
+  <Textarea
+    defaultValue="Toggle to auto select"
+    placeholder="Enter text..."
+    rows={3}
+  />
+</div>
+Copy
+autoSelect	
+FalseTrue
+Autofill extensions
+
+By default, autofill extensions are prevented by Textarea. For the occasions where you want browser extensions to be present, pass allowAutofillExtensions to remove the disabling.
+
+When name is passed this value will default to true.
+
+<div className="w-[400px]">
+  <Textarea
+    allowAutofillExtensions
+    name="email"
+    placeholder="Allowed"
+    rows={3}
+  />
+</div>
+Copy
+allowAutofillExtensions	
+FalseTrue
+Usage
+Reference
+Examples
+Variants
+Auto resize
+Sizing
+Disabled
+Invalid
+Auto select text
+Autofill extensions
+
+
+================================================================================
+## Components: Copytooltip
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-copytooltip--docs
+================================================================================
+
+CopyTooltip
+Allow users to easily copy to clipboard
+Usage
+import { CopyTooltip } from "@openai/apps-sdk-ui/components/Tooltip";
+Copy
+Reference
+sess_12345abcdefg
+<CopyTooltip copyValue="Very cool content to copy">
+  <Tooltip.TriggerDecorator>
+    sess_12345abcdefg
+  </Tooltip.TriggerDecorator>
+</CopyTooltip>
+Copy
+Name	Description	Default	
+Control
+
+copyValue*	
+Value to copy to the clipboard
+string
+	-	-
+openDelay	
+Delay of when the tooltip is shown from first interaction, in milliseconds.
+number
+	
+150
+	
+0
+-- / 1500
+
+align	
+The preferred alignment against the trigger. May change when collisions occur.
+"start"
+"end"
+"center"
+	
+"center"
+	
+start
+end
+center
+
+alignOffset	
+An offset in pixels from the "start" or "end" alignment options.
+number
+	
+0
+	
+0
+-- / 40
+
+side	
+The preferred side of the trigger to render against when open. Will be reversed when collisions occur.
+"top"
+"right"
+"bottom"
+"left"
+	
+"top"
+	
+top
+right
+bottom
+left
+
+sideOffset	
+The distance in pixels from the trigger.
+number
+	
+5
+	
+0
+-- / 40
+Usage
+Reference
+
+
+================================================================================
+## Components: Tooltip
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/components-tooltip--docs
+================================================================================
+
+Tooltip
+Brief and informative hover text
+Usage
+import { Tooltip } from "@openai/apps-sdk-ui/components/Tooltip";
+Copy
+Simple text with tooltip
+<Tooltip
+  content="This is additional context that appears when the trigger is hovered or focused"
+>
+  <Tooltip.TriggerDecorator>
+    Simple text with tooltip
+  </Tooltip.TriggerDecorator>
+</Tooltip>
+Copy
+Reference
+Name	Description	Default
+content*	
+The content of the tooltip. If null, the tooltip will not render.
+ReactNode
+	-
+compact	
+Short, 1-3 word tooltips, stylized inversely from normal tooltips
+boolean
+	
+false
+
+interactive	
+Indicates that the tooltip has interactive content, and should remain open when hovered.
+boolean
+	-
+maxWidth	
+Defines the max-width of the tooltip content. "none" creates a single-line, naturally sized tooltip.
+number
+"none"
+	
+300
+
+forceOpen	
+Forces the tooltip to remain open or closed
+boolean
+	-
+openDelay	
+Delay of when the tooltip is shown from first interaction, in milliseconds.
+number
+	
+150
+
+preventUnintentionalClickToClose	
+Prevents the tooltip from closing when the trigger is clicked right after opening
+true
+	
+false
+
+align	
+The preferred alignment against the trigger. May change when collisions occur.
+"start"
+"end"
+"center"
+	
+"center"
+
+alignOffset	
+An offset in pixels from the "start" or "end" alignment options.
+number
+	
+0
+
+side	
+The preferred side of the trigger to render against when open. Will be reversed when collisions occur.
+"top"
+"right"
+"bottom"
+"left"
+	
+"top"
+
+sideOffset	
+The distance in pixels from the trigger.
+number
+	
+5
+
+gutterSize	
+Gutter sizing inside the tooltip content
+"sm"
+"md"
+"lg"
+	
+"md"
+
+ref	
+Ref for the tooltip
+Ref<HTMLDivElement | null>
+	-
+onPointerDown	
+PointerEventHandler
+	-
+onClick	
+MouseEventHandler
+	-
+contentClassName	
+Optional class name to apply to the tooltip content
+string
+	-
+Examples
+Different triggers
+
+Tooltip provides an optional component, Tooltip.TriggerDecorator, to help create accessible tooltip triggers. However, any component can be used as a trigger.
+
+Sample button
+Inaccessible trigger
+<div className="flex items-center gap-4">
+  <Tooltip
+    content="This is additional context that appears when the trigger is hovered or focused"
+  >
+    <Button
+      color="primary"
+      size="lg"
+    >
+      Sample button
+    </Button>
+  </Tooltip>
+  <Tooltip
+    content="This is additional context that appears when the trigger is hovered or focused"
+  >
+    <span>
+      Inaccessible trigger
+    </span>
+  </Tooltip>
+</div>
+Copy
+Conditionally enabled
+
+Sometimes a tooltip should only be disabled under certain conditions, such as when a component is disabled, providing more context as to why that is. Below is an example of how to do this by conditionally passing in null content.
+
+Sample button
+<Tooltip
+  content={disabled ? "This action is disabled for reasons" : null}
+>
+  <Button color="primary" size="lg" disabled={disabled}>
+    Sample button
+  </Button>
+</Tooltip>
+Copy
+Name	Description	Default	
+Control
+
+disabled	
+boolean
+	-	
+FalseTrue
+onPointerDown	
+PointerEventHandler
+	-	Set object
+onClick	
+MouseEventHandler
+	-	Set object
+Usage
+Reference
+Examples
+Different triggers
+Conditionally enabled
+
+
+================================================================================
+## Transitions: Animate
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/transitions-animate--docs
+================================================================================
+
+Animate
+Animate components as they mount and unmount
+Usage
+import { Animate } from "@openai/apps-sdk-ui/components/Transition"
+Copy
+Overview
+
+<Animate> is an abstraction around <TransitionGroup> for batteries-included transition animations.
+
+enter, exit, and initial props allow you to define the behavior of the animation from a set of GPU-accelerated properties. Animatable properties include opacity, x, y, scale, rotate, skewX, skewY, and blur.
+
+When to use
+
+<Animate> is great for transitions that don't need to affect the layout of surrounding DOM nodes. Typically, this will mean components with a fixed size or absolute positioning.
+
+These animations should be for transitioning between two states that occupy the same space, such as:
+
+nothing → Component
+Component → nothing
+Component → AnotherComponent
+Examples
+Fade
+
+By default, <Animate> provides a simple fade in/out transition, using ease timing functions.
+
+Hide
+<Animate className="w-[200px] h-[200px]">
+  {visible && <Square key="s" />}
+</Animate>
+Copy
+Grow
+
+You can extend the basic fade behavior by providing transform properties to enter, exit, and initial.
+
+When transform properties are passed, our cubic timing functions (--cubic-enter and --cubic-ext) are automatically applied.
+
+Hide
+<Animate
+  className="w-[200px] h-[200px]"
+  enter={{ scale: 1 }}
+  exit={{ scale: 0.5, blur: 20 }}
+>
+  {visible && <Square key="s" />}
+</Animate>
+Copy
+Continuous transitions
+
+By default, <Animate> basically "toggles" between enter and exit definitions. You can differentiate entrance and exit transitions by using the initial property.
+
+This example is a bit silly, but a practical example would be creating transitions with an emphasized entrance and subtle exit.
+
+Hide
+<Animate
+  className="w-[200px] h-[200px]"
+  initial={{ x: 120, skewX: 30 }}
+  enter={{ duration: 800 }}
+  exit={{ x: -120, skewX: -8, duration: 500 }}
+>
+  {visible && <Square key="s" />}
+</Animate>
+Copy
+Cross fade
+
+Easily create cross fade effects between components, like <CopyButton>'s icon animation, or larger elements like page transitions.
+
+<Button size="2xl" iconSize="xl" variant="soft" onClick={handleClick}>
+  <Animate
+    className="w-[var(--button-icon-size)] h-[var(--button-icon-size)]"
+    enter={{ scale: 1, delay: 150, duration: 400 }}
+    exit={{ scale: 0.6, duration: 150 }}
+  >
+    {copied ? <Check key="copied" /> : <Copy key="copy" />}
+  </Animate>
+</Button>
+Copy
+Props
+Name	Description	Default
+className	
+Class passed to wrapping elements
+string
+	-
+children*	
+Components controlled by TransitionGroup rendering
+ReactNode
+	-
+as	
+Determines the tag used by wrapping elements
+"div"
+"span"
+	-
+insertMethod	
+Determines how new children are added to the children array
+"append"
+"prepend"
+	-
+preventInitialTransition	
+Determines if children should have an enter transition applied during mounting of the TransitionGroup.
+boolean
+	
+true
+
+transitionClassName	
+Class applied to the inner TransitionGroup
+string
+	-
+enter	
+Styles applied to the enter transition
+TransitionDefinition
+	-
+exit	
+Styles applied to the exit transition
+TransitionDefinition
+	-
+initial	
+Styles applied before the enter transition occurs
+InitialTransitionDefinition
+	-
+transitionPosition	
+Determines how transition states are positioned
+"static"
+"absolute"
+	
+"absolute"
+
+forceCompositeLayer	
+Applies will-change to force animating elements to composite layers. Use with caution!
+boolean
+	
+false
+Usage
+Overview
+When to use
+Examples
+Fade
+Grow
+Continuous transitions
+Cross fade
+Props
+
+
+================================================================================
+## Transitions: Animatelayout
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/transitions-animatelayout--docs
+================================================================================
+
+AnimateLayout
+Animate width & height of components as they mount and unmount
+Usage
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition"
+Copy
+Overview
+
+<AnimateLayout> is an abstraction around <TransitionGroup> for batteries-included transition animations that can also animate height and width of transitions.
+
+All of the same properties from <Animate> are supported here, as well as new properties for customizing the timing of layout transitions - layoutEnter, layoutExit, and layoutMove.
+
+When to use
+
+<AnimateLayout> is great for transitions should naturally affect layout of surrounding DOM nodes.
+
+These animations should be for transitioning between two states that occupy the same space, such as:
+
+nothing → Component
+Component → nothing
+Component → AnotherComponent
+Examples
+Height
+
+By default, <AnimateLayout> animates the height of a component as it enters and exits the DOM.
+
+Show
+<>
+  <Line className="w-full h-12" />
+  <AnimateLayout transitionClassName="pt-4">
+    {show && <PrimaryLine key="s" className="w-full h-[80px]" />}
+  </AnimateLayout>
+  <Line className="w-full h-12 mt-4" /> 
+</>
+Copy
+Width
+
+You can also animate the width of components by passing dimension="width".
+
+Show
+<div className="flex">
+  <Square className="w-[200px] h-[200px]" />
+  <AnimateLayout
+    dimension="width"
+    transitionClassName="pl-6"
+    enter={{ delay: 200 }}
+    layoutExit={{ delay: 75 }}
+  >
+    {show && <PrimarySquare key="s" className="w-[200px] h-[200px]" />}
+  </AnimateLayout>
+  <Square className="w-[200px] h-[200px] ml-6" />
+</div>
+Copy
+Accordion
+
+Accordion items are a great example of dynamically introducing content that affect the height of surrounding DOM nodes.
+
+The following example shows how to wrap accordion item content with <AnimateLayout> to create a smooth animation.
+
+Which model should I use?
+Do you offer an enterprise package or SLAs?
+Will I be charged for API usage in the Playground?
+How will I know how many tokens I've used each month?
+How can I manage my spending on the API platform?
+<AnimateLayout
+  enter={{ y: 0, delay: 150, duration: 450 }}
+  exit={{ y: -8 }}
+  layoutEnter={{ duration: 400 }}
+>
+  {open && (
+    <div key="content" className="pb-4 text-secondary">
+      {children}
+    </div>
+  )}
+</AnimateLayout>
+Copy
+Talk button
+
+When animating width, the height of the component should be consistent.
+
+The key to making this animation work is using transitionClassName to recreate the flexbox structure that <Button> normally provides, and stretching it to the ful height of the button.
+
+Talk
+<Button
+  color={recording ? "danger" : "primary"}
+  size="xl"
+  iconSize="lg"
+  onClick={handleClick}
+  loading={sending}
+>
+  <AnimateLayout dimension="width" transitionClassName="h-full flex items-center gap-2">
+    {recording ? (
+      <ArrowUp key="recording" />
+    ) : (
+      <Fragment key="record">
+        <Wave /> Talk
+      </Fragment>
+    )}
+  </AnimateLayout>
+</Button>
+Copy
+Gotchas
+<AnimateLayout> provides a wrapping element, which className and layout transition properties are applied to.
+Avoid box model properties on className, like margin, padding, border.
+These are additive to height: 0; empty state, and cannot be properly animated.
+Avoid box-shadow on className, as it will be visible during empty state.
+margin cannot be animated, and should be avoided on the children (transitionClassName). Use padding instead, which is intrinsic to the height calculation!
+Props
+Name	Description	Default
+className	
+Class passed to wrapping elements
+string
+	-
+children*	
+Components controlled by TransitionGroup rendering
+ReactNode
+	-
+as	
+Determines the tag used by wrapping elements
+"div"
+"span"
+	-
+insertMethod	
+Determines how new children are added to the children array
+"append"
+"prepend"
+	-
+preventInitialTransition	
+Determines if children should have an enter transition applied during mounting of the TransitionGroup.
+boolean
+	
+true
+
+hideOverflow	
+Determines if overflow: hidden is applied to the wrapper element
+boolean
+	
+false
+
+itemAnchor	
+Determines which side of the container the items will pin to during enter/exit
+"start"
+"end"
+	
+"\"start\""
+
+dimension	
+Determines which property will be animated during transitions
+"width"
+"height"
+	
+"\"height\""
+
+layoutEnter	
+LayoutTransitionDefinition
+	-
+layoutExit	
+LayoutTransitionDefinition
+	-
+layoutMove	
+LayoutTransitionDefinition
+	-
+enter	
+TransitionDefinition
+	-
+exit	
+TransitionDefinition
+	-
+initial	
+InitialTransitionDefinition
+	-
+transitionClassName	
+Class applied to the inner TransitionGroup
+string
+	-
+forceCompositeLayer	
+Applies will-change to force animating elements to composite layers. Use with caution!
+boolean
+	
+false
+Usage
+Overview
+When to use
+Examples
+Height
+Width
+Accordion
+Talk button
+Gotchas
+Props
+
+
+================================================================================
+## Transitions: Animatelayoutgroup
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/transitions-animatelayoutgroup--docs
+================================================================================
+
+AnimateLayoutGroup
+Animate width & height of lists of components as they enter and exit
+Usage
+import { AnimateLayoutGroup } from "@openai/apps-sdk-ui/components/Transition"
+Copy
+Overview
+
+<AnimateLayoutGroup> is an abstraction around <TransitionGroup> specifically designed for rendering lists of components, while batteries-included transition animations that can also animate height and width of transitions.
+
+All of the same properties from <Animate> are supported here, as well as new properties for customizing the timing of layout transitions - layoutEnter, layoutExit, and layoutMove.
+
+When to use
+
+<AnimateLayoutGroup> is great for animating lists of components that should naturally affect layout of surrounding DOM nodes.
+
+Examples
+Vertical list
+Add item
+
+(Click to remove)
+
+<>
+  <Line className="py-2" />
+  <AnimateLayoutGroup
+    initial={{ y: -10, opacity: 0, blur: 0 }}
+    enter={{ y: 0, delay: 150, duration: 600 }}
+    exit={{ scale: 0.8, blur: 10, duration: 500 }}
+    layoutEnter={{ duration: 400, timingFunction: "ease" }}
+    layoutExit={{ delay: 150 }}
+  >
+    {list.map(({ id }) => (
+      <div key={id} className="py-2">
+        <PrimaryLine onClick={() => handleRemove(id)} />
+      </div>
+    ))}
+  </AnimateLayoutGroup>
+  <Line className="py-2" />
+<>
+Copy
+Horizontal list
+Add item
+
+(Click to remove)
+
+<>
+  <Square className="px-2" />
+  <AnimateLayoutGroup dimension="width">
+    {list.map(({ id }) => (
+      <div key={id} className="px-2">
+        <PrimarySquare onClick={() => handleRemove(id)} />
+      </div>
+    ))}
+  </AnimateLayoutGroup>
+  <Square className="px-2" />
+<>
+Copy
+Props
+Name	Description	Default
+className	
+Class passed to wrapping elements
+string
+	-
+children*	
+Components controlled by TransitionGroup rendering
+ReactNode
+	-
+as	
+Determines the tag used by wrapping elements
+"div"
+"span"
+	-
+insertMethod	
+Determines how new children are added to the children array
+"append"
+"prepend"
+	-
+preventInitialTransition	
+Determines if children should have an enter transition applied during mounting of the TransitionGroup.
+boolean
+	
+true
+
+hideOverflow	
+Determines if overflow: hidden is applied to the wrapper element
+boolean
+	
+false
+
+itemAnchor	
+Determines which side of the container the items will pin to during enter/exit
+"start"
+"end"
+	
+"\"start\""
+
+dimension	
+Determines which property will be animated during transitions
+"width"
+"height"
+	
+"\"height\""
+
+layoutEnter	
+LayoutTransitionDefinition
+	-
+layoutExit	
+LayoutTransitionDefinition
+	-
+layoutMove	
+LayoutTransitionDefinition
+	-
+enter	
+TransitionDefinition
+	-
+exit	
+TransitionDefinition
+	-
+initial	
+InitialTransitionDefinition
+	-
+transitionClassName	
+Class applied to the inner TransitionGroup
+string
+	-
+forceCompositeLayer	
+Applies will-change to force animating elements to composite layers. Use with caution!
+boolean
+	
+false
+Usage
+Overview
+When to use
+Examples
+Vertical list
+Horizontal list
+Props
+
+
+================================================================================
+## Transitions: Slottransitiongroup
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/transitions-slottransitiongroup--docs
+================================================================================
+
+SlotTransitionGroup
+Primitive for rendering components over time (slot-based)
+Usage
+import { SlotTransitionGroup } from "@openai/apps-sdk-ui/components/Transition"
+Copy
+Overview
+
+<SlotTransitionGroup> manages the mounting and unmounting of components over time by applying stateful data attributes directly to the original child element(s). No wrapper elements are introduced.
+
+When keyed children are mounted or unmounted, <SlotTransitionGroup> adds transition state data attributes on the child node itself.
+
+The timing of stateful attributes is controlled with enterDuration and exitDuration. Children must provide a stable key so transitions are tracked correctly.
+
+When to use
+Prefer <Animate>, <AnimateLayout>, or <AnimateLayoutGroup> first.
+Use <SlotTransitionGroup> when you need <TransitionGroup>-like control but without any extra wrapper nodes.
+Hide
+// JSX
+<SlotTransitionGroup enterDuration={2000} exitDuration={1000}>
+  {show && <Square key="s" className={s.Example} />}
+</SlotTransitionGroup>
+
+// CSS
+.Example {
+  &[data-entering] {
+    opacity: 0;
+  }
+
+  &[data-exiting] {
+    opacity: 1;
+  }
+
+  &[data-entering-active],
+  &[data-exiting][data-interrupted] {
+    opacity: 1;
+    box-shadow: 0 0 0 5px green;
+    transition: opacity 2s ease, box-shadow 2s ease;
+  }
+
+  &[data-exiting-active],
+  &[data-entering][data-interrupted] {
+    opacity: 0;
+    box-shadow: 0 0 0 5px red;
+    transition: opacity 1s ease, box-shadow 1s ease;
+  }
+}
+Copy
+Transition states
+
+There are two types of transitions, enter and exit, and five total data attributes that represent the possible state of transitions. These attributes are applied directly on the child elements.
+
+The attributes are transient and removed when no longer relevant.
+
+No styles are provided by default.
+
+Attribute	Description
+data-entering	Component enter transition is staged. Remains applied through the entire entrance transition.
+data-entering-active	Component enter transition is active.
+data-exiting	Component exit transition is staged. Remains applied through the entire exit transition.
+data-exiting-active	Component exit transition is active.
+data-interrupted	Component was animating and then switched to the opposite transition before completion.
+Initial mount transitions
+
+By default, <SlotTransitionGroup> prevents initial transitions of children when it is mounted.
+
+If you want children to transition on the initial mount of the group, pass preventInitialTransition={false}.
+
+<SlotTransitionGroup preventInitialTransition={false}>{show && <Sample key="s" />}</SlotTransitionGroup>
+Copy
+Props
+Name	Description	Default
+children*	
+Components controlled by SlotTransitionGroup rendering
+ReactNode
+	-
+enterDuration	
+Determines the amount of time that the enter state is applied during mounting
+number
+	-
+exitDuration	
+Determines the amount of time that the exit state is applied before unmounting
+number
+	-
+preventInitialTransition	
+Determines if children should have an enter transition applied during mounting of the group.
+boolean
+	
+true
+
+enterMountDelay	
+Delay in MS to wait before mounting a child. null for no delay (default).
+number
+	-
+disableAnimations	
+Render children changes immediately, bypassing transition timings
+boolean
+	-
+insertMethod	
+Determines how new children are added to the children array
+"append"
+"prepend"
+	-
+ref	
+Ref for the SlotTransitionGroup (applied to the single child when possible)
+Ref<unknown>
+	-
+onEnter	
+Callback fired when an enter animation is staged (e.g., component mounted to the DOM)
+TransitionGroupChildCallback
+	-
+onEnterActive	
+Callback fired when an enter animation starts
+TransitionGroupChildCallback
+	-
+onEnterComplete	
+Callback fired when an enter animation completes
+TransitionGroupChildCallback
+	-
+onExit	
+Callback fired when an exit animation is staged
+TransitionGroupChildCallback
+	-
+onExitActive	
+Callback fired when an exit animation starts
+TransitionGroupChildCallback
+	-
+onExitComplete	
+Callback fired when an exit animation completes (e.g., component unmounted from the DOM)
+TransitionGroupChildCallback
+	-
+Usage
+Overview
+When to use
+Transition states
+Initial mount transitions
+Props
+
+
+================================================================================
+## Transitions: Transitiongroup
+URL: https://openai.github.io/apps-sdk-ui/?path=/docs/transitions-transitiongroup--docs
+================================================================================
+
+TransitionGroup
+Primitive for rendering components over time
+Usage
+import { TransitionGroup } from "@openai/apps-sdk-ui/components/Transition"
+Copy
+Overview
+
+<TransitionGroup> manages the mounting and unmounting of components over time by controlling the rendering of children passed to the component.
+
+When children are mounted and unmounted, <TransitionGroup> wraps the components with a containing element and applies stateful data attributes for entering and exiting transitions.
+
+The timing of component rendering and stateful data attributes is based on enterDuration and exitDuration values. Children must provide a stable key to correctly keep track of component references.
+
+When to use
+
+Always reach for <Animate>, <AnimateLayout>, or <AnimateLayoutGroup> before using <TransitionGroup> directly.
+
+Direct use of this primitive should only be necessary for very complex transitions with many moving parts.
+
+Hide
+// JSX
+<TransitionGroup className={s.Example} enterDuration={2000} exitDuration={1000}>
+  {show && <Square key="s" />}
+</TransitionGroup>
+
+// CSS
+.Example {
+  &[data-entering] {
+    opacity: 0;
+  }
+
+  &[data-exiting] {
+    opacity: 1;
+  }
+
+  &[data-entering-active],
+  &[data-exiting][data-interrupted] {
+    opacity: 1;
+    box-shadow: 0 0 0 5px green;
+    transition: opacity 2s ease, box-shadow 2s ease;
+  }
+
+  &[data-exiting-active],
+  &[data-entering][data-interrupted] {
+    opacity: 0;
+    box-shadow: 0 0 0 5px red;
+    transition: opacity 1s ease, box-shadow 1s ease;
+  }
+}
+Copy
+Transition states
+
+There are two types of transitions, enter and exit, and five total data attributes that represent the possible state of transitions.
+
+The transition data attributes are transient, only applied while they are relevant. When a given transition is completed, attribute are removed.
+
+No styles are provided by default from <TransitionGroup>.
+
+Attribute	Description
+data-entering	
+
+Component enter transition is about to start - useful for staging enter animation styles. Remains applied through the entire entrance transition.
+
+data-entering-active	Component enter transition is active.
+data-exiting	
+
+Component exit transition is about to start - useful for staging exit animation styles. Remains applied through the entire exit transition.
+
+data-exiting-active	Component exit transition is active.
+data-interrupted	
+
+Component was animating, but then changed to the opposite transition before the original transition completed. For example, an exiting component was re-mounted again, or an entering component was removed before completing entrance.
+
+Initial mount transitions
+
+By default, <TransitionGroup> prevents initial transitions of children components when it itself is mounted to the DOM.
+
+For specific situations where you want children of the <TransitionGroup> to transition as it's mounted, pass preventInitialTransition={false}.
+
+In the above example, <Sample> will experience an initial enter transition when the TransitionGroup is rendered.
+
+<TransitionGroup preventInitialTransition={false}>{show && <Sample key="s" />}</TransitionGroup>
+Copy
+Props
+Name	Description	Default
+children*	
+Components controlled by TransitionGroup rendering
+ReactNode
+	-
+as	
+Determines the tag used by wrapping elements
+"div"
+"span"
+	-
+className	
+Class passed to wrapping elements
+string
+	-
+transitionId	
+Identifier passed to wrapping elements as [data-transition-id]
+string
+	-
+enterDuration	
+Determines the amount of time that the enter state is applied during mounting
+number
+	-
+exitDuration	
+Determines the amount of time that the exit state is applied before unmounting
+number
+	-
+preventInitialTransition	
+Determines if children should have an enter transition applied during mounting of the TransitionGroup.
+boolean
+	
+true
+
+enterMountDelay	
+Delay in MS to wait before mounting a child. null for no delay (default).
+number
+	-
+disableAnimations	
+Render children changes immediately, bypassing transition timings
+boolean
+	-
+insertMethod	
+Determines how new children are added to the children array
+"append"
+"prepend"
+	-
+style	
+Styles applied to wrapping elements
+CSSProperties
+	-
+ref	
+Ref for the TransitionGroup
+Ref<unknown>
+	-
+onEnter	
+Callback fired when an enter animation is staged (e.g., component mounted to the DOM)
+TransitionGroupChildCallback
+	-
+onEnterActive	
+Callback fired when an enter animation starts
+TransitionGroupChildCallback
+	-
+onEnterComplete	
+Callback fired when an enter animation completes
+TransitionGroupChildCallback
+	-
+onExit	
+Callback fired when an exit animation is staged
+TransitionGroupChildCallback
+	-
+onExitActive	
+Callback fired when an exit animation starts
+TransitionGroupChildCallback
+	-
+onExitComplete	
+Callback fired when an exit animation completes (e.g., component unmounted from the DOM)
+TransitionGroupChildCallback
+	-
+Usage
+Overview
+When to use
+Transition states
+Initial mount transitions
+Props
+

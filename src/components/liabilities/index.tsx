@@ -2,16 +2,25 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, CreditCard, GraduationCap, Home, DollarSign } from "lucide-react";
+import {
+  Expand,
+  CreditCard,
+  Graduate,
+  Home,
+  Paid,
+  Warning,
+} from "@openai/apps-sdk-ui/components/Icon";
+import { Button } from "@openai/apps-sdk-ui/components/Button";
+import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
 import { cn } from "@/lib/utils/cn";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { useWidgetState } from "@/src/use-widget-state";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
-import { useTheme } from "@/src/use-theme";
 import { formatCurrency, formatDate, formatPercent } from "@/src/utils/format";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
+import WidgetLoadingSkeleton from "@/src/components/shared/widget-loading-skeleton";
 
 // Type definitions for comprehensive liability data
 interface Account {
@@ -163,9 +172,7 @@ export default function Liabilities() {
 
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
-  const theme = useTheme();
   const isFullscreen = displayMode === "fullscreen";
-  const isDark = theme === "dark";
 
   // Max visible items per category in inline mode
   const MAX_VISIBLE_INLINE = 3;
@@ -186,19 +193,16 @@ export default function Liabilities() {
   const authComponent = checkWidgetAuth(toolOutput);
   if (authComponent) return authComponent;
 
-  if (!toolOutput && !toolMetadata) {
+  // Show loading state while waiting for tool output
+  if (!toolOutput) {
+    return <WidgetLoadingSkeleton />;
+  }
+
+  if (!toolMetadata && !toolOutput.summary) {
     return (
-      <div
-        className={cn(
-          "antialiased w-full relative flex items-center justify-center",
-          isDark ? "bg-gray-900 text-white" : "bg-gray-50 text-black"
-        )}
-        style={{ maxHeight: maxHeight ?? undefined }}
-      >
-        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
-          No liability data available
-        </p>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Title>No liability data available</EmptyMessage.Title>
+      </EmptyMessage>
     );
   }
 
@@ -217,31 +221,20 @@ export default function Liabilities() {
 
   if (totalLiabilities === 0) {
     return (
-      <div
-        className={cn(
-          "antialiased w-full relative flex items-center justify-center",
-          isDark ? "bg-gray-900 text-white" : "bg-gray-50 text-black"
-        )}
-        style={{ maxHeight: maxHeight ?? undefined }}
-      >
-        <div className="text-center p-8">
-          <div className="text-5xl mb-4">💳</div>
-          <div className={cn("text-lg font-semibold mb-2", isDark ? "text-white" : "text-black")}>
-            No liabilities found
-          </div>
-          <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
-            No credit cards, loans, or mortgages detected
-          </p>
-        </div>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Icon color="secondary">
+          <CreditCard />
+        </EmptyMessage.Icon>
+        <EmptyMessage.Title>No liabilities found</EmptyMessage.Title>
+        <EmptyMessage.Description>No credit cards, loans, or mortgages detected</EmptyMessage.Description>
+      </EmptyMessage>
     );
   }
 
   return (
     <div
       className={cn(
-        "antialiased w-full relative",
-        isDark ? "bg-gray-900" : "bg-gray-50",
+        "antialiased w-full relative bg-transparent text-default",
         !isFullscreen && "overflow-hidden"
       )}
       style={{
@@ -251,28 +244,26 @@ export default function Liabilities() {
     >
       {/* Expand button (inline mode only) */}
       {!isFullscreen && (
-        <button
+        <Button
           onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
-          className={cn(
-            "absolute top-4 right-4 z-20 p-2 rounded-full shadow-lg transition-all ring-1",
-            isDark
-              ? "bg-gray-800 text-white hover:bg-gray-700 ring-white/10"
-              : "bg-white text-black hover:bg-gray-100 ring-black/5"
-          )}
+          variant="ghost"
+          color="secondary"
+          size="sm"
+          className="absolute top-4 right-4 z-20"
           aria-label="Expand to fullscreen"
         >
-          <Maximize2 strokeWidth={1.5} className="h-4 w-4" />
-        </button>
+          <Expand className="h-4 w-4" />
+        </Button>
       )}
 
       {/* Content */}
-      <div className={cn("w-full h-full overflow-y-auto", isFullscreen ? "p-8" : "p-5")}>
+      <div className={cn("w-full h-full overflow-y-auto", isFullscreen ? "p-8" : "p-0")}>
         {/* Header */}
         <div className="mb-6">
-          <h1 className={cn("text-2xl font-semibold mb-2", isDark ? "text-white" : "text-black")}>
+          <h1 className="heading-lg mb-2">
             Liabilities
           </h1>
-          <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+          <p className="text-sm text-secondary">
             Your debts and credit overview
           </p>
         </div>
@@ -282,84 +273,55 @@ export default function Liabilities() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={cn(
-              "rounded-2xl border p-6 shadow-[0px_2px_6px_rgba(0,0,0,0.06)] mb-6",
-              isDark
-                ? "bg-gradient-to-br from-red-500/20 to-rose-500/20 border-red-500/20"
-                : "bg-gradient-to-br from-red-50 to-rose-50 border-red-200"
-            )}
+            className="rounded-2xl border-none p-6 shadow-none mb-6 bg-danger-soft"
           >
             <div className="flex items-center gap-3 mb-4">
-              <div
-                className={cn(
-                  "p-3 rounded-xl",
-                  isDark ? "bg-red-500/30" : "bg-red-100"
-                )}
-              >
-                <DollarSign strokeWidth={1.5} className="h-6 w-6 text-red-600" />
+              <div className="p-3 rounded-xl bg-danger-surface">
+                <Paid strokeWidth={1.5} className="h-6 w-6 text-danger" />
               </div>
               <div>
-                <div className={cn("text-sm font-medium mb-1", isDark ? "text-red-300" : "text-red-700")}>
+                <div className="text-sm font-medium mb-1 text-danger-soft">
                   Total Debt
                 </div>
-                <div className={cn("text-3xl font-bold", isDark ? "text-white" : "text-black")}>
+                <div className="text-3xl font-bold text-default">
                   {formatCurrency(summary.totalDebt)}
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div
-                className={cn(
-                  "rounded-xl p-3",
-                  isDark ? "bg-red-500/10" : "bg-white"
-                )}
-              >
-                <div className={cn("text-xs font-medium mb-1", isDark ? "text-white/60" : "text-black/60")}>
+              <div className="rounded-xl p-3 bg-danger-surface">
+                <div className="text-xs font-medium mb-1 text-secondary">
                   Min Payment
                 </div>
-                <div className={cn("text-lg font-semibold", isDark ? "text-white" : "text-black")}>
+                <div className="text-lg font-semibold text-default">
                   {formatCurrency(summary.totalMinimumPayment)}
                 </div>
               </div>
-              <div
-                className={cn(
-                  "rounded-xl p-3",
-                  isDark ? "bg-red-500/10" : "bg-white"
-                )}
-              >
-                <div className={cn("text-xs font-medium mb-1", isDark ? "text-white/60" : "text-black/60")}>
+              <div className="rounded-xl p-3 bg-danger-surface">
+                <div className="text-xs font-medium mb-1 text-secondary">
                   Total Accounts
                 </div>
-                <div className={cn("text-lg font-semibold", isDark ? "text-white" : "text-black")}>
+                <div className="text-lg font-semibold text-default">
                   {totalLiabilities}
                 </div>
               </div>
               {summary.accountsOverdue > 0 ? (
-                <div
-                  className={cn(
-                    "rounded-xl p-3",
-                    isDark ? "bg-yellow-500/20 border border-yellow-500/30" : "bg-yellow-50 border border-yellow-200"
-                  )}
-                >
-                  <div className={cn("text-xs font-medium mb-1", isDark ? "text-yellow-400" : "text-yellow-700")}>
-                    ⚠️ Overdue
+                <div className="rounded-xl p-3 bg-warning-soft border border-warning-surface">
+                  <div className="text-xs font-medium mb-1 text-warning">
+                    <Warning className="inline h-3 w-3 mr-1" />
+                    Overdue
                   </div>
-                  <div className={cn("text-lg font-semibold", isDark ? "text-yellow-300" : "text-yellow-900")}>
+                  <div className="text-lg font-semibold text-warning">
                     {summary.accountsOverdue}
                   </div>
                 </div>
               ) : (
-                <div
-                  className={cn(
-                    "rounded-xl p-3",
-                    isDark ? "bg-green-500/20 border border-green-500/30" : "bg-green-50 border border-green-200"
-                  )}
-                >
-                  <div className={cn("text-xs font-medium mb-1", isDark ? "text-green-400" : "text-green-700")}>
+                <div className="rounded-xl p-3 bg-success-soft border border-success-surface">
+                  <div className="text-xs font-medium mb-1 text-success">
                     ✓ Status
                   </div>
-                  <div className={cn("text-sm font-semibold", isDark ? "text-green-300" : "text-green-900")}>
+                  <div className="text-sm font-semibold text-success">
                     All Current
                   </div>
                 </div>
@@ -367,7 +329,7 @@ export default function Liabilities() {
             </div>
 
             {summary.nextPaymentDue && (
-              <div className={cn("mt-4 text-sm", isDark ? "text-white/80" : "text-black/80")}>
+              <div className="mt-4 text-sm text-secondary">
                 Next payment due:{" "}
                 <strong>{formatDate(summary.nextPaymentDue)}</strong>
                 {(() => {
@@ -405,39 +367,28 @@ export default function Liabilities() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className={cn(
-                  "rounded-2xl border shadow-[0px_2px_6px_rgba(0,0,0,0.06)] overflow-hidden",
-                  isDark ? "bg-gray-800 border-white/10" : "bg-white border-black/5"
-                )}
+                className="rounded-2xl border-none shadow-none overflow-hidden bg-surface"
               >
                 <div
-                  className={cn(
-                    "p-4 cursor-pointer transition-colors",
-                    isDark ? "hover:bg-gray-750" : "hover:bg-gray-50"
-                  )}
+                  className="p-4 cursor-pointer transition-colors hover:bg-surface-secondary"
                   onClick={() => toggleExpanded(card.account_id)}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "p-2 rounded-lg",
-                          isDark ? "bg-blue-500/20" : "bg-blue-100"
-                        )}
-                      >
-                        <CreditCard strokeWidth={1.5} className="h-5 w-5 text-blue-600" />
+                      <div className="p-2 rounded-lg bg-info-soft">
+                        <CreditCard strokeWidth={1.5} className="h-5 w-5 text-info" />
                       </div>
                       <div>
-                        <h3 className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                        <h3 className="font-semibold text-default">
                           {account.name}
                         </h3>
-                        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+                        <p className="text-sm text-secondary">
                           Credit Card{account.mask && ` • ****${account.mask}`}
                         </p>
                       </div>
                     </div>
                     {card.is_overdue && (
-                      <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded">
+                      <span className="px-2 py-1 bg-danger-soft text-danger text-xs font-bold rounded">
                         OVERDUE
                       </span>
                     )}
@@ -445,32 +396,27 @@ export default function Liabilities() {
 
                   <div className="mb-2">
                     <div className="flex justify-between text-sm mb-1">
-                      <span className={cn(isDark ? "text-white/60" : "text-black/60")}>Balance</span>
-                      <span className={cn("font-bold", isDark ? "text-white" : "text-black")}>
+                      <span className="text-secondary">Balance</span>
+                      <span className="font-bold text-default">
                         {formatCurrency(balance)}
                       </span>
                     </div>
                     {limit > 0 && (
                       <>
-                        <div
-                          className={cn(
-                            "h-2 rounded-full overflow-hidden",
-                            isDark ? "bg-gray-700" : "bg-gray-200"
-                          )}
-                        >
+                        <div className="h-2 rounded-full overflow-hidden bg-surface-tertiary">
                           <div
                             className={cn(
                               "h-full transition-all",
                               utilization > 80
-                                ? "bg-gradient-to-r from-red-500 to-red-600"
+                                ? "bg-danger"
                                 : utilization > 50
-                                ? "bg-gradient-to-r from-yellow-500 to-yellow-600"
-                                : "bg-gradient-to-r from-green-500 to-green-600"
+                                ? "bg-warning"
+                                : "bg-success"
                             )}
                             style={{ width: `${Math.min(utilization, 100)}%` }}
                           />
                         </div>
-                        <div className={cn("text-xs mt-1", isDark ? "text-white/60" : "text-black/60")}>
+                        <div className="text-xs mt-1 text-secondary">
                           {formatPercent(utilization / 100)} of {formatCurrency(limit)} limit
                         </div>
                       </>
@@ -479,23 +425,21 @@ export default function Liabilities() {
 
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className={cn("block", isDark ? "text-white/60" : "text-black/60")}>
+                      <span className="block text-secondary">
                         Min Payment
                       </span>
-                      <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                      <span className="font-semibold text-default">
                         {formatCurrency(card.minimum_payment_amount || 0)}
                       </span>
                     </div>
                     <div>
-                      <span className={cn("block", isDark ? "text-white/60" : "text-black/60")}>Due Date</span>
+                      <span className="block text-secondary">Due Date</span>
                       <span
                         className={cn(
                           "font-semibold",
                           daysUntilDue !== null && daysUntilDue < 7
-                            ? "text-red-500"
-                            : isDark
-                            ? "text-white"
-                            : "text-black"
+                            ? "text-danger"
+                            : "text-default"
                         )}
                       >
                         {card.next_payment_due_date ? formatDate(card.next_payment_due_date) : 'N/A'}
@@ -514,27 +458,19 @@ export default function Liabilities() {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div
-                        className={cn(
-                          "px-4 pb-4 border-t space-y-2",
-                          isDark ? "border-white/10" : "border-black/5"
-                        )}
-                      >
-                        <div className={cn("text-xs font-semibold uppercase pt-3", isDark ? "text-white/60" : "text-black/60")}>
+                      <div className="px-4 pb-4 border-t border-subtle space-y-2">
+                        <div className="text-xs font-semibold uppercase pt-3 text-secondary">
                           APR Breakdown
                         </div>
                         {card.aprs.map((apr, idx) => (
                           <div
                             key={idx}
-                            className={cn(
-                              "flex justify-between items-center p-2 rounded-lg text-xs",
-                              isDark ? "bg-gray-700/50" : "bg-gray-100"
-                            )}
+                            className="flex justify-between items-center p-2 rounded-lg text-xs bg-surface-secondary"
                           >
-                            <span className={cn("capitalize", isDark ? "text-white" : "text-black")}>
+                            <span className="capitalize text-default">
                               {apr.apr_type.replace(/_/g, " ")}
                             </span>
-                            <span className={cn("font-bold", isDark ? "text-white" : "text-black")}>
+                            <span className="font-bold text-default">
                               {formatPercent(apr.apr_percentage / 100)}
                             </span>
                           </div>
@@ -549,20 +485,14 @@ export default function Liabilities() {
 
           {/* "+# more" for credit cards in inline mode */}
           {!isFullscreen && credit.length > MAX_VISIBLE_INLINE && (
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: MAX_VISIBLE_INLINE * 0.05 }}
+            <Button
+              variant="outline"
+              color="secondary"
+              className="w-full"
               onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
-              className={cn(
-                "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
-                isDark
-                  ? "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
-                  : "border-black/10 bg-white/40 text-black/60 hover:bg-white/50"
-              )}
             >
               +{credit.length - MAX_VISIBLE_INLINE} more credit cards
-            </motion.button>
+            </Button>
           )}
 
           {/* Student Loans */}
@@ -578,33 +508,25 @@ export default function Liabilities() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (credit.length + index) * 0.05 }}
-                className={cn(
-                  "rounded-2xl border shadow-[0px_2px_6px_rgba(0,0,0,0.06)]",
-                  isDark ? "bg-gray-800 border-white/10" : "bg-white border-black/5"
-                )}
+                className="rounded-2xl border-none shadow-none bg-surface"
               >
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "p-2 rounded-lg",
-                          isDark ? "bg-purple-500/20" : "bg-purple-100"
-                        )}
-                      >
-                        <GraduationCap strokeWidth={1.5} className="h-5 w-5 text-purple-600" />
+                      <div className="p-2 rounded-lg bg-discovery-soft">
+                        <Graduate strokeWidth={1.5} className="h-5 w-5 text-discovery" />
                       </div>
                       <div>
-                        <h3 className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                        <h3 className="font-semibold text-default">
                           {loan.loan_name || account.name}
                         </h3>
-                        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+                        <p className="text-sm text-secondary">
                           Student Loan
                         </p>
                       </div>
                     </div>
                     {loan.is_overdue && (
-                      <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded">
+                      <span className="px-2 py-1 bg-danger-soft text-danger text-xs font-bold rounded">
                         OVERDUE
                       </span>
                     )}
@@ -612,34 +534,34 @@ export default function Liabilities() {
 
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                      <span className="block mb-1 text-secondary">
                         Balance
                       </span>
-                      <span className={cn("font-bold text-base", isDark ? "text-white" : "text-black")}>
+                      <span className="font-bold text-base text-default">
                         {formatCurrency(balance)}
                       </span>
                     </div>
                     <div>
-                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                      <span className="block mb-1 text-secondary">
                         Interest Rate
                       </span>
-                      <span className={cn("font-bold text-base", isDark ? "text-white" : "text-black")}>
+                      <span className="font-bold text-base text-default">
                         {formatPercent(loan.interest_rate_percentage / 100)}
                       </span>
                     </div>
                     <div>
-                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                      <span className="block mb-1 text-secondary">
                         Min Payment
                       </span>
-                      <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                      <span className="font-semibold text-default">
                         {formatCurrency(loan.minimum_payment_amount || 0)}
                       </span>
                     </div>
                     <div>
-                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                      <span className="block mb-1 text-secondary">
                         Due Date
                       </span>
-                      <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                      <span className="font-semibold text-default">
                         {loan.next_payment_due_date ? formatDate(loan.next_payment_due_date) : 'N/A'}
                       </span>
                     </div>
@@ -651,20 +573,14 @@ export default function Liabilities() {
 
           {/* "+# more" for student loans in inline mode */}
           {!isFullscreen && student.length > MAX_VISIBLE_INLINE && (
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: (credit.length + MAX_VISIBLE_INLINE) * 0.05 }}
+            <Button
+              variant="outline"
+              color="secondary"
+              className="w-full"
               onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
-              className={cn(
-                "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
-                isDark
-                  ? "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
-                  : "border-black/10 bg-white/40 text-black/60 hover:bg-white/50"
-              )}
             >
               +{student.length - MAX_VISIBLE_INLINE} more student loans
-            </motion.button>
+            </Button>
           )}
 
           {/* Mortgages */}
@@ -680,33 +596,25 @@ export default function Liabilities() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (credit.length + student.length + index) * 0.05 }}
-                className={cn(
-                  "rounded-2xl border shadow-[0px_2px_6px_rgba(0,0,0,0.06)]",
-                  isDark ? "bg-gray-800 border-white/10" : "bg-white border-black/5"
-                )}
+                className="rounded-2xl border-none shadow-none bg-surface"
               >
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "p-2 rounded-lg",
-                          isDark ? "bg-green-500/20" : "bg-green-100"
-                        )}
-                      >
-                        <Home strokeWidth={1.5} className="h-5 w-5 text-green-600" />
+                      <div className="p-2 rounded-lg bg-success-soft">
+                        <Home strokeWidth={1.5} className="h-5 w-5 text-success" />
                       </div>
                       <div>
-                        <h3 className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                        <h3 className="font-semibold text-default">
                           {account.name}
                         </h3>
-                        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+                        <p className="text-sm text-secondary">
                           Mortgage
                         </p>
                       </div>
                     </div>
                     {mtg.past_due_amount && mtg.past_due_amount > 0 && (
-                      <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded">
+                      <span className="px-2 py-1 bg-danger-soft text-danger text-xs font-bold rounded">
                         PAST DUE
                       </span>
                     )}
@@ -714,45 +622,45 @@ export default function Liabilities() {
 
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                      <span className="block mb-1 text-secondary">
                         Balance
                       </span>
-                      <span className={cn("font-bold text-base", isDark ? "text-white" : "text-black")}>
+                      <span className="font-bold text-base text-default">
                         {formatCurrency(balance)}
                       </span>
                     </div>
                     <div>
-                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                      <span className="block mb-1 text-secondary">
                         Interest Rate
                       </span>
-                      <span className={cn("font-bold text-base", isDark ? "text-white" : "text-black")}>
+                      <span className="font-bold text-base text-default">
                         {formatPercent((mtg.interest_rate.percentage || 0) / 100)}
                       </span>
                     </div>
                     <div>
-                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                      <span className="block mb-1 text-secondary">
                         Monthly Payment
                       </span>
-                      <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                      <span className="font-semibold text-default">
                         {formatCurrency(mtg.next_monthly_payment || 0)}
                       </span>
                     </div>
                     <div>
-                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                      <span className="block mb-1 text-secondary">
                         Due Date
                       </span>
-                      <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                      <span className="font-semibold text-default">
                         {mtg.next_payment_due_date ? formatDate(mtg.next_payment_due_date) : 'N/A'}
                       </span>
                     </div>
                   </div>
 
                   {mtg.loan_term && (
-                    <div className={cn("mt-3 pt-3 border-t text-xs", isDark ? "border-white/10" : "border-black/5")}>
-                      <span className={cn("block mb-1", isDark ? "text-white/60" : "text-black/60")}>
+                    <div className="mt-3 pt-3 border-t border-subtle text-xs">
+                      <span className="block mb-1 text-secondary">
                         Loan Term
                       </span>
-                      <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                      <span className="font-semibold text-default">
                         {mtg.loan_term}
                       </span>
                     </div>
@@ -764,20 +672,14 @@ export default function Liabilities() {
 
           {/* "+# more" for mortgages in inline mode */}
           {!isFullscreen && mortgage.length > MAX_VISIBLE_INLINE && (
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: (credit.length + student.length + MAX_VISIBLE_INLINE) * 0.05 }}
+            <Button
+              variant="outline"
+              color="secondary"
+              className="w-full"
               onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
-              className={cn(
-                "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
-                isDark
-                  ? "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
-                  : "border-black/10 bg-white/40 text-black/60 hover:bg-white/50"
-              )}
             >
               +{mortgage.length - MAX_VISIBLE_INLINE} more mortgages
-            </motion.button>
+            </Button>
           )}
         </div>
       </div>

@@ -2,16 +2,18 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, TrendingDown } from "lucide-react";
+import { Expand, ArrowDown, Trending } from "@openai/apps-sdk-ui/components/Icon";
+import { Button } from "@openai/apps-sdk-ui/components/Button";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { useWidgetState } from "@/src/use-widget-state";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
-import { useTheme } from "@/src/use-theme";
 import { formatCurrency, formatPercent } from "@/src/utils/format";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 import { cn } from "@/lib/utils/cn";
+import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
+import WidgetLoadingSkeleton from "@/src/components/shared/widget-loading-skeleton";
 
 interface Category {
   name: string;
@@ -36,44 +38,24 @@ interface SpendingUIState extends Record<string, unknown> {
   selectedIndex: number | null;
 }
 
+// SDK Color Tokens mapping
 const CATEGORY_COLORS = [
-  "from-blue-500 to-blue-600",
-  "from-purple-500 to-purple-600",
-  "from-pink-500 to-pink-600",
-  "from-rose-500 to-rose-600",
-  "from-orange-500 to-orange-600",
-  "from-amber-500 to-amber-600",
-  "from-lime-500 to-lime-600",
-  "from-emerald-500 to-emerald-600",
-  "from-teal-500 to-teal-600",
-  "from-cyan-500 to-cyan-600",
-  "from-indigo-500 to-indigo-600",
-  "from-violet-500 to-violet-600",
-];
-
-const CATEGORY_SOLID_COLORS = [
-  "bg-blue-500",
-  "bg-purple-500",
-  "bg-pink-500",
-  "bg-rose-500",
-  "bg-orange-500",
-  "bg-amber-500",
-  "bg-lime-500",
-  "bg-emerald-500",
-  "bg-teal-500",
-  "bg-cyan-500",
-  "bg-indigo-500",
-  "bg-violet-500",
+  { from: "var(--color-blue-500)", to: "var(--color-blue-600)", text: "text-info" },
+  { from: "var(--color-purple-500)", to: "var(--color-purple-600)", text: "text-discovery" },
+  { from: "var(--color-pink-500)", to: "var(--color-pink-600)", text: "text-discovery" }, // Approximate
+  { from: "var(--color-red-500)", to: "var(--color-red-600)", text: "text-danger" },
+  { from: "var(--color-orange-500)", to: "var(--color-orange-600)", text: "text-warning" },
+  { from: "var(--color-yellow-500)", to: "var(--color-yellow-600)", text: "text-caution" },
+  { from: "var(--color-green-500)", to: "var(--color-green-600)", text: "text-success" },
+  { from: "var(--color-teal-500)", to: "var(--color-teal-600)", text: "text-success" }, // Approximate
 ];
 
 function getCategoryIcon(name: string) {
   const lower = name.toLowerCase();
-  if (lower.includes("food") || lower.includes("restaurant"))
-    return "🍽️";
+  if (lower.includes("food") || lower.includes("restaurant")) return "🍽️";
   if (lower.includes("transport") || lower.includes("travel")) return "🚗";
   if (lower.includes("shop") || lower.includes("retail")) return "🛍️";
-  if (lower.includes("entertainment") || lower.includes("recreation"))
-    return "🎬";
+  if (lower.includes("entertainment") || lower.includes("recreation")) return "🎬";
   if (lower.includes("groceries") || lower.includes("supermarket")) return "🛒";
   if (lower.includes("health") || lower.includes("medical")) return "🏥";
   if (lower.includes("utilities") || lower.includes("bills")) return "💡";
@@ -83,21 +65,13 @@ function getCategoryIcon(name: string) {
 }
 
 interface CategoryBarProps {
-  category: Category & { color: string; solidColor: string };
+  category: Category & { color: typeof CATEGORY_COLORS[0] };
   index: number;
-  isFullscreen: boolean;
-  isDark: boolean;
-  onClick: () => void;
   isSelected: boolean;
+  onClick: () => void;
 }
 
-function CategoryBar({
-  category,
-  index,
-  isDark,
-  onClick,
-  isSelected,
-}: CategoryBarProps) {
+function CategoryBar({ category, index, isSelected, onClick }: CategoryBarProps) {
   return (
     <motion.div
       layout
@@ -112,61 +86,35 @@ function CategoryBar({
       }}
       onClick={onClick}
       className={cn(
-        "group cursor-pointer rounded-xl border transition-all p-4",
-        isSelected
-          ? isDark
-            ? "bg-white/10 border-white/30"
-            : "bg-black/5 border-black/30"
-          : isDark
-          ? "bg-gray-800 border-white/10 hover:border-white/20"
-          : "bg-white border-black/10 hover:border-black/20",
-        "shadow-[0px_2px_6px_rgba(0,0,0,0.06)] hover:shadow-[0px_6px_14px_rgba(0,0,0,0.1)]"
+        "group cursor-pointer rounded-xl border-none transition-all p-4 bg-surface shadow-none hover:bg-surface-secondary",
+        isSelected && "ring-2 ring-primary"
       )}
     >
       <div className="flex items-center gap-3 mb-3">
         <div
-          className={cn(
-            "w-8 h-8 rounded-full flex items-center justify-center text-lg bg-gradient-to-br",
-            category.color
-          )}
+          className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
+          style={{
+            background: `linear-gradient(135deg, ${category.color.from}, ${category.color.to})`,
+            color: "white"
+          }}
         >
           {getCategoryIcon(category.name)}
         </div>
         <div className="flex-1 min-w-0">
-          <h3
-            className={cn(
-              "font-medium text-sm truncate",
-              isDark ? "text-white" : "text-black"
-            )}
-          >
+          <h3 className="font-medium text-sm truncate text-default">
             {category.name}
           </h3>
-          <p
-            className={cn(
-              "text-xs",
-              isDark ? "text-white/50" : "text-black/50"
-            )}
-          >
+          <p className="text-xs text-secondary">
             {formatPercent(category.percentage / 100)}
           </p>
         </div>
-        <div
-          className={cn(
-            "text-base font-semibold",
-            isDark ? "text-white" : "text-black"
-          )}
-        >
+        <div className="text-base font-semibold text-default">
           {formatCurrency(Math.abs(category.amount))}
         </div>
       </div>
 
       {/* Progress bar */}
-      <div
-        className={cn(
-          "h-2 rounded-full overflow-hidden",
-          isDark ? "bg-white/10" : "bg-black/5"
-        )}
-      >
+      <div className="h-2 rounded-full overflow-hidden bg-surface-tertiary">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${category.percentage}%` }}
@@ -176,7 +124,10 @@ function CategoryBar({
             duration: 1,
             delay: index * 0.05 + 0.3,
           }}
-          className={cn("h-full bg-gradient-to-r", category.color)}
+          className="h-full"
+          style={{
+            background: `linear-gradient(90deg, ${category.color.from}, ${category.color.to})`
+          }}
         />
       </div>
     </motion.div>
@@ -184,9 +135,8 @@ function CategoryBar({
 }
 
 interface DonutChartProps {
-  categories: Array<Category & { color: string; solidColor: string }>;
+  categories: Array<Category & { color: typeof CATEGORY_COLORS[0] }>;
   totalSpending: number;
-  isDark: boolean;
   selectedIndex: number | null;
   onSelectCategory: (index: number) => void;
 }
@@ -194,7 +144,6 @@ interface DonutChartProps {
 function DonutChart({
   categories,
   totalSpending,
-  isDark,
   selectedIndex,
   onSelectCategory,
 }: DonutChartProps) {
@@ -214,7 +163,7 @@ function DonutChart({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)"}
+          stroke="var(--color-surface-tertiary)"
           strokeWidth={strokeWidth}
         />
 
@@ -273,62 +222,8 @@ function DonutChart({
               x2="100%"
               y2="100%"
             >
-              <stop
-                offset="0%"
-                stopColor={
-                  category.color.includes("blue")
-                    ? "#3b82f6"
-                    : category.color.includes("purple")
-                    ? "#a855f7"
-                    : category.color.includes("pink")
-                    ? "#ec4899"
-                    : category.color.includes("rose")
-                    ? "#f43f5e"
-                    : category.color.includes("orange")
-                    ? "#f97316"
-                    : category.color.includes("amber")
-                    ? "#f59e0b"
-                    : category.color.includes("lime")
-                    ? "#84cc16"
-                    : category.color.includes("emerald")
-                    ? "#10b981"
-                    : category.color.includes("teal")
-                    ? "#14b8a6"
-                    : category.color.includes("cyan")
-                    ? "#06b6d4"
-                    : category.color.includes("indigo")
-                    ? "#6366f1"
-                    : "#8b5cf6"
-                }
-              />
-              <stop
-                offset="100%"
-                stopColor={
-                  category.color.includes("blue")
-                    ? "#2563eb"
-                    : category.color.includes("purple")
-                    ? "#9333ea"
-                    : category.color.includes("pink")
-                    ? "#db2777"
-                    : category.color.includes("rose")
-                    ? "#e11d48"
-                    : category.color.includes("orange")
-                    ? "#ea580c"
-                    : category.color.includes("amber")
-                    ? "#d97706"
-                    : category.color.includes("lime")
-                    ? "#65a30d"
-                    : category.color.includes("emerald")
-                    ? "#059669"
-                    : category.color.includes("teal")
-                    ? "#0d9488"
-                    : category.color.includes("cyan")
-                    ? "#0891b2"
-                    : category.color.includes("indigo")
-                    ? "#4f46e5"
-                    : "#7c3aed"
-                }
-              />
+              <stop offset="0%" stopColor={category.color.from} />
+              <stop offset="100%" stopColor={category.color.to} />
             </linearGradient>
           ))}
         </defs>
@@ -336,20 +231,10 @@ function DonutChart({
 
       {/* Center text */}
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <div
-          className={cn(
-            "text-xs font-medium",
-            isDark ? "text-white/50" : "text-black/50"
-          )}
-        >
+        <div className="text-xs font-medium text-secondary">
           Total Spent
         </div>
-        <div
-          className={cn(
-            "text-2xl font-bold mt-1",
-            isDark ? "text-white" : "text-black"
-          )}
-        >
+        <div className="text-2xl font-bold mt-1 text-default">
           {formatCurrency(totalSpending)}
         </div>
       </div>
@@ -366,19 +251,22 @@ export default function SpendingInsights() {
 
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
-  const theme = useTheme();
   const isFullscreen = displayMode === "fullscreen";
-  const isDark = theme === "dark";
 
   // Check for auth requirements
   const authComponent = checkWidgetAuth(toolOutput);
   if (authComponent) return authComponent;
 
-  if (!toolOutput && !toolMetadata) {
+  // Show loading state while waiting for tool output
+  if (!toolOutput) {
+    return <WidgetLoadingSkeleton />;
+  }
+
+  if (!toolMetadata && !toolOutput.totalSpending) {
     return (
-      <div className="p-8 text-center text-black/60 dark:text-white/60">
-        <p>No spending data available</p>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Title>No spending data available</EmptyMessage.Title>
+      </EmptyMessage>
     );
   }
 
@@ -390,18 +278,16 @@ export default function SpendingInsights() {
 
   if (rawCategories.length === 0) {
     return (
-      <div className="p-8 text-center text-black/60 dark:text-white/60">
-        <p>No spending data available</p>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Title>No spending data available</EmptyMessage.Title>
+      </EmptyMessage>
     );
   }
-
 
   const categoriesWithMetadata = rawCategories.map((cat, index) => ({
     ...cat,
     percentage: cat.percentage ?? (totalSpending > 0 ? (Math.abs(cat.amount) / totalSpending) * 100 : 0),
     color: CATEGORY_COLORS[index % CATEGORY_COLORS.length]!,
-    solidColor: CATEGORY_SOLID_COLORS[index % CATEGORY_SOLID_COLORS.length]!,
   }));
 
   // Sort by amount descending
@@ -409,11 +295,7 @@ export default function SpendingInsights() {
 
   return (
     <div
-      className={cn(
-        "antialiased w-full relative",
-        isDark ? "bg-gray-900" : "bg-gray-50",
-        !isFullscreen && "overflow-hidden"
-      )}
+      className={`antialiased w-full relative bg-transparent text-default ${!isFullscreen ? "overflow-hidden" : ""}`}
       style={{
         maxHeight: maxHeight ?? undefined,
         height: isFullscreen ? maxHeight ?? undefined : undefined,
@@ -421,56 +303,34 @@ export default function SpendingInsights() {
     >
       {/* Fullscreen expand button */}
       {!isFullscreen && (
-        <button
+        <Button
           onClick={() => {
             if (typeof window !== "undefined" && window.openai) {
               window.openai.requestDisplayMode({ mode: "fullscreen" });
             }
           }}
-          className={cn(
-            "absolute top-4 right-4 z-20 p-2 rounded-full shadow-lg transition-all",
-            isDark
-              ? "bg-gray-800 text-white hover:bg-gray-700"
-              : "bg-white text-black hover:bg-gray-100",
-            "ring-1",
-            isDark ? "ring-white/10" : "ring-black/5"
-          )}
+          variant="ghost"
+          color="secondary"
+          size="sm"
+          className="absolute top-4 right-4 z-20"
           aria-label="Expand to fullscreen"
         >
-          <Maximize2 strokeWidth={1.5} className="h-4 w-4" />
-        </button>
+          <Expand className="h-4 w-4" />
+        </Button>
       )}
 
       {/* Content */}
       <div
-        className={cn(
-          "w-full h-full overflow-y-auto",
-          isFullscreen ? "p-8" : "p-5"
-        )}
+        className={`w-full h-full overflow-y-auto ${isFullscreen ? "p-8" : "p-0"}`}
       >
         {/* Header */}
         <div className="mb-6">
-          <h1
-            className={cn(
-              "text-2xl font-semibold mb-2",
-              isDark ? "text-white" : "text-black"
-            )}
-          >
+          <h1 className="heading-lg mb-2">
             Spending Insights
           </h1>
           <div className="flex items-center gap-3">
-            <TrendingDown
-              className={cn(
-                "w-5 h-5",
-                isDark ? "text-rose-400" : "text-rose-600"
-              )}
-            />
-            <p
-              className={cn(
-                "text-sm",
-                isDark ? "text-white/60" : "text-black/60"
-              )}
-            >
+            <Trending className="w-5 h-5 text-danger" />
+            <p className="text-sm text-secondary">
               Breakdown of your spending by category
             </p>
           </div>
@@ -489,7 +349,6 @@ export default function SpendingInsights() {
               <DonutChart
                 categories={categoriesWithMetadata}
                 totalSpending={totalSpending}
-                isDark={isDark}
                 selectedIndex={uiState.selectedIndex}
                 onSelectCategory={(index) =>
                   setUiState(s => ({ ...s, selectedIndex: s.selectedIndex === index ? null : index }))
@@ -506,8 +365,6 @@ export default function SpendingInsights() {
                   key={category.name}
                   category={category}
                   index={index}
-                  isFullscreen={isFullscreen}
-                  isDark={isDark}
                   onClick={() =>
                     setUiState(s => ({ ...s, selectedIndex: s.selectedIndex === index ? null : index }))
                   }

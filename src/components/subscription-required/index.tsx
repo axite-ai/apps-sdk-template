@@ -2,14 +2,21 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Lock, Check, Maximize2, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils/cn";
+import {
+  Lock,
+  Check,
+  Expand,
+  Sparkle,
+} from "@openai/apps-sdk-ui/components/Icon";
+import { Button } from "@openai/apps-sdk-ui/components/Button";
+import { Badge } from "@openai/apps-sdk-ui/components/Badge";
+import { Alert } from "@openai/apps-sdk-ui/components/Alert";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
-import { useTheme } from "@/src/use-theme";
 import { upgradeSubscription } from "@/app/widgets/subscription-required/actions";
+import { cn } from "@/lib/utils/cn";
 
 const PLANS = [
   {
@@ -69,9 +76,7 @@ export default function SubscriptionRequired() {
   const toolMetadata = useOpenAiGlobal("toolResponseMetadata") as SubscriptionRequiredMetadata | null;
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
-  const theme = useTheme();
   const isFullscreen = displayMode === "fullscreen";
-  const isDark = theme === "dark";
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -128,11 +133,7 @@ export default function SubscriptionRequired() {
 
   return (
     <div
-      className={cn(
-        "antialiased w-full relative",
-        isDark ? "bg-gray-900" : "bg-gray-50",
-        !isFullscreen && "overflow-hidden"
-      )}
+      className={`antialiased w-full relative bg-surface text-default ${!isFullscreen ? "overflow-hidden" : ""}`}
       style={{
         maxHeight: maxHeight ?? undefined,
         height: isFullscreen ? maxHeight ?? undefined : "auto",
@@ -140,49 +141,43 @@ export default function SubscriptionRequired() {
     >
       {/* Expand button (inline mode only) */}
       {!isFullscreen && (
-        <button
+        <Button
           onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
-          className={cn(
-            "absolute top-4 right-4 z-20 p-2 rounded-full shadow-lg transition-all ring-1",
-            isDark
-              ? "bg-gray-800 text-white hover:bg-gray-700 ring-white/10"
-              : "bg-white text-black hover:bg-gray-100 ring-black/5"
-          )}
+          variant="ghost"
+          size="sm"
+          color="secondary"
+          className="absolute top-4 right-4 z-20"
           aria-label="Expand to fullscreen"
         >
-          <Maximize2 strokeWidth={1.5} className="h-4 w-4" />
-        </button>
+          <Expand className="h-4 w-4" />
+        </Button>
       )}
 
       {/* Content */}
-      <div className={cn("w-full h-full overflow-y-auto", isFullscreen ? "p-8" : "p-5")}>
+      <div className={`w-full h-full overflow-y-auto ${isFullscreen ? "p-8" : "p-0"}`}>
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
-            <Lock strokeWidth={1.5} className={cn("h-5 w-5", isDark ? "text-blue-400" : "text-blue-600")} />
-            <h1 className={cn("text-2xl font-semibold", isDark ? "text-white" : "text-black")}>
+            <div className="p-2 rounded-lg bg-info-surface text-info">
+              <Lock className="h-5 w-5" />
+            </div>
+            <h1 className="heading-lg">
               Choose Your Plan
             </h1>
           </div>
-          <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+          <p className="text-sm text-secondary">
             Upgrade to access {String(featureName)}
           </p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={cn(
-              "mb-4 p-3 rounded-xl border text-sm",
-              isDark
-                ? "bg-red-500/20 border-red-500/30 text-red-300"
-                : "bg-red-50 border-red-200 text-red-700"
-            )}
-          >
-            {error}
-          </motion.div>
+          <div className="mb-4">
+            <Alert
+              color="danger"
+              description={error}
+            />
+          </div>
         )}
 
         {/* Plan Cards */}
@@ -197,42 +192,40 @@ export default function SubscriptionRequired() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
                 className={cn(
-                  "relative cursor-pointer rounded-2xl border p-4 transition-all shadow-[0px_2px_6px_rgba(0,0,0,0.06)]",
+                  "relative cursor-pointer rounded-2xl border-none p-4 transition-all",
                   isSelected
-                    ? isDark
-                      ? "bg-blue-500/10 border-blue-500/30 ring-2 ring-blue-500/50"
-                      : "bg-blue-50 border-blue-300 ring-2 ring-blue-400/50"
-                    : isDark
-                    ? "bg-gray-800 border-white/10 hover:bg-gray-750"
-                    : "bg-white border-black/5 hover:bg-gray-50",
-                  plan.popular && "border-blue-500/50"
+                    ? "bg-info-soft ring-2 ring-info"
+                    : "bg-surface hover:bg-surface-secondary",
+                  plan.popular && !isSelected && "border-none ring-1 ring-info"
                 )}
                 onClick={() => handleSelectPlan(plan.id)}
               >
                 {/* Popular Badge */}
                 {plan.popular && (
-                  <div className="absolute -top-2 right-4 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-semibold flex items-center gap-1 shadow-lg">
-                    <Sparkles strokeWidth={1.5} className="h-3 w-3" />
-                    Popular
-                  </div>
-                )}
+                    <div className="absolute -top-2 right-4">
+                      <Badge color="discovery" size="sm" pill className="shadow-sm">
+                        <Sparkle className="h-3 w-3 mr-1" />
+                        Popular
+                      </Badge>
+                    </div>
+                  )}
 
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className={cn("text-lg font-bold", isDark ? "text-white" : "text-black")}>
+                    <h3 className="heading-sm text-default">
                       {plan.name}
                     </h3>
                     {plan.trial && (
-                      <p className={cn("text-xs font-medium", isDark ? "text-blue-400" : "text-blue-600")}>
+                      <p className="text-xs font-medium text-info">
                         {plan.trial}
                       </p>
                     )}
                   </div>
                   <div className="text-right">
-                    <div className={cn("text-2xl font-bold", isDark ? "text-white" : "text-black")}>
+                    <div className="text-2xl font-bold text-default">
                       {plan.price}
                     </div>
-                    <div className={cn("text-xs", isDark ? "text-white/60" : "text-black/60")}>
+                    <div className="text-xs text-secondary">
                       /{plan.interval}
                     </div>
                   </div>
@@ -242,21 +235,12 @@ export default function SubscriptionRequired() {
                 <ul className="space-y-2">
                   {plan.features.map((feature, idx) => (
                     <li key={idx} className="flex items-center gap-2 text-sm">
-                      <div
-                        className={cn(
-                          "p-0.5 rounded-full flex-shrink-0",
-                          isDark ? "bg-green-500/20" : "bg-green-100"
-                        )}
-                      >
+                      <div className="p-0.5 rounded-full bg-success-surface flex-shrink-0">
                         <Check
-                          strokeWidth={2}
-                          className={cn(
-                            "h-3 w-3",
-                            isDark ? "text-green-400" : "text-green-600"
-                          )}
+                          className="h-3 w-3 text-success"
                         />
                       </div>
-                      <span className={cn(isDark ? "text-white/80" : "text-black/80")}>
+                      <span className="text-secondary">
                         {feature}
                       </span>
                     </li>
@@ -268,50 +252,27 @@ export default function SubscriptionRequired() {
         </div>
 
         {/* Subscribe Button */}
-        <motion.button
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          id="subscribe-btn"
-          disabled={!selectedPlan || isLoading}
-          onClick={handleSubscribe}
-          className={cn(
-            "w-full mt-6 rounded-xl px-6 py-3.5 font-semibold text-white transition-all shadow-lg",
-            "bg-gradient-to-r from-blue-500 to-purple-500",
-            "hover:from-blue-600 hover:to-purple-600 hover:shadow-xl",
-            "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg",
-            "flex items-center justify-center gap-2"
-          )}
+          className="mt-6"
         >
-          {isLoading ? (
-            <>
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              Opening Stripe...
-            </>
-          ) : selectedPlan ? (
-            <>Subscribe to {PLANS.find((p) => p.id === selectedPlan)?.name}</>
-          ) : (
-            <>Select a plan to continue</>
-          )}
-        </motion.button>
+          <Button
+            id="subscribe-btn"
+            disabled={!selectedPlan || isLoading}
+            loading={isLoading}
+            onClick={handleSubscribe}
+            color="primary"
+            size="xl"
+            block
+          >
+            {isLoading ? "Opening Stripe..." : selectedPlan ? `Subscribe to ${PLANS.find((p) => p.id === selectedPlan)?.name}` : "Select a plan to continue"}
+          </Button>
+        </motion.div>
 
         {/* Footer */}
-        <p className={cn("text-xs text-center mt-4", isDark ? "text-white/40" : "text-black/40")}>
+        <p className="text-xs text-center mt-4 text-tertiary">
           Secure checkout powered by Stripe
         </p>
       </div>

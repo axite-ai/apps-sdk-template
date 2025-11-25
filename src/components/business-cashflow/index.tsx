@@ -5,6 +5,8 @@ import { useOpenAiGlobal } from "@/src/use-openai-global";
 import type { BusinessCashFlowContent } from "@/lib/types/tool-responses";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 import { useState } from "react";
+import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
+import { cn } from "@/lib/utils/cn";
 
 interface CashFlowProjection {
   month: number;
@@ -28,9 +30,9 @@ export default function BusinessCashFlowWidget() {
 
   if (!toolOutput?.structuredContent) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-gray-500">No cash flow data available</p>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Title>No cash flow data available</EmptyMessage.Title>
+      </EmptyMessage>
     );
   }
 
@@ -41,71 +43,71 @@ export default function BusinessCashFlowWidget() {
   const runwayMonths = runway.months === Infinity ? "∞" : runway.months.toFixed(1);
 
   return (
-    <div className="flex flex-col gap-4 p-6 bg-gradient-to-br from-white to-gray-50 min-h-screen">
+    <div className="flex flex-col gap-4 p-0 bg-transparent min-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Business Cash Flow</h1>
-        <div className={`text-lg font-semibold ${isHealthy ? "text-green-600" : "text-red-600"}`}>
+        <h1 className="heading-lg text-default">Business Cash Flow</h1>
+        <div className={cn("text-lg font-semibold", isHealthy ? "text-success" : "text-danger")}>
           {isHealthy ? "Positive" : "Negative"} Cash Flow
         </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-600">Revenue</div>
-          <div className="text-2xl font-bold text-green-600">
+        <div className="bg-surface rounded-lg shadow-none border-none p-4">
+          <div className="text-sm text-secondary">Revenue</div>
+          <div className="text-2xl font-bold text-success">
             +${currentPeriod.revenue.toFixed(2)}
           </div>
-          <div className="text-xs text-gray-500 mt-1">Current period</div>
+          <div className="text-xs text-tertiary mt-1">Current period</div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-600">Expenses</div>
-          <div className="text-2xl font-bold text-red-600">
+        <div className="bg-surface rounded-lg shadow-none border-none p-4">
+          <div className="text-sm text-secondary">Expenses</div>
+          <div className="text-2xl font-bold text-danger">
             -${currentPeriod.expenses.toFixed(2)}
           </div>
-          <div className="text-xs text-gray-500 mt-1">Current period</div>
+          <div className="text-xs text-tertiary mt-1">Current period</div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-600">Net Cash Flow</div>
-          <div className={`text-2xl font-bold ${currentPeriod.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+        <div className="bg-surface rounded-lg shadow-none border-none p-4">
+          <div className="text-sm text-secondary">Net Cash Flow</div>
+          <div className={cn("text-2xl font-bold", currentPeriod.net >= 0 ? 'text-success' : 'text-danger')}>
             {currentPeriod.net >= 0 ? '+' : ''}${currentPeriod.net.toFixed(2)}
           </div>
-          <div className="text-xs text-gray-500 mt-1">Current period</div>
+          <div className="text-xs text-tertiary mt-1">Current period</div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-600">Runway</div>
-          <div className="text-2xl font-bold text-purple-600">{runwayMonths}</div>
-          <div className="text-xs text-gray-500 mt-1">months remaining</div>
+        <div className="bg-surface rounded-lg shadow-none border-none p-4">
+          <div className="text-sm text-secondary">Runway</div>
+          <div className="text-2xl font-bold text-discovery">{runwayMonths}</div>
+          <div className="text-xs text-tertiary mt-1">months remaining</div>
         </div>
       </div>
 
       {/* Burn Rate */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-surface rounded-lg shadow-none border-none p-4">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm text-gray-600">Burn Rate</div>
-            <div className="text-3xl font-bold text-gray-800">
+            <div className="text-sm text-secondary">Burn Rate</div>
+            <div className="text-3xl font-bold text-default">
               ${currentPeriod.burnRate.toFixed(2)}
             </div>
-            <div className="text-xs text-gray-500 mt-1">Per month</div>
+            <div className="text-xs text-tertiary mt-1">Per month</div>
           </div>
           <div className="text-right">
-            <div className="text-sm text-gray-600">Runway Status</div>
-            <div className={`text-xl font-semibold ${
-              runway.confidence === "high" ? "text-green-600" :
-              runway.confidence === "medium" ? "text-yellow-600" : "text-red-600"
-            }`}>
+            <div className="text-sm text-secondary">Runway Status</div>
+            <div className={cn("text-xl font-semibold",
+              runway.confidence === "high" ? "text-success" :
+              runway.confidence === "medium" ? "text-warning" : "text-danger"
+            )}>
               {runway.confidence}
             </div>
           </div>
         </div>
-        <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="mt-4 h-2 bg-surface-tertiary rounded-full overflow-hidden">
           <div
-            className={`h-full ${isHealthy ? "bg-green-500" : "bg-red-500"}`}
+            className={cn("h-full", isHealthy ? "bg-success" : "bg-danger")}
             style={{
               width: `${Math.min(100, Math.abs((currentPeriod.net / currentPeriod.revenue) * 100))}%`,
             }}
@@ -115,24 +117,24 @@ export default function BusinessCashFlowWidget() {
 
       {/* Projections */}
       {projections && projections.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-surface rounded-lg shadow-none border-none p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Cash Flow Projections</h2>
-            <span className="text-xs text-gray-500">Based on current trends</span>
+            <h2 className="text-lg font-semibold text-default">Cash Flow Projections</h2>
+            <span className="text-xs text-secondary">Based on current trends</span>
           </div>
           <div className="space-y-2">
             {projections.map((proj: any, idx: number) => (
               <div key={idx} className="flex items-center gap-3">
-                <div className="w-24 text-sm text-gray-600">{proj.period}</div>
-                <div className="flex-1 h-8 bg-gray-100 rounded-lg overflow-hidden relative">
+                <div className="w-24 text-sm text-secondary">{proj.period}</div>
+                <div className="flex-1 h-8 bg-surface-secondary rounded-lg overflow-hidden relative">
                   <div
-                    className={`h-full ${
+                    className={cn("h-full",
                       proj.projectedNet > 0
-                        ? "bg-green-500"
+                        ? "bg-success"
                         : proj.projectedNet > -1000
-                        ? "bg-yellow-500"
-                        : "bg-red-500"
-                    }`}
+                        ? "bg-warning"
+                        : "bg-danger"
+                    )}
                     style={{
                       width: `${Math.min(
                         100,
@@ -140,18 +142,18 @@ export default function BusinessCashFlowWidget() {
                       )}%`,
                     }}
                   />
-                  <span className="absolute inset-0 flex items-center justify-end pr-2 text-sm font-medium text-gray-800">
+                  <span className="absolute inset-0 flex items-center justify-end pr-2 text-sm font-medium text-default">
                     {proj.projectedNet >= 0 ? '+' : ''}${proj.projectedNet.toFixed(0)}
                   </span>
                 </div>
                 <span
-                  className={`text-xs px-2 py-1 rounded ${
+                  className={cn("text-xs px-2 py-1 rounded",
                     proj.confidence === "high"
-                      ? "bg-green-100 text-green-700"
+                      ? "bg-success-soft text-success"
                       : proj.confidence === "medium"
-                      ? "bg-yellow-100 text-yellow-700"
-                      : "bg-gray-100 text-gray-600"
-                  }`}
+                      ? "bg-warning-soft text-warning"
+                      : "bg-surface-tertiary text-secondary"
+                  )}
                 >
                   {proj.confidence}
                 </span>

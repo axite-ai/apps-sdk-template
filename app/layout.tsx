@@ -2,6 +2,15 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { baseURL } from "@/baseUrl";
+import { AppsSDKUIProvider } from "@openai/apps-sdk-ui/components/AppsSDKUIProvider";
+import { ThemeSync } from "@/src/components/theme-sync";
+import Link from "next/link";
+
+declare global {
+  interface AppsSDKUIConfig {
+    LinkComponent: typeof Link;
+  }
+}
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +40,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <AppsSDKUIProvider linkComponent={Link}>
+          <ThemeSync />
+          {children}
+        </AppsSDKUIProvider>
       </body>
     </html>
   );
@@ -55,7 +67,8 @@ function NextChatSDKBootstrap({ baseUrl }: { baseUrl: string }) {
                   mutation.target === htmlElement
                 ) {
                   const attrName = mutation.attributeName;
-                  if (attrName && attrName !== "suppresshydrationwarning") {
+                  // Preserve data-theme and suppressHydrationWarning, remove other injected attributes if necessary
+                  if (attrName && attrName !== "suppresshydrationwarning" && attrName !== "data-theme") {
                     htmlElement.removeAttribute(attrName);
                   }
                 }

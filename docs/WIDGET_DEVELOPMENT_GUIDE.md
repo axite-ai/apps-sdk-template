@@ -11,7 +11,7 @@ This guide documents the exact patterns, anti-patterns, and metadata requirement
    - Each tool calls domain services (Plaid, subscription, deletion, etc.), enforces auth via `requireAuth`, and produces typed payloads using `createSuccessResponse` / `createErrorResponse`.
 2. **Widget resource registration**
    - The same file registers `text/html+skybridge` resources that proxy the Next.js pages in `app/widgets/<widget>/page.tsx`.
-   - `_meta` fields annotate layout, borders, CSP, and the domain ChatGPT should sandbox (`openai/widgetDomain`, `openai/widgetCSP`, `openai/widgetPrefersBorder`, `openai/widgetDescription`).
+   - `_meta` fields annotate layout, borders, CSP, and the domain ChatGPT should sandbox (`openai/widgetDomain`, `openai/widgetCSP`, `openai/widgetPrefersBorder` set to `false`, `openai/widgetDescription`).
 3. **Component render**
    - `app/widgets/<widget>/page.tsx` simply renders a client component from `src/components/<widget>`.
    - Components hydrate from the MCP tool response (structured content + `_meta`), never from their own fetch at mount. Server actions under `app/widgets/<widget>/actions.ts` only run in response to explicit user gestures.
@@ -46,7 +46,7 @@ This guide documents the exact patterns, anti-patterns, and metadata requirement
    - Resource metadata that mirrors our existing widgets:
      ```ts
      'openai/widgetDescription': widget.description,
-     'openai/widgetPrefersBorder': true,
+     'openai/widgetPrefersBorder': false,
      'openai/widgetDomain': baseURL,
      'openai/widgetCSP': {
        'base-uri': ["'self'", baseURL],

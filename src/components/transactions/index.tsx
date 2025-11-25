@@ -2,14 +2,26 @@
 
 import React, { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, Search, Filter, Calendar, TrendingDown, TrendingUp, DollarSign } from "lucide-react";
-import { cn } from "@/lib/utils/cn";
+import {
+  Expand,
+  Search,
+  Filter,
+  Calendar,
+  ArrowDown,
+  ArrowUp,
+  DollarCircle,
+  ChevronDown,
+} from "@openai/apps-sdk-ui/components/Icon";
+import { Button } from "@openai/apps-sdk-ui/components/Button";
+import { Input } from "@openai/apps-sdk-ui/components/Input";
+import { Badge } from "@openai/apps-sdk-ui/components/Badge";
+import { Select } from "@openai/apps-sdk-ui/components/Select";
+import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { useWidgetState } from "@/src/use-widget-state";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
-import { useTheme } from "@/src/use-theme";
 import { formatCurrency, formatDate } from "@/src/utils/format";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 import type { Transaction } from "plaid";
@@ -57,29 +69,28 @@ interface TransactionsUIState extends Record<string, unknown> {
   showPendingOnly: boolean;
   expandedTx: string | null;
   showAllDates: boolean;
-  expandedDateGroups: string[]; // Use array for JSON serialization
+  expandedDateGroups: string[];
 }
 
-// Category color mapping
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
-  FOOD_AND_DRINK: { bg: "bg-orange-500/10", text: "text-orange-600 dark:text-orange-400", icon: "🍔" },
-  GENERAL_MERCHANDISE: { bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400", icon: "🛍️" },
-  TRANSPORTATION: { bg: "bg-purple-500/10", text: "text-purple-600 dark:text-purple-400", icon: "🚗" },
-  TRANSFER_IN: { bg: "bg-green-500/10", text: "text-green-600 dark:text-green-400", icon: "💰" },
-  TRANSFER_OUT: { bg: "bg-red-500/10", text: "text-red-600 dark:text-red-400", icon: "💸" },
-  ENTERTAINMENT: { bg: "bg-pink-500/10", text: "text-pink-600 dark:text-pink-400", icon: "🎬" },
-  TRAVEL: { bg: "bg-indigo-500/10", text: "text-indigo-600 dark:text-indigo-400", icon: "✈️" },
-  GENERAL_SERVICES: { bg: "bg-teal-500/10", text: "text-teal-600 dark:text-teal-400", icon: "⚙️" },
-  RENT_AND_UTILITIES: { bg: "bg-yellow-500/10", text: "text-yellow-600 dark:text-yellow-400", icon: "🏠" },
-  HOME_IMPROVEMENT: { bg: "bg-cyan-500/10", text: "text-cyan-600 dark:text-cyan-400", icon: "🔨" },
-  MEDICAL: { bg: "bg-rose-500/10", text: "text-rose-600 dark:text-rose-400", icon: "🏥" },
-  BANK_FEES: { bg: "bg-gray-500/10", text: "text-gray-600 dark:text-gray-400", icon: "🏦" },
-  LOAN_PAYMENTS: { bg: "bg-violet-500/10", text: "text-violet-600 dark:text-violet-400", icon: "💳" },
-  INCOME: { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", icon: "💵" },
-  UNCATEGORIZED: { bg: "bg-slate-500/10", text: "text-slate-600 dark:text-slate-400", icon: "❓" },
+// Category mapping to SDK colors/badges
+const CATEGORY_STYLES: Record<string, { color: "success" | "warning" | "danger" | "info" | "discovery" | "secondary"; icon: string }> = {
+  FOOD_AND_DRINK: { color: "warning", icon: "🍔" },
+  GENERAL_MERCHANDISE: { color: "info", icon: "🛍️" },
+  TRANSPORTATION: { color: "discovery", icon: "🚗" },
+  TRANSFER_IN: { color: "success", icon: "💰" },
+  TRANSFER_OUT: { color: "danger", icon: "💸" },
+  ENTERTAINMENT: { color: "discovery", icon: "🎬" },
+  TRAVEL: { color: "info", icon: "✈️" },
+  GENERAL_SERVICES: { color: "secondary", icon: "⚙️" },
+  RENT_AND_UTILITIES: { color: "warning", icon: "🏠" },
+  HOME_IMPROVEMENT: { color: "info", icon: "🔨" },
+  MEDICAL: { color: "danger", icon: "🏥" },
+  BANK_FEES: { color: "secondary", icon: "🏦" },
+  LOAN_PAYMENTS: { color: "discovery", icon: "💳" },
+  INCOME: { color: "success", icon: "💵" },
+  UNCATEGORIZED: { color: "secondary", icon: "❓" },
 };
 
-// Payment channel badges
 const PAYMENT_CHANNEL_ICONS: Record<string, string> = {
   online: "🌐",
   "in store": "🏪",
@@ -107,9 +118,7 @@ export default function Transactions() {
 
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
-  const theme = useTheme();
   const isFullscreen = displayMode === "fullscreen";
-  const isDark = theme === "dark";
 
   // Max visible transactions per date group in inline mode
   const MAX_VISIBLE_INLINE = 3;
@@ -119,21 +128,17 @@ export default function Transactions() {
   const transactions = toolMetadata?.transactions || [];
   const metadata = toolOutput?.metadata;
 
-  // Create a Set for expanded date groups for efficient lookups
   const expandedDateGroupsSet = useMemo(() => new Set(uiState.expandedDateGroups), [uiState.expandedDateGroups]);
 
-  // Filter transactions (must be called before any conditional returns)
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
 
-    // Category filter
     if (uiState.selectedCategory) {
       filtered = filtered.filter(
         (tx) => tx.personal_finance_category?.primary === uiState.selectedCategory
       );
     }
 
-    // Search filter
     if (uiState.searchQuery) {
       const query = uiState.searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -144,7 +149,6 @@ export default function Transactions() {
       );
     }
 
-    // Pending filter
     if (uiState.showPendingOnly) {
       filtered = filtered.filter((tx) => tx.pending);
     }
@@ -152,7 +156,6 @@ export default function Transactions() {
     return filtered;
   }, [transactions, uiState.selectedCategory, uiState.searchQuery, uiState.showPendingOnly]);
 
-  // Group transactions by date
   const groupedTransactions = useMemo(() => {
     const groups: Record<string, TransactionWithEnrichment[]> = {};
     filteredTransactions.forEach((tx) => {
@@ -165,66 +168,46 @@ export default function Transactions() {
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filteredTransactions]);
 
-  // Now we can do conditional returns after all hooks are called
-  // Check for auth requirements
   const authComponent = checkWidgetAuth(toolOutput);
   if (authComponent) return authComponent;
 
   if (!toolOutput && !toolMetadata) {
     return (
-      <div
-        className={cn(
-          "antialiased w-full relative flex items-center justify-center",
-          isDark ? "bg-gray-900 text-white" : "bg-gray-50 text-black"
-        )}
-        style={{ maxHeight: maxHeight ?? undefined }}
-      >
-        <div className="text-center p-8">
-          <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
-            No transactions available
-          </p>
-        </div>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Title>No transactions available</EmptyMessage.Title>
+      </EmptyMessage>
     );
   }
 
   return (
     <div
-      className={cn(
-        "antialiased w-full relative",
-        isDark ? "bg-gray-900" : "bg-gray-50",
-        !isFullscreen && "overflow-hidden"
-      )}
+      className={`antialiased w-full relative bg-transparent text-default ${!isFullscreen ? "overflow-hidden" : ""}`}
       style={{
         maxHeight: maxHeight ?? undefined,
         height: isFullscreen ? maxHeight ?? undefined : undefined,
       }}
     >
-      {/* Expand button (inline mode only) */}
       {!isFullscreen && (
-        <button
+        <Button
           onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
-          className={cn(
-            "absolute top-4 right-4 z-20 p-2 rounded-full shadow-lg transition-all ring-1",
-            isDark
-              ? "bg-gray-800 text-white hover:bg-gray-700 ring-white/10"
-              : "bg-white text-black hover:bg-gray-100 ring-black/5"
-          )}
+          variant="ghost"
+          color="secondary"
+          size="sm"
+          className="absolute top-4 right-4 z-20"
           aria-label="Expand to fullscreen"
         >
-          <Maximize2 strokeWidth={1.5} className="h-4 w-4" />
-        </button>
+          <Expand className="h-4 w-4" />
+        </Button>
       )}
 
-      {/* Content */}
-      <div className={cn("w-full h-full overflow-y-auto", isFullscreen ? "p-8" : "p-5")}>
+      <div className={`w-full h-full overflow-y-auto ${isFullscreen ? "p-8" : "p-0"}`}>
         {/* Header */}
         <div className="mb-6">
-          <h1 className={cn("text-2xl font-semibold mb-2", isDark ? "text-white" : "text-black")}>
+          <h1 className="heading-lg mb-2">
             Transactions
           </h1>
           {toolOutput?.dateRange && (
-            <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+            <p className="text-sm text-secondary">
               {`${formatDate(toolOutput.dateRange.start)} - ${formatDate(toolOutput.dateRange.end)}`}
             </p>
           )}
@@ -233,216 +216,113 @@ export default function Transactions() {
         {/* Summary Cards */}
         {metadata && (
           <div
-            className={cn(
-              "grid gap-4 mb-6",
-              isFullscreen ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"
-            )}
+            className={`grid gap-4 mb-6 ${isFullscreen ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"}`}
           >
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0 }}
-              className={cn(
-                "rounded-2xl border p-4 shadow-[0px_2px_6px_rgba(0,0,0,0.06)]",
-                isDark
-                  ? "bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-green-500/20"
-                  : "bg-gradient-to-br from-green-50 to-emerald-50 border-green-200"
-              )}
-            >
+            <div className="rounded-2xl border-none bg-success-soft p-4">
               <div className="flex items-center gap-3 mb-2">
-                <div
-                  className={cn(
-                    "p-2 rounded-lg",
-                    isDark ? "bg-green-500/20" : "bg-green-100"
-                  )}
-                >
-                  <TrendingUp strokeWidth={1.5} className="h-4 w-4 text-green-600" />
+                <div className="p-2 rounded-lg bg-success-surface text-success-soft">
+                  <ArrowUp className="h-4 w-4" />
                 </div>
-                <div className={cn("text-xs font-medium", isDark ? "text-green-400" : "text-green-700")}>
+                <div className="text-xs font-medium text-success-soft">
                   Income
                 </div>
               </div>
-              <div className={cn("text-xl font-bold", isDark ? "text-green-300" : "text-green-900")}>
+              <div className="text-xl font-bold text-success-soft">
                 {formatCurrency(metadata.summary.totalIncome)}
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className={cn(
-                "rounded-2xl border p-4 shadow-[0px_2px_6px_rgba(0,0,0,0.06)]",
-                isDark
-                  ? "bg-gradient-to-br from-red-500/20 to-rose-500/20 border-red-500/20"
-                  : "bg-gradient-to-br from-red-50 to-rose-50 border-red-200"
-              )}
-            >
+            <div className="rounded-2xl border-none bg-danger-soft p-4">
               <div className="flex items-center gap-3 mb-2">
-                <div
-                  className={cn(
-                    "p-2 rounded-lg",
-                    isDark ? "bg-red-500/20" : "bg-red-100"
-                  )}
-                >
-                  <TrendingDown strokeWidth={1.5} className="h-4 w-4 text-red-600" />
+                <div className="p-2 rounded-lg bg-danger-surface text-danger-soft">
+                  <ArrowDown className="h-4 w-4" />
                 </div>
-                <div className={cn("text-xs font-medium", isDark ? "text-red-400" : "text-red-700")}>
+                <div className="text-xs font-medium text-danger-soft">
                   Spending
                 </div>
               </div>
-              <div className={cn("text-xl font-bold", isDark ? "text-red-300" : "text-red-900")}>
+              <div className="text-xl font-bold text-danger-soft">
                 {formatCurrency(metadata.summary.totalSpending)}
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className={cn(
-                "rounded-2xl border p-4 shadow-[0px_2px_6px_rgba(0,0,0,0.06)]",
-                isDark
-                  ? "bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border-blue-500/20"
-                  : "bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200"
-              )}
-            >
+            <div className="rounded-2xl border-none bg-info-soft p-4">
               <div className="flex items-center gap-3 mb-2">
-                <div
-                  className={cn(
-                    "p-2 rounded-lg",
-                    isDark ? "bg-blue-500/20" : "bg-blue-100"
-                  )}
-                >
-                  <DollarSign strokeWidth={1.5} className="h-4 w-4 text-blue-600" />
+                <div className="p-2 rounded-lg bg-info-surface text-info-soft">
+                  <DollarCircle className="h-4 w-4" />
                 </div>
-                <div className={cn("text-xs font-medium", isDark ? "text-blue-400" : "text-blue-700")}>
+                <div className="text-xs font-medium text-info-soft">
                   Net Flow
                 </div>
               </div>
               <div
-                className={cn(
-                  "text-xl font-bold",
-                  metadata.summary.netCashFlow >= 0
-                    ? isDark
-                      ? "text-green-300"
-                      : "text-green-900"
-                    : isDark
-                    ? "text-red-300"
-                    : "text-red-900"
-                )}
+                className={`text-xl font-bold ${metadata.summary.netCashFlow >= 0 ? "text-success-soft" : "text-danger-soft"}`}
               >
                 {metadata.summary.netCashFlow >= 0 ? "+" : ""}
                 {formatCurrency(metadata.summary.netCashFlow)}
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className={cn(
-                "rounded-2xl border p-4 shadow-[0px_2px_6px_rgba(0,0,0,0.06)]",
-                isDark
-                  ? "bg-gradient-to-br from-purple-500/20 to-violet-500/20 border-purple-500/20"
-                  : "bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200"
-              )}
-            >
+            <div className="rounded-2xl border-none bg-discovery-soft p-4">
               <div className="flex items-center gap-3 mb-2">
-                <div
-                  className={cn(
-                    "p-2 rounded-lg",
-                    isDark ? "bg-purple-500/20" : "bg-purple-100"
-                  )}
-                >
-                  <Calendar strokeWidth={1.5} className="h-4 w-4 text-purple-600" />
+                <div className="p-2 rounded-lg bg-discovery-surface text-discovery-soft">
+                  <Calendar className="h-4 w-4" />
                 </div>
-                <div className={cn("text-xs font-medium", isDark ? "text-purple-400" : "text-purple-700")}>
+                <div className="text-xs font-medium text-discovery-soft">
                   Pending
                 </div>
               </div>
-              <div className={cn("text-xl font-bold", isDark ? "text-purple-300" : "text-purple-900")}>
+              <div className="text-xl font-bold text-discovery-soft">
                 {metadata.summary.pendingCount}
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
 
         {/* Filters */}
         {metadata && (
           <div
-            className={cn(
-              "mb-6 flex flex-col gap-3",
-              isFullscreen && "md:flex-row md:items-center"
-            )}
+            className={`mb-6 flex flex-col gap-3 ${isFullscreen ? "md:flex-row md:items-center" : ""}`}
           >
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search
-                strokeWidth={1.5}
-                className={cn(
-                  "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4",
-                  isDark ? "text-white/40" : "text-black/40"
-                )}
-              />
-              <input
-                type="text"
+            <div className="flex-1">
+              <Input
                 placeholder="Search transactions..."
                 value={uiState.searchQuery}
                 onChange={(e) => setUiState(s => ({ ...s, searchQuery: e.target.value }))}
-                className={cn(
-                  "w-full pl-9 pr-4 py-2 rounded-lg border text-sm transition-all outline-none ring-0",
-                  isDark
-                    ? "bg-gray-800 border-white/10 text-white placeholder:text-white/40 focus:border-white/20"
-                    : "bg-white border-black/10 text-black placeholder:text-black/40 focus:border-black/20"
-                )}
+                startAdornment={<Search className="text-tertiary" />}
               />
             </div>
 
-            {/* Category Filter */}
-            <select
+            <Select
               value={uiState.selectedCategory || ""}
-              onChange={(e) => setUiState(s => ({...s, selectedCategory: e.target.value || null}))}
-              className={cn(
-                "px-4 py-2 rounded-lg border text-sm transition-all outline-none",
-                isDark
-                  ? "bg-gray-800 border-white/10 text-white focus:border-white/20"
-                  : "bg-white border-black/10 text-black focus:border-black/20"
-              )}
-            >
-              <option value="">All Categories</option>
-              {metadata.categoryBreakdown.map((cat) => (
-                <option key={cat.category} value={cat.category}>
-                  {formatCategoryName(cat.category)} ({cat.count})
-                </option>
-              ))}
-            </select>
+              onChange={(val: any) => setUiState(s => ({...s, selectedCategory: val?.value || null}))}
+              options={[
+                { value: "", label: "All Categories" },
+                ...metadata.categoryBreakdown.map((cat) => ({
+                  value: cat.category,
+                  label: `${formatCategoryName(cat.category)} (${cat.count})`
+                }))
+              ]}
+              placeholder="All Categories"
+              dropdownIconType="chevronDown"
+            />
 
-            {/* Pending Filter */}
-            <button
+            <Button
+              variant={uiState.showPendingOnly ? "solid" : "outline"}
+              color="discovery"
               onClick={() => setUiState(s => ({...s, showPendingOnly: !s.showPendingOnly}))}
-              className={cn(
-                "px-4 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap",
-                uiState.showPendingOnly
-                  ? "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg"
-                  : isDark
-                  ? "bg-gray-800 text-white border border-white/10 hover:bg-gray-700"
-                  : "bg-white text-black border border-black/10 hover:bg-gray-100"
-              )}
             >
-              <Filter strokeWidth={1.5} className="h-4 w-4 inline mr-2" />
+              <Filter className="mr-2" />
               {uiState.showPendingOnly ? "Show All" : "Pending"}
-            </button>
+            </Button>
           </div>
         )}
 
-        {/* Transaction List by Date Groups */}
+        {/* Transaction List */}
         {filteredTransactions.length === 0 ? (
-          <div className="text-center py-12">
-            <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
-              No transactions match your filters
-            </p>
-          </div>
+          <EmptyMessage>
+            <EmptyMessage.Title>No transactions match your filters</EmptyMessage.Title>
+          </EmptyMessage>
         ) : (
           <div className="space-y-6">
             {(isFullscreen || uiState.showAllDates
@@ -450,14 +330,12 @@ export default function Transactions() {
               : groupedTransactions.slice(0, MAX_DATE_GROUPS_INLINE)
             ).map(([date, txs], groupIndex) => (
               <div key={date}>
-                {/* Date Header */}
                 <div className="mb-3">
-                  <h3 className={cn("text-sm font-semibold", isDark ? "text-white/80" : "text-black/80")}>
+                  <h3 className="text-sm font-semibold text-secondary">
                     {formatDate(date)}
                   </h3>
                 </div>
 
-                {/* Transaction Cards */}
                 <div className="space-y-2">
                   <AnimatePresence mode="popLayout">
                     {(isFullscreen || expandedDateGroupsSet.has(date) ? txs : txs.slice(0, MAX_VISIBLE_INLINE)).map((tx, txIndex) => {
@@ -466,9 +344,8 @@ export default function Transactions() {
                       const category = tx.personal_finance_category?.primary || "UNCATEGORIZED";
                       const categoryDetailed =
                         tx.personal_finance_category?.detailed || "Uncategorized";
-                      const categoryData = CATEGORY_COLORS[category] || CATEGORY_COLORS.UNCATEGORIZED;
+                      const categoryStyle = CATEGORY_STYLES[category] || CATEGORY_STYLES.UNCATEGORIZED;
                       const logo = tx.logo_url || tx.counterparties?.[0]?.logo_url;
-                      const displayDate = tx.authorized_date || tx.date;
 
                       return (
                         <motion.div
@@ -477,55 +354,39 @@ export default function Transactions() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ delay: (groupIndex * 0.02) + (txIndex * 0.02) }}
-                          className={cn(
-                            "rounded-2xl border shadow-[0px_2px_6px_rgba(0,0,0,0.06)] cursor-pointer transition-all",
-                            isDark
-                              ? "bg-gray-800 border-white/10 hover:bg-gray-750"
-                              : "bg-white border-black/5 hover:bg-gray-50"
-                          )}
+                          className="rounded-2xl border-none bg-surface shadow-none cursor-pointer hover:bg-surface-secondary transition-colors"
                           onClick={() => setUiState(s => ({...s, expandedTx: isExpanded ? null : tx.transaction_id}))}
                         >
-                          {/* Main Row */}
                           <div className="p-4">
                             <div className="flex items-center gap-4">
-                              {/* Logo/Icon */}
                               <div className="flex-shrink-0">
                                 {logo ? (
                                   <img
                                     src={logo}
                                     alt={merchantName}
-                                    className="w-12 h-12 rounded-full object-cover border-2 border-black/5"
+                                    className="w-12 h-12 rounded-full object-cover border-2 border-subtle"
                                     onError={(e) => {
                                       (e.target as HTMLImageElement).style.display = "none";
-                                      // Show fallback letter circle
                                       const fallback = document.createElement("div");
-                                      fallback.className = "w-12 h-12 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white font-bold text-lg";
+                                      fallback.className = "w-12 h-12 rounded-full bg-surface-tertiary flex items-center justify-center text-default font-bold text-lg";
                                       fallback.textContent = merchantName.charAt(0).toUpperCase();
                                       e.currentTarget.parentElement?.appendChild(fallback);
                                     }}
                                   />
                                 ) : (
-                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white font-bold text-lg">
+                                  <div className="w-12 h-12 rounded-full bg-surface-tertiary flex items-center justify-center text-default font-bold text-lg">
                                     {merchantName.charAt(0).toUpperCase()}
                                   </div>
                                 )}
                               </div>
 
-                              {/* Transaction Info */}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <h3
-                                    className={cn(
-                                      "font-semibold truncate",
-                                      isDark ? "text-white" : "text-black"
-                                    )}
-                                  >
+                                  <h3 className="font-semibold truncate text-default">
                                     {merchantName}
                                   </h3>
                                   {tx.pending && (
-                                    <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-500/20 text-yellow-800 dark:text-yellow-400 text-xs font-medium rounded-full whitespace-nowrap">
-                                      Pending
-                                    </span>
+                                    <Badge color="warning" size="sm" pill>Pending</Badge>
                                   )}
                                   {tx.payment_channel && (
                                     <span className="text-sm">
@@ -534,30 +395,15 @@ export default function Transactions() {
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2 text-xs">
-                                  <span
-                                    className={cn(
-                                      "px-2 py-0.5 rounded-full font-medium flex items-center gap-1",
-                                      categoryData.bg,
-                                      categoryData.text
-                                    )}
-                                  >
-                                    <span>{categoryData.icon}</span>
-                                    <span>{formatCategoryName(category)}</span>
-                                  </span>
+                                  <Badge color={categoryStyle.color} variant="soft" size="sm">
+                                    {categoryStyle.icon} {formatCategoryName(category)}
+                                  </Badge>
                                 </div>
                               </div>
 
-                              {/* Amount */}
                               <div className="text-right flex-shrink-0">
                                 <div
-                                  className={cn(
-                                    "text-lg font-bold",
-                                    tx.amount < 0
-                                      ? "text-green-600 dark:text-green-400"
-                                      : isDark
-                                      ? "text-white"
-                                      : "text-black"
-                                  )}
+                                  className={`text-lg font-bold ${tx.amount < 0 ? "text-success" : "text-default"}`}
                                 >
                                   {tx.amount < 0
                                     ? `+${formatCurrency(Math.abs(tx.amount), tx.iso_currency_code || "USD")}`
@@ -568,7 +414,6 @@ export default function Transactions() {
                             </div>
                           </div>
 
-                          {/* Expanded Details */}
                           <AnimatePresence>
                             {isExpanded && (
                               <motion.div
@@ -578,125 +423,48 @@ export default function Transactions() {
                                 transition={{ duration: 0.2 }}
                                 className="overflow-hidden"
                               >
-                                <div
-                                  className={cn(
-                                    "px-4 pb-4 border-t",
-                                    isDark ? "border-white/10" : "border-black/5"
-                                  )}
-                                >
+                                <div className="px-4 pb-4 border-t border-subtle">
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                                    {/* Left Column */}
                                     <div className="space-y-3">
                                       <div>
-                                        <div
-                                          className={cn(
-                                            "text-xs font-medium uppercase mb-1",
-                                            isDark ? "text-white/60" : "text-black/60"
-                                          )}
-                                        >
-                                          Category
-                                        </div>
-                                        <div className={cn("text-sm", isDark ? "text-white" : "text-black")}>
-                                          {formatCategoryName(categoryDetailed)}
-                                        </div>
+                                        <div className="text-xs font-medium uppercase mb-1 text-tertiary">Category</div>
+                                        <div className="text-sm text-default">{formatCategoryName(categoryDetailed)}</div>
                                       </div>
-
                                       {tx.payment_channel && (
                                         <div>
-                                          <div
-                                            className={cn(
-                                              "text-xs font-medium uppercase mb-1",
-                                              isDark ? "text-white/60" : "text-black/60"
-                                            )}
-                                          >
-                                            Payment Channel
-                                          </div>
-                                          <div
-                                            className={cn(
-                                              "text-sm capitalize",
-                                              isDark ? "text-white" : "text-black"
-                                            )}
-                                          >
-                                            {tx.payment_channel}
-                                          </div>
+                                          <div className="text-xs font-medium uppercase mb-1 text-tertiary">Payment Channel</div>
+                                          <div className="text-sm capitalize text-default">{tx.payment_channel}</div>
                                         </div>
                                       )}
-
                                       {tx.location?.city && (
                                         <div>
-                                          <div
-                                            className={cn(
-                                              "text-xs font-medium uppercase mb-1",
-                                              isDark ? "text-white/60" : "text-black/60"
-                                            )}
-                                          >
-                                            Location
-                                          </div>
-                                          <div className={cn("text-sm", isDark ? "text-white" : "text-black")}>
-                                            {[tx.location.address, tx.location.city, tx.location.region]
-                                              .filter(Boolean)
-                                              .join(", ")}
+                                          <div className="text-xs font-medium uppercase mb-1 text-tertiary">Location</div>
+                                          <div className="text-sm text-default">
+                                            {[tx.location.address, tx.location.city, tx.location.region].filter(Boolean).join(", ")}
                                           </div>
                                         </div>
                                       )}
                                     </div>
 
-                                    {/* Right Column */}
                                     <div className="space-y-3">
                                       {tx.check_number && (
                                         <div>
-                                          <div
-                                            className={cn(
-                                              "text-xs font-medium uppercase mb-1",
-                                              isDark ? "text-white/60" : "text-black/60"
-                                            )}
-                                          >
-                                            Check Number
-                                          </div>
-                                          <div className={cn("text-sm", isDark ? "text-white" : "text-black")}>
-                                            #{tx.check_number}
-                                          </div>
+                                          <div className="text-xs font-medium uppercase mb-1 text-tertiary">Check Number</div>
+                                          <div className="text-sm text-default">#{tx.check_number}</div>
                                         </div>
                                       )}
-
                                       {tx.original_description && (
                                         <div>
-                                          <div
-                                            className={cn(
-                                              "text-xs font-medium uppercase mb-1",
-                                              isDark ? "text-white/60" : "text-black/60"
-                                            )}
-                                          >
-                                            Bank Description
-                                          </div>
-                                          <div
-                                            className={cn(
-                                              "text-sm font-mono",
-                                              isDark ? "text-white/80" : "text-black/80"
-                                            )}
-                                          >
-                                            {tx.original_description}
-                                          </div>
+                                          <div className="text-xs font-medium uppercase mb-1 text-tertiary">Bank Description</div>
+                                          <div className="text-sm font-mono text-secondary">{tx.original_description}</div>
                                         </div>
                                       )}
-
                                       {tx.counterparties && tx.counterparties.length > 0 && (
                                         <div>
-                                          <div
-                                            className={cn(
-                                              "text-xs font-medium uppercase mb-1",
-                                              isDark ? "text-white/60" : "text-black/60"
-                                            )}
-                                          >
-                                            Counterparty
-                                          </div>
-                                          <div className={cn("text-sm", isDark ? "text-white" : "text-black")}>
+                                          <div className="text-xs font-medium uppercase mb-1 text-tertiary">Counterparty</div>
+                                          <div className="text-sm text-default">
                                             {tx.counterparties[0].name}
-                                            {tx.counterparties[0].type && (
-                                              <span className={cn("ml-1", isDark ? "text-white/60" : "text-black/60")}>
-                                                ({tx.counterparties[0].type})
-                                              </span>
-                                            )}
+                                            {tx.counterparties[0].type && <span className="ml-1 text-secondary">({tx.counterparties[0].type})</span>}
                                           </div>
                                         </div>
                                       )}
@@ -711,49 +479,36 @@ export default function Transactions() {
                     })}
                   </AnimatePresence>
 
-                  {/* "+# more" indicator for inline mode - expands this date group */}
                   {!isFullscreen && !expandedDateGroupsSet.has(date) && txs.length > MAX_VISIBLE_INLINE && (
-                    <motion.button
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
+                    <Button
+                      variant="outline"
+                      color="secondary"
+                      className="w-full"
                       onClick={() => {
                         setUiState(s => ({ ...s, expandedDateGroups: [...s.expandedDateGroups, date]}));
                       }}
-                      className={cn(
-                        "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
-                        isDark
-                          ? "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
-                          : "border-black/10 bg-white/40 text-black/60 hover:bg-white/50"
-                      )}
                     >
                       +{txs.length - MAX_VISIBLE_INLINE} more
-                    </motion.button>
+                    </Button>
                   )}
                 </div>
               </div>
             ))}
 
-            {/* Show More Date Groups Button - opens fullscreen */}
             {!isFullscreen && !uiState.showAllDates && groupedTransactions.length > MAX_DATE_GROUPS_INLINE && (
-              <motion.button
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
+              <Button
+                variant="outline"
+                color="secondary"
+                className="w-full"
                 onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
-                className={cn(
-                  "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
-                  isDark
-                    ? "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
-                    : "border-black/10 bg-white/40 text-black/60 hover:bg-white/50"
-                )}
               >
                 +{groupedTransactions.length - MAX_DATE_GROUPS_INLINE} more dates
-              </motion.button>
+              </Button>
             )}
           </div>
         )}
 
-        {/* Results Summary */}
-        <div className={cn("mt-6 text-center text-sm", isDark ? "text-white/60" : "text-black/60")}>
+        <div className="mt-6 text-center text-sm text-secondary">
           Showing {filteredTransactions.length} of {toolOutput?.totalTransactions ?? transactions.length} transactions
         </div>
       </div>

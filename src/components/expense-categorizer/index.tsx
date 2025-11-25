@@ -5,6 +5,8 @@ import { useOpenAiGlobal } from "@/src/use-openai-global";
 import type { ExpenseCategorizationContent } from "@/lib/types/tool-responses";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 import { useState } from "react";
+import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
+import { cn } from "@/lib/utils/cn";
 
 interface ExpenseSuggestion {
   transaction_id: string;
@@ -36,9 +38,9 @@ export default function ExpenseCategorizerWidget() {
 
   if (!toolOutput?.structuredContent) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-gray-500">No expense data available</p>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Title>No expense data available</EmptyMessage.Title>
+      </EmptyMessage>
     );
   }
 
@@ -61,7 +63,7 @@ export default function ExpenseCategorizerWidget() {
   const taxCategoryList = Object.keys(taxCategories);
 
   return (
-    <div className="flex flex-col gap-4 p-6 bg-gradient-to-br from-white to-gray-50 min-h-screen">
+    <div className="flex flex-col gap-4 p-0 bg-transparent min-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">Expense Categorizer</h1>
@@ -70,25 +72,25 @@ export default function ExpenseCategorizerWidget() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-white rounded-lg shadow-none p-4">
           <div className="text-sm text-gray-600">Auto-Categorized</div>
           <div className="text-2xl font-bold text-green-600">{categorized}</div>
           <div className="text-xs text-gray-500 mt-1">High confidence</div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-white rounded-lg shadow-none p-4">
           <div className="text-sm text-gray-600">Needs Review</div>
           <div className="text-2xl font-bold text-yellow-600">{needsReview}</div>
           <div className="text-xs text-gray-500 mt-1">Manual check required</div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-white rounded-lg shadow-none p-4">
           <div className="text-sm text-gray-600">Tax Categories</div>
           <div className="text-2xl font-bold text-blue-600">{taxCategoryList.length}</div>
           <div className="text-xs text-gray-500 mt-1">Distinct categories</div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-white rounded-lg shadow-none p-4">
           <div className="text-sm text-gray-600">Total Expenses</div>
           <div className="text-2xl font-bold text-gray-800">{allSuggestions.length}</div>
           <div className="text-xs text-gray-500 mt-1">Transactions reviewed</div>
@@ -97,7 +99,7 @@ export default function ExpenseCategorizerWidget() {
 
       {/* Confidence Distribution */}
       {confidenceDistribution && (
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-white rounded-lg shadow-none p-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-3">Confidence Distribution</h2>
           <div className="space-y-2">
             <div className="flex items-center gap-3">
@@ -149,13 +151,13 @@ export default function ExpenseCategorizerWidget() {
       )}
 
       {/* Tax Category Breakdown */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white rounded-lg shadow-none p-4">
         <h2 className="text-lg font-semibold text-gray-800 mb-3">Tax Category Breakdown</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {taxCategoryList.map((category) => (
             <div
               key={category}
-              className="border border-gray-200 rounded-lg p-3 hover:border-blue-400 transition-colors cursor-pointer"
+              className="border-none bg-gray-50 rounded-lg p-3 hover:bg-blue-50 transition-colors cursor-pointer"
               onClick={() =>
                 setSelectedCategory(selectedCategory === category ? "all" : category)
               }
@@ -204,7 +206,7 @@ export default function ExpenseCategorizerWidget() {
         {filteredSuggestions.map((suggestion) => (
           <div
             key={suggestion.transaction_id}
-            className={`bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow ${
+            className={`bg-white rounded-lg shadow-none p-4 hover:bg-gray-50 transition-colors ${
               suggestion.needsReview ? "border-l-4 border-yellow-500" : ""
             }`}
           >

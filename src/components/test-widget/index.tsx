@@ -2,27 +2,17 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Sparkles, CheckCircle2 } from "lucide-react";
+import { Sparkle, CheckCircleFilled } from "@openai/apps-sdk-ui/components/Icon";
 import { cn } from "@/lib/utils/cn";
-import { useTheme } from "@/src/use-theme";
 
 export default function TestWidget() {
-  const theme = useTheme();
-  const isDark = theme === "dark";
-
   return (
     <div className="p-5 antialiased">
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-        className={cn(
-          "rounded-3xl border p-8 text-center",
-          isDark
-            ? "bg-gray-800 border-white/10"
-            : "bg-white border-black/10",
-          "shadow-[0px_6px_14px_rgba(0,0,0,0.1)]"
-        )}
+        className="rounded-3xl border-none p-8 text-center bg-surface shadow-none"
       >
         <motion.div
           initial={{ scale: 0 }}
@@ -33,26 +23,16 @@ export default function TestWidget() {
             duration: 1,
             delay: 0.2,
           }}
-          className="mx-auto mb-6 w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center"
+          className="mx-auto mb-6 w-20 h-20 rounded-2xl bg-discovery-solid flex items-center justify-center"
         >
-          <Sparkles className="w-10 h-10 text-white" />
+          <Sparkle className="w-10 h-10 text-white" />
         </motion.div>
 
-        <h1
-          className={cn(
-            "text-2xl font-semibold mb-2",
-            isDark ? "text-white" : "text-black"
-          )}
-        >
+        <h1 className="heading-lg mb-2 text-default">
           Test Widget
         </h1>
 
-        <p
-          className={cn(
-            "text-sm mb-6",
-            isDark ? "text-white/60" : "text-black/60"
-          )}
-        >
+        <p className="text-sm mb-6 text-secondary">
           This is a test widget demonstrating the new design system
         </p>
 
@@ -71,18 +51,10 @@ export default function TestWidget() {
                 }}
                 className="flex items-center justify-center gap-2"
               >
-                <CheckCircle2
-                  className={cn(
-                    "w-4 h-4",
-                    isDark ? "text-emerald-400" : "text-emerald-600"
-                  )}
+                <CheckCircleFilled
+                  className="w-4 h-4 text-success"
                 />
-                <span
-                  className={cn(
-                    "text-sm",
-                    isDark ? "text-white/70" : "text-black/70"
-                  )}
-                >
+                <span className="text-sm text-secondary">
                   {feature}
                 </span>
               </motion.div>

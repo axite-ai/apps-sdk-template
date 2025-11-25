@@ -12,17 +12,19 @@ import {
 import { useTheme } from '@/src/use-theme';
 import { cn } from '@/lib/utils/cn';
 import {
-  Building2,
+  Business,
   Plus,
-  Trash2,
-  RefreshCw,
-  AlertCircle,
+  Trash,
+  Reload,
+  Error as ErrorIcon,
   CheckCircle,
   Clock,
-  TrendingUp,
-  Shield,
-  Zap
-} from 'lucide-react';
+  Trending,
+  ShieldCheck,
+  Flash
+} from '@openai/apps-sdk-ui/components/Icon';
+import { Button, ButtonLink } from "@openai/apps-sdk-ui/components/Button";
+import { Badge } from "@openai/apps-sdk-ui/components/Badge";
 
 interface PlaidLinkPageProps {
   linkToken: string | null;
@@ -43,10 +45,10 @@ interface ConnectedItem {
 }
 
 const features = [
-  { icon: Building2, text: "Banks, credit cards, investments & more" },
-  { icon: Shield, text: "Bank-level encryption & security" },
-  { icon: Zap, text: "Real-time balance updates" },
-  { icon: TrendingUp, text: "AI-powered spending insights" },
+  { icon: Business, text: "Banks, credit cards, investments & more" },
+  { icon: ShieldCheck, text: "Bank-level encryption & security" },
+  { icon: Flash, text: "Real-time balance updates" },
+  { icon: Trending, text: "AI-powered spending insights" },
 ];
 
 export default function ConnectBankClient() {
@@ -276,24 +278,24 @@ export default function ConnectBankClient() {
     switch (status) {
       case 'active':
         return (
-          <span className={cn("inline-flex items-center px-2 py-1 rounded-md text-xs font-medium", isDark ? "bg-green-500/20 text-green-400" : "bg-green-100 text-green-700")}>
+          <Badge color="success" size="sm">
             <CheckCircle className="w-3 h-3 mr-1" />
             Active
-          </span>
+          </Badge>
         );
       case 'pending':
         return (
-          <span className={cn("inline-flex items-center px-2 py-1 rounded-md text-xs font-medium", isDark ? "bg-yellow-500/20 text-yellow-400" : "bg-yellow-100 text-yellow-700")}>
+          <Badge color="warning" size="sm">
             <Clock className="w-3 h-3 mr-1" />
             Connecting...
-          </span>
+          </Badge>
         );
       case 'error':
         return (
-          <span className={cn("inline-flex items-center px-2 py-1 rounded-md text-xs font-medium", isDark ? "bg-red-500/20 text-red-400" : "bg-red-100 text-red-700")}>
-            <AlertCircle className="w-3 h-3 mr-1" />
+          <Badge color="danger" size="sm">
+            <ErrorIcon className="w-3 h-3 mr-1" />
             Action Required
-          </span>
+          </Badge>
         );
       default:
         return null;
@@ -331,9 +333,9 @@ export default function ConnectBankClient() {
 
         {/* Success Message */}
         {(successMessage || isSuccess) && (
-          <div className={cn("mb-6 p-4 rounded-lg border flex items-start", isDark ? "bg-green-500/20 border-green-500/30" : "bg-green-50 border-green-200")}>
-            <CheckCircle className={cn("w-5 h-5 mr-3 shrink-0 mt-0.5", isDark ? "text-green-400" : "text-green-600")} />
-            <p className={cn("text-sm font-medium", isDark ? "text-green-400" : "text-green-800")}>
+          <div className="mb-6 p-4 rounded-lg border flex items-start bg-success-soft border-success-surface">
+            <CheckCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5 text-success" />
+            <p className="text-sm font-medium text-success-soft">
               {successMessage || 'Account connected successfully!'}
             </p>
           </div>
@@ -341,13 +343,13 @@ export default function ConnectBankClient() {
 
         {/* Limit Reached Message */}
         {limitReached && (
-          <div className={cn("mb-6 p-4 rounded-lg border flex items-start", isDark ? "bg-yellow-500/20 border-yellow-500/30" : "bg-yellow-50 border-yellow-200")}>
-            <AlertCircle className={cn("w-5 h-5 mr-3 shrink-0 mt-0.5", isDark ? "text-yellow-400" : "text-yellow-600")} />
+          <div className="mb-6 p-4 rounded-lg border flex items-start bg-warning-soft border-warning-surface">
+            <ErrorIcon className="w-5 h-5 mr-3 shrink-0 mt-0.5 text-warning" />
             <div className="flex-1">
-              <p className={cn("text-sm font-medium", isDark ? "text-yellow-400" : "text-yellow-800")}>
+              <p className="text-sm font-medium text-warning">
                 Account limit reached ({planInfo?.current}/{planInfo?.maxFormatted})
               </p>
-              <p className={cn("text-xs mt-1", isDark ? "text-yellow-400/80" : "text-yellow-700")}>
+              <p className="text-xs mt-1 text-warning-soft">
                 Remove an account or upgrade your plan to connect more.
               </p>
             </div>
@@ -356,29 +358,29 @@ export default function ConnectBankClient() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left: Connect New Account */}
-          <div className={cn("rounded-xl shadow-lg p-6 border", isDark ? "bg-gray-800 border-green-500/30" : "bg-white border-green-300")}>
+          <div className="rounded-xl shadow-lg p-6 border bg-surface border-subtle">
             <div className="flex items-start mb-6">
-              <div className={cn("p-3 rounded-xl mr-4 shrink-0", isDark ? "bg-green-500/20" : "bg-green-100")}>
-                <Plus className={cn("h-6 w-6", isDark ? "text-green-400" : "text-green-600")} />
+              <div className="p-3 rounded-xl mr-4 shrink-0 bg-success-soft">
+                <Plus className="h-6 w-6 text-success" />
               </div>
               <div className="flex-1">
-                <h2 className="text-xl font-bold mb-1">Connect New Account</h2>
-                <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
+                <h2 className="text-xl font-bold mb-1 text-default">Connect New Account</h2>
+                <p className="text-sm text-secondary">
                   {planInfo ? `${planInfo.current} of ${planInfo.maxFormatted} accounts connected` : 'Loading...'}
                 </p>
               </div>
             </div>
 
             {/* Features */}
-            <div className={cn("mb-6 p-4 rounded-lg border", isDark ? "bg-gray-900/50 border-gray-700" : "bg-gray-50 border-gray-200")}>
-              <p className={cn("text-sm font-semibold mb-3", isDark ? "text-white" : "text-black")}>
+            <div className="mb-6 p-4 rounded-lg border bg-surface-secondary border-subtle">
+              <p className="text-sm font-semibold mb-3 text-default">
                 What you'll get:
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {features.map((feature, index) => (
                   <div key={index} className="flex items-start">
-                    <feature.icon className={cn("w-4 h-4 mr-2 mt-0.5 shrink-0", isDark ? "text-green-400" : "text-green-600")} />
-                    <span className={cn("text-sm", isDark ? "text-gray-300" : "text-gray-700")}>
+                    <feature.icon className="w-4 h-4 mr-2 mt-0.5 shrink-0 text-success" />
+                    <span className="text-sm text-secondary">
                       {feature.text}
                     </span>
                   </div>
@@ -390,16 +392,16 @@ export default function ConnectBankClient() {
             {planInfo && (
               <div className="mb-6">
                 <div className="flex justify-between items-center mb-2">
-                  <span className={cn("text-sm font-medium", isDark ? "text-gray-300" : "text-gray-700")}>
+                  <span className="text-sm font-medium text-secondary">
                     {planInfo.plan.charAt(0).toUpperCase() + planInfo.plan.slice(1)} Plan
                   </span>
-                  <span className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-500")}>
+                  <span className="text-sm text-tertiary">
                     {planInfo.current} / {planInfo.maxFormatted}
                   </span>
                 </div>
-                <div className={cn("h-2 rounded-full overflow-hidden", isDark ? "bg-gray-700" : "bg-gray-200")}>
+                <div className="h-2 rounded-full overflow-hidden bg-surface-tertiary">
                   <div
-                    className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-300"
+                    className="h-full bg-success transition-all duration-300"
                     style={{
                       width: `${Math.min((planInfo.current / planInfo.max) * 100, 100)}%`,
                     }}
@@ -409,40 +411,39 @@ export default function ConnectBankClient() {
             )}
 
             {/* Connect Button */}
-            <button
+            <Button
               onClick={handleConnect}
               disabled={!ready || limitReached}
-              className={cn(
-                "w-full py-3 px-4 rounded-lg font-medium transition-all shadow-lg",
-                !ready || limitReached
-                  ? "opacity-50 cursor-not-allowed bg-gray-400"
-                  : "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
-              )}
+              color="success"
+              size="xl"
+              block
             >
               {limitReached ? 'Limit Reached' : !ready ? 'Loading...' : 'Connect Bank Account'}
-            </button>
+            </Button>
 
             {limitReached && (
-              <a
+              <ButtonLink
                 href="/pricing"
-                target="_blank"
-                className="mt-3 w-full inline-block text-center bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-500 text-white font-medium py-3 px-4 rounded-lg transition-all shadow-lg"
+                color="primary"
+                size="xl"
+                block
+                className="mt-3"
               >
                 Upgrade Plan
-              </a>
+              </ButtonLink>
             )}
           </div>
 
           {/* Right: Connected Accounts */}
-          <div className={cn("rounded-xl shadow-lg p-6 border", isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")}>
+          <div className="rounded-xl shadow-lg p-6 border bg-surface border-subtle">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-start">
-                <div className={cn("p-3 rounded-xl mr-4 shrink-0", isDark ? "bg-blue-500/20" : "bg-blue-100")}>
-                  <Building2 className={cn("h-6 w-6", isDark ? "text-blue-400" : "text-blue-600")} />
+                <div className="p-3 rounded-xl mr-4 shrink-0 bg-info-soft">
+                  <Business className="h-6 w-6 text-info" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold mb-1">Connected Accounts</h2>
-                  <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
+                  <h2 className="text-xl font-bold mb-1 text-default">Connected Accounts</h2>
+                  <p className="text-sm text-secondary">
                     {connectedItems.length} account{connectedItems.length !== 1 ? 's' : ''} connected
                   </p>
                 </div>
@@ -451,10 +452,10 @@ export default function ConnectBankClient() {
 
             {/* Deletion Rate Limit Warning */}
             {deletionInfo && !deletionInfo.canDelete && (
-              <div className={cn("mb-4 p-3 rounded-lg border", isDark ? "bg-yellow-500/10 border-yellow-500/30" : "bg-yellow-50 border-yellow-200")}>
+              <div className="mb-4 p-3 rounded-lg border bg-warning-soft border-warning-surface">
                 <div className="flex items-start">
-                  <Clock className={cn("w-4 h-4 mr-2 shrink-0 mt-0.5", isDark ? "text-yellow-400" : "text-yellow-600")} />
-                  <p className={cn("text-xs", isDark ? "text-yellow-400/80" : "text-yellow-700")}>
+                  <Clock className="w-4 h-4 mr-2 shrink-0 mt-0.5 text-warning" />
+                  <p className="text-xs text-warning-soft">
                     Next deletion available in {deletionInfo.daysUntilNext} days
                   </p>
                 </div>
@@ -464,65 +465,54 @@ export default function ConnectBankClient() {
             {/* Items List */}
             <div className="space-y-3 max-h-[600px] overflow-y-auto">
               {connectedItems.length === 0 ? (
-                <div className={cn("text-center py-12", isDark ? "text-gray-500" : "text-gray-400")}>
-                  <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">No accounts connected yet</p>
-                  <p className="text-xs mt-1">Connect your first account to get started</p>
+                <div className="text-center py-12">
+                  <Business className="w-12 h-12 mx-auto mb-3 opacity-50 text-tertiary" />
+                  <p className="text-sm text-secondary">No accounts connected yet</p>
+                  <p className="text-xs mt-1 text-tertiary">Connect your first account to get started</p>
                 </div>
               ) : (
                 connectedItems.map((item) => (
                   <div
                     key={item.id}
-                    className={cn(
-                      "p-4 rounded-lg border",
-                      isDark ? "bg-gray-900/50 border-gray-700" : "bg-gray-50 border-gray-200"
-                    )}
+                    className="p-4 rounded-lg border bg-surface-secondary border-subtle"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <Building2 className={cn("w-4 h-4", isDark ? "text-gray-400" : "text-gray-600")} />
-                          <p className="font-medium">{item.institutionName || 'Financial Institution'}</p>
+                          <Business className="w-4 h-4 text-secondary" />
+                          <p className="font-medium text-default">{item.institutionName || 'Financial Institution'}</p>
                           {getStatusBadge(item.status)}
                         </div>
-                        <p className={cn("text-xs", isDark ? "text-gray-400" : "text-gray-500")}>
+                        <p className="text-xs text-secondary">
                           {item.accountCount !== undefined && item.accountCount > 0
                             ? `${item.accountCount} ${item.accountCount === 1 ? 'account' : 'accounts'} • `
                             : ''}
                           Connected {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'recently'}
                         </p>
                         {item.status === 'error' && item.errorMessage && (
-                          <p className={cn("text-xs mt-2", isDark ? "text-red-400" : "text-red-600")}>
+                          <p className="text-xs mt-2 text-danger">
                             {item.errorMessage}
                           </p>
                         )}
                       </div>
                       <div className="flex gap-2 ml-4">
                         {item.status === 'error' && (
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            color="info"
                             onClick={() => handleUpdateItem(item.id)}
-                            className={cn(
-                              "p-2 rounded-lg transition-colors",
-                              isDark ? "hover:bg-blue-500/20 text-blue-400" : "hover:bg-blue-50 text-blue-600"
-                            )}
                             title="Re-authenticate"
                           >
-                            <RefreshCw className="w-4 h-4" />
-                          </button>
+                            <Reload className="w-4 h-4" />
+                          </Button>
                         )}
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          color="danger"
                           onClick={() => handleDeleteItem(item.id, item.institutionName)}
                           disabled={deletingItemId === item.id || (deletionInfo && !deletionInfo.canDelete)}
-                          className={cn(
-                            "p-2 rounded-lg transition-colors",
-                            deletingItemId === item.id
-                              ? "opacity-50 cursor-not-allowed"
-                              : deletionInfo && !deletionInfo.canDelete
-                              ? "opacity-30 cursor-not-allowed"
-                              : isDark
-                              ? "hover:bg-red-500/20 text-red-400"
-                              : "hover:bg-red-50 text-red-600"
-                          )}
                           title={
                             deletionInfo && !deletionInfo.canDelete
                               ? `Next deletion available in ${deletionInfo.daysUntilNext} days`
@@ -532,9 +522,9 @@ export default function ConnectBankClient() {
                           {deletingItemId === item.id ? (
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500" />
                           ) : (
-                            <Trash2 className="w-4 h-4" />
+                            <Trash className="w-4 h-4" />
                           )}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>

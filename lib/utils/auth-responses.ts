@@ -37,7 +37,10 @@ export function createLoginPromptResponse(featureName?: string) {
         text: baseMessage,
       } as { [x: string]: unknown; type: "text"; text: string },
     ],
-    // Don't include structuredContent - would conflict with tool's outputSchema validation
+    // Include minimal structured content to satisfy outputSchema validation
+    structuredContent: {
+      message: baseMessage,
+    },
     isError: false, // Not an error - just requires auth
     _meta: responseMeta,
   };

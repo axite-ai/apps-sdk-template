@@ -7,6 +7,28 @@ import type { MCPToolResponse, OpenAIResponseMetadata } from "./mcp-responses";
 import { z } from "zod";
 
 /**
+ * Common Auth/Error Response Schema
+ * Used when a tool requires authentication, subscription, or bank connection
+ */
+export const AuthResponseSchema = z.union([
+  // Login prompt
+  z.object({
+    message: z.string(),
+  }),
+  // Subscription required
+  z.object({
+    featureName: z.string(),
+    error_message: z.string(),
+    pricingUrl: z.string(),
+  }),
+  // Plaid required
+  z.object({
+    baseUrl: z.string(),
+    message: z.string(),
+  }),
+]);
+
+/**
  * Structured content for account balances
  */
 export interface AccountBalancesContent {
@@ -433,34 +455,37 @@ export interface AccountOverviewContent {
   }>;
 }
 
-export const AccountOverviewSchema = z.object({
-  summary: z.object({
-    totalBalance: z.number(),
-    accountCount: z.number().int(),
-    healthScore: z.number().int().min(0).max(100),
-    trend: z.enum(["improving", "stable", "declining"]),
-  }),
-  accounts: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      type: z.string(),
-      subtype: z.string(),
-      balance: z.number(),
-      available: z.number(),
-      currencyCode: z.string(),
-    })
-  ),
-  projections: z
-    .array(
+export const AccountOverviewSchema = z.union([
+  z.object({
+    summary: z.object({
+      totalBalance: z.number(),
+      accountCount: z.number().int(),
+      healthScore: z.number().int().min(0).max(100),
+      trend: z.enum(["improving", "stable", "declining"]),
+    }),
+    accounts: z.array(
       z.object({
-        month: z.number().int(),
-        projectedBalance: z.number(),
-        confidence: z.enum(["high", "medium", "low"]),
+        id: z.string(),
+        name: z.string(),
+        type: z.string(),
+        subtype: z.string(),
+        balance: z.number(),
+        available: z.number(),
+        currencyCode: z.string(),
       })
-    )
-    .optional(),
-});
+    ),
+    projections: z
+      .array(
+        z.object({
+          month: z.number().int(),
+          projectedBalance: z.number(),
+          confidence: z.enum(["high", "medium", "low"]),
+        })
+      )
+      .optional(),
+  }),
+  AuthResponseSchema,
+]);
 
 export type AccountOverviewResponse = MCPToolResponse<
   AccountOverviewContent,
@@ -487,24 +512,27 @@ export interface SpendingAnalysisContent {
   };
 }
 
-export const SpendingAnalysisSchema = z.object({
-  totalSpent: z.number(),
-  topCategories: z.array(
-    z.object({
-      category: z.string(),
-      amount: z.number(),
-      transactionCount: z.number().int(),
-      percentOfTotal: z.number(),
-    })
-  ),
-  trend: z.enum(["spending_more", "spending_less", "consistent"]),
-  anomalyCount: z.number().int(),
-  averageTransactionAmount: z.number(),
-  dateRange: z.object({
-    start: z.string(),
-    end: z.string(),
+export const SpendingAnalysisSchema = z.union([
+  z.object({
+    totalSpent: z.number(),
+    topCategories: z.array(
+      z.object({
+        category: z.string(),
+        amount: z.number(),
+        transactionCount: z.number().int(),
+        percentOfTotal: z.number(),
+      })
+    ),
+    trend: z.enum(["spending_more", "spending_less", "consistent"]),
+    anomalyCount: z.number().int(),
+    averageTransactionAmount: z.number(),
+    dateRange: z.object({
+      start: z.string(),
+      end: z.string(),
+    }),
   }),
-});
+  AuthResponseSchema,
+]);
 
 export type SpendingAnalysisResponse = MCPToolResponse<
   SpendingAnalysisContent,
@@ -531,26 +559,29 @@ export interface RecurringPaymentsContent {
   };
 }
 
-export const RecurringPaymentsSchema = z.object({
-  monthlyTotal: z.number(),
-  subscriptionCount: z.number().int(),
-  upcomingPayments: z.array(
-    z.object({
-      name: z.string(),
-      amount: z.number(),
-      nextDate: z.string(),
-      frequency: z.string(),
-      confidence: z.enum(["high", "medium", "low"]).optional(),
-    })
-  ),
-  highestSubscription: z
-    .object({
-      name: z.string(),
-      amount: z.number(),
-      frequency: z.string(),
-    })
-    .optional(),
-});
+export const RecurringPaymentsSchema = z.union([
+  z.object({
+    monthlyTotal: z.number(),
+    subscriptionCount: z.number().int(),
+    upcomingPayments: z.array(
+      z.object({
+        name: z.string(),
+        amount: z.number(),
+        nextDate: z.string(),
+        frequency: z.string(),
+        confidence: z.enum(["high", "medium", "low"]).optional(),
+      })
+    ),
+    highestSubscription: z
+      .object({
+        name: z.string(),
+        amount: z.number(),
+        frequency: z.string(),
+      })
+      .optional(),
+  }),
+  AuthResponseSchema,
+]);
 
 export type RecurringPaymentsResponse = MCPToolResponse<
   RecurringPaymentsContent,
@@ -580,27 +611,30 @@ export interface BusinessCashFlowContent {
   healthStatus: "positive" | "stable" | "critical";
 }
 
-export const BusinessCashFlowSchema = z.object({
-  runway: z.object({
-    months: z.number(),
-    endDate: z.string(),
-    confidence: z.enum(["high", "medium", "critical"]),
+export const BusinessCashFlowSchema = z.union([
+  z.object({
+    runway: z.object({
+      months: z.number(),
+      endDate: z.string(),
+      confidence: z.enum(["high", "medium", "critical"]),
+    }),
+    currentPeriod: z.object({
+      revenue: z.number(),
+      expenses: z.number(),
+      net: z.number(),
+      burnRate: z.number(),
+    }),
+    projections: z.array(
+      z.object({
+        period: z.string(),
+        projectedNet: z.number(),
+        confidence: z.enum(["high", "medium", "low"]),
+      })
+    ),
+    healthStatus: z.enum(["positive", "stable", "critical"]),
   }),
-  currentPeriod: z.object({
-    revenue: z.number(),
-    expenses: z.number(),
-    net: z.number(),
-    burnRate: z.number(),
-  }),
-  projections: z.array(
-    z.object({
-      period: z.string(),
-      projectedNet: z.number(),
-      confidence: z.enum(["high", "medium", "low"]),
-    })
-  ),
-  healthStatus: z.enum(["positive", "stable", "critical"]),
-});
+  AuthResponseSchema,
+]);
 
 export type BusinessCashFlowResponse = MCPToolResponse<
   BusinessCashFlowContent,
@@ -617,12 +651,15 @@ export interface ExpenseCategorizationContent {
   totalAmount: number;
 }
 
-export const ExpenseCategorizationSchema = z.object({
-  categorized: z.number().int(),
-  needsReview: z.number().int(),
-  taxCategories: z.record(z.string(), z.number()),
-  totalAmount: z.number(),
-});
+export const ExpenseCategorizationSchema = z.union([
+  z.object({
+    categorized: z.number().int(),
+    needsReview: z.number().int(),
+    taxCategories: z.record(z.string(), z.number()),
+    totalAmount: z.number(),
+  }),
+  AuthResponseSchema,
+]);
 
 export type ExpenseCategorizationResponse = MCPToolResponse<
   ExpenseCategorizationContent,
@@ -643,15 +680,18 @@ export interface PaymentRiskContent {
   balanceSufficient: boolean | null;
 }
 
-export const PaymentRiskSchema = z.object({
-  riskScore: z.object({
-    overall: z.number().min(0).max(100),
-    bankInitiated: z.number(),
-    customerInitiated: z.number(),
+export const PaymentRiskSchema = z.union([
+  z.object({
+    riskScore: z.object({
+      overall: z.number().min(0).max(100),
+      bankInitiated: z.number(),
+      customerInitiated: z.number(),
+    }),
+    recommendation: z.enum(["proceed", "review", "decline"]),
+    balanceSufficient: z.boolean().nullable(),
   }),
-  recommendation: z.enum(["proceed", "review", "decline"]),
-  balanceSufficient: z.boolean().nullable(),
-});
+  AuthResponseSchema,
+]);
 
 export type PaymentRiskResponse = MCPToolResponse<
   PaymentRiskContent,
@@ -670,14 +710,17 @@ export interface InvestmentPortfolioContent {
   assetAllocation?: Record<string, number>;
 }
 
-export const InvestmentPortfolioSchema = z.object({
-  totalValue: z.number(),
-  totalGainLoss: z.number(),
-  percentReturn: z.number(),
-  accountCount: z.number().int(),
-  holdingCount: z.number().int(),
-  assetAllocation: z.record(z.string(), z.number()).optional(),
-});
+export const InvestmentPortfolioSchema = z.union([
+  z.object({
+    totalValue: z.number(),
+    totalGainLoss: z.number(),
+    percentReturn: z.number(),
+    accountCount: z.number().int(),
+    holdingCount: z.number().int(),
+    assetAllocation: z.record(z.string(), z.number()).optional(),
+  }),
+  AuthResponseSchema,
+]);
 
 export type InvestmentPortfolioResponse = MCPToolResponse<
   InvestmentPortfolioContent,

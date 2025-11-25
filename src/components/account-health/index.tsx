@@ -3,18 +3,18 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Maximize2,
-  AlertCircle,
-  CheckCircle2,
-  AlertTriangle,
-  TrendingUp,
-  Shield,
-} from "lucide-react";
+  Expand,
+  Error,
+  CheckCircleFilled,
+  Warning,
+  Trending,
+  ShieldCheck,
+} from "@openai/apps-sdk-ui/components/Icon";
+import { Button } from "@openai/apps-sdk-ui/components/Button";
 import { cn } from "@/lib/utils/cn";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
-import { useTheme } from "@/src/use-theme";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 
 interface HealthAccount {
@@ -53,7 +53,7 @@ interface WarningCardProps {
   isDark: boolean;
 }
 
-function WarningCard({ account, index, isDark }: WarningCardProps) {
+function WarningCard({ account, index }: Omit<WarningCardProps, "isDark">) {
   return (
     <motion.div
       layout
@@ -66,22 +66,11 @@ function WarningCard({ account, index, isDark }: WarningCardProps) {
         duration: 0.6,
         delay: index * 0.05,
       }}
-      className={cn(
-        "group relative overflow-hidden rounded-2xl border transition-all p-5",
-        isDark
-          ? "bg-gray-800 border-white/10"
-          : "bg-white border-black/10",
-        "shadow-[0px_2px_6px_rgba(0,0,0,0.06)]"
-      )}
+      className="group relative overflow-hidden rounded-2xl border-none transition-all p-5 bg-surface shadow-none"
     >
       {/* Account Header */}
       <div className="mb-4">
-        <h3
-          className={cn(
-            "font-medium text-base",
-            isDark ? "text-white" : "text-black"
-          )}
-        >
+        <h3 className="font-medium text-base text-default">
           {account.name}
         </h3>
       </div>
@@ -94,18 +83,12 @@ function WarningCard({ account, index, isDark }: WarningCardProps) {
             <div
               key={wIndex}
               className={cn(
-                "flex items-start gap-3 p-3 rounded-xl",
+                "flex items-start gap-3 p-3 rounded-xl border",
                 severity === "error"
-                  ? isDark
-                    ? "bg-red-900/20 border border-red-500/30"
-                    : "bg-red-50 border border-red-200"
+                  ? "bg-danger-soft border-danger-surface"
                   : severity === "warning"
-                  ? isDark
-                    ? "bg-amber-900/20 border border-amber-500/30"
-                    : "bg-amber-50 border border-amber-200"
-                  : isDark
-                  ? "bg-blue-900/20 border border-blue-500/30"
-                  : "bg-blue-50 border border-blue-200"
+                  ? "bg-warning-soft border-warning-surface"
+                  : "bg-info-soft border-info-surface"
               )}
             >
               <div className="text-xl flex-shrink-0">
@@ -116,34 +99,22 @@ function WarningCard({ account, index, isDark }: WarningCardProps) {
                   className={cn(
                     "text-sm",
                     severity === "error"
-                      ? isDark
-                        ? "text-red-300"
-                        : "text-red-900"
+                      ? "text-danger"
                       : severity === "warning"
-                      ? isDark
-                        ? "text-amber-300"
-                        : "text-amber-900"
-                      : isDark
-                      ? "text-blue-300"
-                      : "text-blue-900"
+                      ? "text-warning"
+                      : "text-info"
                   )}
                 >
                   {warning}
                 </p>
               </div>
               {severity === "error" ? (
-                <AlertCircle
-                  className={cn(
-                    "w-4 h-4 flex-shrink-0",
-                    isDark ? "text-red-400" : "text-red-600"
-                  )}
+                <Error
+                  className="w-4 h-4 flex-shrink-0 text-danger"
                 />
               ) : severity === "warning" ? (
-                <AlertTriangle
-                  className={cn(
-                    "w-4 h-4 flex-shrink-0",
-                    isDark ? "text-amber-400" : "text-amber-600"
-                  )}
+                <Warning
+                  className="w-4 h-4 flex-shrink-0 text-warning"
                 />
               ) : null}
             </div>
@@ -158,14 +129,12 @@ interface HealthStatusCardProps {
   status: "healthy" | "warning" | "needs_attention";
   accountsCount: number;
   warningCount: number;
-  isDark: boolean;
 }
 
 function HealthStatusCard({
   status,
   accountsCount,
   warningCount,
-  isDark,
 }: HealthStatusCardProps) {
   const isHealthy = status === "healthy";
   const isWarning = status === "warning";
@@ -176,19 +145,13 @@ function HealthStatusCard({
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: "spring", bounce: 0.2, duration: 0.8 }}
       className={cn(
-        "relative overflow-hidden rounded-3xl border p-6",
+        "relative overflow-hidden rounded-3xl border-none p-6",
         isHealthy
-          ? isDark
-            ? "bg-gradient-to-br from-emerald-900/30 to-emerald-800/20 border-emerald-500/30"
-            : "bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200"
+          ? "bg-success-soft"
           : isWarning
-          ? isDark
-            ? "bg-gradient-to-br from-amber-900/30 to-amber-800/20 border-amber-500/30"
-            : "bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200"
-          : isDark
-          ? "bg-gradient-to-br from-red-900/30 to-red-800/20 border-red-500/30"
-          : "bg-gradient-to-br from-red-50 to-red-100 border-red-200",
-        "shadow-[0px_6px_14px_rgba(0,0,0,0.1)]"
+          ? "bg-warning-soft"
+          : "bg-danger-soft",
+        "shadow-none"
       )}
     >
       <div className="flex items-start gap-4">
@@ -196,16 +159,16 @@ function HealthStatusCard({
           className={cn(
             "w-16 h-16 rounded-2xl flex items-center justify-center",
             isHealthy
-              ? "bg-emerald-500"
+              ? "bg-success-solid"
               : isWarning
-              ? "bg-amber-500"
-              : "bg-red-500"
+              ? "bg-warning-solid"
+              : "bg-danger-solid"
           )}
         >
           {isHealthy ? (
-            <CheckCircle2 className="w-8 h-8 text-white" />
+            <CheckCircleFilled className="w-8 h-8 text-white" />
           ) : (
-            <Shield className="w-8 h-8 text-white" />
+            <ShieldCheck className="w-8 h-8 text-white" />
           )}
         </div>
 
@@ -214,16 +177,10 @@ function HealthStatusCard({
             className={cn(
               "text-2xl font-semibold mb-1",
               isHealthy
-                ? isDark
-                  ? "text-emerald-300"
-                  : "text-emerald-900"
+                ? "text-success"
                 : isWarning
-                ? isDark
-                  ? "text-amber-300"
-                  : "text-amber-900"
-                : isDark
-                ? "text-red-300"
-                : "text-red-900"
+                ? "text-warning"
+                : "text-danger"
             )}
           >
             {isHealthy
@@ -236,16 +193,10 @@ function HealthStatusCard({
             className={cn(
               "text-sm",
               isHealthy
-                ? isDark
-                  ? "text-emerald-400/80"
-                  : "text-emerald-700"
+                ? "text-success-soft"
                 : isWarning
-                ? isDark
-                  ? "text-amber-400/80"
-                  : "text-amber-700"
-                : isDark
-                ? "text-red-400/80"
-                : "text-red-700"
+                ? "text-warning-soft"
+                : "text-danger-soft"
             )}
           >
             {isHealthy
@@ -262,9 +213,7 @@ export default function AccountHealth() {
   const toolOutput = useWidgetProps<ToolOutput>();
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
-  const theme = useTheme();
   const isFullscreen = displayMode === "fullscreen";
-  const isDark = theme === "dark";
 
   // Auth checks
   // Check for auth requirements
@@ -273,7 +222,7 @@ export default function AccountHealth() {
 
   if (!toolOutput) {
     return (
-      <div className="p-8 text-center text-black/60 dark:text-white/60">
+      <div className="p-8 text-center text-secondary">
         <p>No health data available</p>
       </div>
     );
@@ -281,7 +230,7 @@ export default function AccountHealth() {
 
   if (!toolOutput.accounts || toolOutput.accounts.length === 0) {
     return (
-      <div className="p-8 text-center text-black/60 dark:text-white/60">
+      <div className="p-8 text-center text-secondary">
         <p>No accounts to monitor</p>
       </div>
     );
@@ -298,8 +247,7 @@ export default function AccountHealth() {
   return (
     <div
       className={cn(
-        "antialiased w-full relative",
-        isDark ? "bg-gray-900" : "bg-gray-50",
+        "antialiased w-full relative bg-transparent text-default",
         !isFullscreen && "overflow-hidden"
       )}
       style={{
@@ -309,62 +257,44 @@ export default function AccountHealth() {
     >
       {/* Fullscreen expand button */}
       {!isFullscreen && (
-        <button
+        <Button
           onClick={() => {
             if (typeof window !== "undefined" && window.openai) {
               window.openai.requestDisplayMode({ mode: "fullscreen" });
             }
           }}
-          className={cn(
-            "absolute top-4 right-4 z-20 p-2 rounded-full shadow-lg transition-all",
-            isDark
-              ? "bg-gray-800 text-white hover:bg-gray-700"
-              : "bg-white text-black hover:bg-gray-100",
-            "ring-1",
-            isDark ? "ring-white/10" : "ring-black/5"
-          )}
+          variant="ghost"
+          color="secondary"
+          size="sm"
+          className="absolute top-4 right-4 z-20"
           aria-label="Expand to fullscreen"
         >
-          <Maximize2 strokeWidth={1.5} className="h-4 w-4" />
-        </button>
+          <Expand className="h-4 w-4" />
+        </Button>
       )}
 
       {/* Content */}
       <div
         className={cn(
           "w-full h-full overflow-y-auto",
-          isFullscreen ? "p-8" : "p-5"
+          isFullscreen ? "p-8" : "p-0"
         )}
       >
         {/* Header */}
         <div className="mb-6">
-          <h1
-            className={cn(
-              "text-2xl font-semibold mb-2",
-              isDark ? "text-white" : "text-black"
-            )}
-          >
+          <h1 className="heading-lg mb-2">
             Account Health
           </h1>
           <div className="flex items-center gap-3">
-            <TrendingUp
+            <Trending
               className={cn(
                 "w-5 h-5",
                 overallStatus === "healthy"
-                  ? isDark
-                    ? "text-emerald-400"
-                    : "text-emerald-600"
-                  : isDark
-                  ? "text-amber-400"
-                  : "text-amber-600"
+                  ? "text-success"
+                  : "text-warning"
               )}
             />
-            <p
-              className={cn(
-                "text-sm",
-                isDark ? "text-white/60" : "text-black/60"
-              )}
-            >
+            <p className="text-sm text-secondary">
               Monitor your accounts for potential issues
             </p>
           </div>
@@ -376,19 +306,13 @@ export default function AccountHealth() {
             status={overallStatus}
             accountsCount={accounts.length}
             warningCount={totalWarnings}
-            isDark={isDark}
           />
         </div>
 
         {/* Warning Cards */}
         {accountsWithWarnings.length > 0 ? (
           <div>
-            <h2
-              className={cn(
-                "text-lg font-medium mb-4",
-                isDark ? "text-white" : "text-black"
-              )}
-            >
+            <h2 className="text-lg font-medium mb-4 text-default">
               Issues Found
             </h2>
             <div
@@ -405,7 +329,6 @@ export default function AccountHealth() {
                     key={account.account_id}
                     account={account}
                     index={index}
-                    isDark={isDark}
                   />
                 ))}
               </AnimatePresence>
@@ -416,33 +339,15 @@ export default function AccountHealth() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-            className={cn(
-              "text-center py-12 rounded-2xl border",
-              isDark
-                ? "bg-gray-800 border-white/10"
-                : "bg-white border-black/10"
-            )}
+            className="text-center py-12 rounded-2xl border bg-surface border-subtle"
           >
-            <CheckCircle2
-              className={cn(
-                "w-16 h-16 mx-auto mb-4",
-                isDark ? "text-emerald-400" : "text-emerald-600"
-              )}
+            <CheckCircleFilled
+              className="w-16 h-16 mx-auto mb-4 text-success"
             />
-            <h3
-              className={cn(
-                "text-lg font-medium mb-2",
-                isDark ? "text-white" : "text-black"
-              )}
-            >
+            <h3 className="text-lg font-medium mb-2 text-default">
               Everything looks great!
             </h3>
-            <p
-              className={cn(
-                "text-sm",
-                isDark ? "text-white/60" : "text-black/60"
-              )}
-            >
+            <p className="text-sm text-secondary">
               No issues detected across your accounts
             </p>
           </motion.div>

@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { createMockDbPool, mockUsers, mockSubscriptions, mockPlaidItems } from '../mocks/database';
 import { mockPlaidResponses } from '../mocks/plaid';
 import { syncTransactionsForItem } from '@/lib/services/plaid-service';
 import { getPlaidClient } from '@/lib/config/plaid';
 import { EncryptionService } from '@/lib/services/encryption-service';
+import { hasActiveSubscription, getUserSubscription } from '@/lib/utils/subscription-helpers';
 
 /**
  * Integration tests for core services
@@ -114,17 +115,13 @@ describe('Services - Integration Tests', () => {
   });
 
   vi.mock('@/lib/utils/subscription-helpers', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/utils/subscription-helpers')>();
-  return {
-    ...actual,
-    // Mock getUserSubscription as it's a dependency of hasActiveSubscription and makes external calls
-    getUserSubscription: vi.fn(),
-  };
-});
-
-import { hasActiveSubscription, getUserSubscription } from '@/lib/utils/subscription-helpers';
-
-// ... (rest of the file remains the same until the describe block) ...
+    const actual = await importOriginal<typeof import('@/lib/utils/subscription-helpers')>();
+    return {
+      ...actual,
+      // Mock getUserSubscription as it's a dependency of hasActiveSubscription and makes external calls
+      getUserSubscription: vi.fn(),
+    };
+  });
 
   describe('Subscription Helpers', () => {
     // Restore mocks before each test
@@ -135,7 +132,7 @@ import { hasActiveSubscription, getUserSubscription } from '@/lib/utils/subscrip
     describe('hasActiveSubscription', () => {
       it('should return the subscription object for an active subscription', async () => {
         const userId = mockUsers.withSubscription.id;
-        (getUserSubscription as vi.Mock).mockResolvedValue(mockSubscriptions.active);
+        (getUserSubscription as Mock).mockResolvedValue(mockSubscriptions.active);
 
         const result = await hasActiveSubscription(userId);
         expect(getUserSubscription).toHaveBeenCalledWith(userId);
@@ -145,7 +142,7 @@ import { hasActiveSubscription, getUserSubscription } from '@/lib/utils/subscrip
 
       it('should return the subscription object for a trialing subscription', async () => {
         const userId = mockUsers.withPlaid.id;
-        (getUserSubscription as vi.Mock).mockResolvedValue(mockSubscriptions.trialing);
+        (getUserSubscription as Mock).mockResolvedValue(mockSubscriptions.trialing);
 
         const result = await hasActiveSubscription(userId);
         expect(getUserSubscription).toHaveBeenCalledWith(userId);
@@ -155,7 +152,7 @@ import { hasActiveSubscription, getUserSubscription } from '@/lib/utils/subscrip
 
       it('should return null when no subscription exists', async () => {
         const userId = mockUsers.withoutSubscription.id;
-        (getUserSubscription as vi.Mock).mockResolvedValue(null);
+        (getUserSubscription as Mock).mockResolvedValue(null);
 
         const result = await hasActiveSubscription(userId);
         expect(getUserSubscription).toHaveBeenCalledWith(userId);
@@ -165,7 +162,7 @@ import { hasActiveSubscription, getUserSubscription } from '@/lib/utils/subscrip
       it('should return null for a canceled subscription', async () => {
         const userId = 'user_with_canceled_sub';
         const canceledSub = { ...mockSubscriptions.active, status: 'canceled' };
-        (getUserSubscription as vi.Mock).mockResolvedValue(canceledSub);
+        (getUserSubscription as Mock).mockResolvedValue(canceledSub);
 
         const result = await hasActiveSubscription(userId);
         expect(getUserSubscription).toHaveBeenCalledWith(userId);
@@ -175,7 +172,7 @@ import { hasActiveSubscription, getUserSubscription } from '@/lib/utils/subscrip
       it('should return null for a past_due subscription', async () => {
         const userId = 'user_with_pastdue_sub';
         const pastDueSub = { ...mockSubscriptions.active, status: 'past_due' };
-        (getUserSubscription as vi.Mock).mockResolvedValue(pastDueSub);
+        (getUserSubscription as Mock).mockResolvedValue(pastDueSub);
 
         const result = await hasActiveSubscription(userId);
         expect(getUserSubscription).toHaveBeenCalledWith(userId);
@@ -221,11 +218,6 @@ import { hasActiveSubscription, getUserSubscription } from '@/lib/utils/subscrip
     });
 
     it('should sync transactions for an item', async () => {
-      // TODO: This test needs to be refactored to use the real test database with Drizzle
-      // or the service needs to be refactored to accept a db instance for dependency injection
-      // Current issue: The service uses the global db instance, but the test creates mocks
-      // that aren't actually used by the service.
-
       const { mockPool, mockClient } = createMockDbPool();
       const itemId = 'item_123';
       const accessToken = 'access-sandbox-token';

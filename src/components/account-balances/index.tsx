@@ -2,13 +2,21 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, ChevronDown, ChevronUp, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  Expand,
+  ChevronDown,
+  ChevronUp,
+  ArrowUp,
+  ArrowDown,
+} from "@openai/apps-sdk-ui/components/Icon";
+import { Button } from "@openai/apps-sdk-ui/components/Button";
+import { Badge } from "@openai/apps-sdk-ui/components/Badge";
+import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { useWidgetState } from "@/src/use-widget-state";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
-import { useTheme } from "@/src/use-theme";
 import { formatCurrency } from "@/src/utils/format";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 import { cn } from "@/lib/utils/cn";
@@ -53,25 +61,25 @@ function getAccountIcon(type: string, subtype?: string) {
   return "💰";
 }
 
-function getAccountColor(type: string) {
+function getAccountColorClass(type: string) {
   const lower = type.toLowerCase();
-  if (lower.includes("checking")) return "from-blue-500 to-blue-600";
-  if (lower.includes("savings")) return "from-emerald-500 to-emerald-600";
-  if (lower.includes("credit")) return "from-purple-500 to-purple-600";
-  if (lower.includes("investment")) return "from-amber-500 to-amber-600";
-  if (lower.includes("loan")) return "from-red-500 to-red-600";
-  return "from-gray-500 to-gray-600";
+  if (lower.includes("checking")) return "bg-info-soft text-info";
+  if (lower.includes("savings")) return "bg-success-soft text-success";
+  if (lower.includes("credit")) return "bg-discovery-soft text-discovery";
+  if (lower.includes("investment")) return "bg-warning-soft text-warning";
+  if (lower.includes("loan")) return "bg-danger-soft text-danger";
+  return "bg-surface-secondary text-secondary";
 }
 
-function getHealthColor(score: number) {
-  if (score >= 80) return "text-green-600 dark:text-green-400";
-  if (score >= 60) return "text-yellow-600 dark:text-yellow-400";
-  return "text-red-600 dark:text-red-400";
+function getHealthBadgeColor(score: number): "success" | "warning" | "danger" {
+  if (score >= 80) return "success";
+  if (score >= 60) return "warning";
+  return "danger";
 }
 
 function getTrendIcon(trend: string) {
-  if (trend === "improving") return <TrendingUp className="w-4 h-4 text-green-600" />;
-  if (trend === "declining") return <TrendingDown className="w-4 h-4 text-red-600" />;
+  if (trend === "improving") return <ArrowUp className="w-4 h-4 text-success" />;
+  if (trend === "declining") return <ArrowDown className="w-4 h-4 text-danger" />;
   return null;
 }
 
@@ -79,10 +87,9 @@ interface AccountCardProps {
   account: Account;
   isExpanded: boolean;
   onToggle: () => void;
-  isDark: boolean;
 }
 
-function AccountCard({ account, isExpanded, onToggle, isDark }: AccountCardProps) {
+function AccountCard({ account, isExpanded, onToggle }: AccountCardProps) {
   const hasAvailable =
     account.balances.available !== null &&
     account.balances.available !== account.balances.current;
@@ -94,49 +101,25 @@ function AccountCard({ account, isExpanded, onToggle, isDark }: AccountCardProps
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-      className={cn(
-        "group relative overflow-hidden rounded-2xl border transition-all",
-        isDark
-          ? "bg-gray-800 border-white/10 hover:border-white/20"
-          : "bg-white border-black/10 hover:border-black/20",
-        "shadow-[0px_2px_6px_rgba(0,0,0,0.06)] hover:shadow-[0px_6px_14px_rgba(0,0,0,0.1)]"
-      )}
+      className="group relative overflow-hidden rounded-2xl border-none bg-surface shadow-none hover:bg-surface-secondary transition-all"
     >
-      {/* Gradient accent */}
-      <div
-        className={cn(
-          "absolute inset-0 opacity-5 bg-gradient-to-br",
-          getAccountColor(account.type)
-        )}
-      />
-
       <div className="relative p-5">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <div
               className={cn(
-                "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl bg-gradient-to-br",
-                getAccountColor(account.type)
+                "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl",
+                getAccountColorClass(account.type)
               )}
             >
               {getAccountIcon(account.type, account.subtype)}
             </div>
             <div className="flex-1 min-w-0">
-              <h3
-                className={cn(
-                  "font-medium text-base truncate",
-                  isDark ? "text-white" : "text-black"
-                )}
-              >
+              <h3 className="font-medium text-base truncate text-default">
                 {account.name}
               </h3>
-              <p
-                className={cn(
-                  "text-sm mt-0.5",
-                  isDark ? "text-white/60" : "text-black/60"
-                )}
-              >
+              <p className="text-sm mt-0.5 text-secondary">
                 {account.type}
                 {account.mask && ` • ****${account.mask}`}
               </p>
@@ -144,14 +127,11 @@ function AccountCard({ account, isExpanded, onToggle, isDark }: AccountCardProps
           </div>
 
           {hasAvailable && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
+              color="secondary"
               onClick={onToggle}
-              className={cn(
-                "flex-shrink-0 p-1.5 rounded-lg transition-colors",
-                isDark
-                  ? "hover:bg-white/10 text-white/70"
-                  : "hover:bg-black/5 text-black/70"
-              )}
               aria-label={isExpanded ? "Show less" : "Show more"}
             >
               {isExpanded ? (
@@ -159,27 +139,17 @@ function AccountCard({ account, isExpanded, onToggle, isDark }: AccountCardProps
               ) : (
                 <ChevronDown className="w-4 h-4" />
               )}
-            </button>
+            </Button>
           )}
         </div>
 
         {/* Current Balance */}
         {account.balances.current !== null && (
           <div className="mb-3">
-            <div
-              className={cn(
-                "text-xs font-medium mb-1",
-                isDark ? "text-white/50" : "text-black/50"
-              )}
-            >
+            <div className="text-xs font-medium mb-1 text-tertiary">
               Current Balance
             </div>
-            <div
-              className={cn(
-                "text-2xl font-semibold",
-                isDark ? "text-white" : "text-black"
-              )}
-            >
+            <div className="text-2xl font-semibold text-default">
               {formatCurrency(
                 account.balances.current,
                 account.balances.iso_currency_code
@@ -198,26 +168,11 @@ function AccountCard({ account, isExpanded, onToggle, isDark }: AccountCardProps
               transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
               className="overflow-hidden"
             >
-              <div
-                className={cn(
-                  "pt-3 mt-3 border-t",
-                  isDark ? "border-white/10" : "border-black/10"
-                )}
-              >
-                <div
-                  className={cn(
-                    "text-xs font-medium mb-1",
-                    isDark ? "text-white/50" : "text-black/50"
-                  )}
-                >
+              <div className="pt-3 mt-3 border-t border-subtle">
+                <div className="text-xs font-medium mb-1 text-tertiary">
                   Available Balance
                 </div>
-                <div
-                  className={cn(
-                    "text-lg font-semibold",
-                    isDark ? "text-emerald-400" : "text-emerald-600"
-                  )}
-                >
+                <div className="text-lg font-semibold text-success">
                   {formatCurrency(
                     account.balances.available!,
                     account.balances.iso_currency_code
@@ -241,9 +196,7 @@ export default function AccountBalances() {
 
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
-  const theme = useTheme();
   const isFullscreen = displayMode === "fullscreen";
-  const isDark = theme === "dark";
 
   const toggleAccountExpanded = (accountId: string) => {
     setUiState(prevState => {
@@ -263,9 +216,9 @@ export default function AccountBalances() {
 
   if (!toolOutput?.structuredContent) {
     return (
-      <div className="p-8 text-center text-black/60 dark:text-white/60">
-        <p>No account data available</p>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Title>No account data available</EmptyMessage.Title>
+      </EmptyMessage>
     );
   }
 
@@ -275,19 +228,15 @@ export default function AccountBalances() {
   // No data check
   if (!accounts || accounts.length === 0) {
     return (
-      <div className="p-8 text-center text-black/60 dark:text-white/60">
-        <p>No accounts found</p>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Title>No accounts found</EmptyMessage.Title>
+      </EmptyMessage>
     );
   }
 
   return (
     <div
-      className={cn(
-        "antialiased w-full relative",
-        isDark ? "bg-gray-900" : "bg-gray-50",
-        !isFullscreen && "overflow-hidden"
-      )}
+      className={`antialiased w-full relative bg-transparent text-default ${!isFullscreen ? "overflow-hidden" : ""}`}
       style={{
         maxHeight: maxHeight ?? undefined,
         height: isFullscreen ? maxHeight ?? undefined : undefined,
@@ -295,83 +244,60 @@ export default function AccountBalances() {
     >
       {/* Fullscreen expand button */}
       {!isFullscreen && (
-        <button
+        <Button
           onClick={() => {
             if (typeof window !== "undefined" && window.openai) {
               window.openai.requestDisplayMode({ mode: "fullscreen" });
             }
           }}
-          className={cn(
-            "absolute top-4 right-4 z-20 p-2 rounded-full shadow-lg transition-all",
-            isDark
-              ? "bg-gray-800 text-white hover:bg-gray-700"
-              : "bg-white text-black hover:bg-gray-100",
-            "ring-1",
-            isDark ? "ring-white/10" : "ring-black/5"
-          )}
+          variant="ghost"
+          color="secondary"
+          size="sm"
+          className="absolute top-4 right-4 z-20"
           aria-label="Expand to fullscreen"
         >
-          <Maximize2 strokeWidth={1.5} className="h-4 w-4" />
-        </button>
+          <Expand className="h-4 w-4" />
+        </Button>
       )}
 
       {/* Content */}
       <div
-        className={cn(
-          "w-full h-full overflow-y-auto",
-          isFullscreen ? "p-8" : "p-5"
-        )}
+        className={`w-full h-full overflow-y-auto ${isFullscreen ? "p-8" : "p-0"}`}
       >
         {/* Header */}
         <div className="mb-6">
-          <h1
-            className={cn(
-              "text-2xl font-semibold mb-2",
-              isDark ? "text-white" : "text-black"
-            )}
-          >
+          <h1 className="heading-lg mb-2">
             Financial Overview
           </h1>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
-              <p
-                className={cn(
-                  "text-sm",
-                  isDark ? "text-white/60" : "text-black/60"
-                )}
-              >
+              <p className="text-sm text-secondary">
                 Total Balance
               </p>
-              <p
-                className={cn(
-                  "text-3xl font-semibold mt-1",
-                  isDark ? "text-white" : "text-black"
-                )}
-              >
+              <p className="text-3xl font-semibold mt-1 text-default">
                 {formatCurrency(summary.totalBalance)}
               </p>
-              <p className={cn("text-xs mt-1", isDark ? "text-white/50" : "text-black/50")}>
+              <p className="text-xs mt-1 text-tertiary">
                 {summary.accountCount} {summary.accountCount === 1 ? "account" : "accounts"}
               </p>
             </div>
             <div>
-              <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+              <p className="text-sm text-secondary mb-1">
                 Health Score
               </p>
-              <div className="flex items-center gap-2 mt-1">
-                <p className={cn("text-3xl font-semibold", getHealthColor(summary.healthScore))}>
-                  {summary.healthScore}
-                </p>
-                <span className="text-xs text-gray-500">/ 100</span>
+              <div className="flex items-center gap-2">
+                <Badge color={getHealthBadgeColor(summary.healthScore)} size="lg">
+                  {summary.healthScore} / 100
+                </Badge>
               </div>
             </div>
             <div>
-              <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+              <p className="text-sm text-secondary">
                 Trend
               </p>
               <div className="flex items-center gap-2 mt-2">
                 {getTrendIcon(summary.trend)}
-                <span className={cn("text-lg font-medium capitalize", isDark ? "text-white" : "text-black")}>
+                <span className="text-lg font-medium capitalize text-default">
                   {summary.trend}
                 </span>
               </div>
@@ -381,30 +307,27 @@ export default function AccountBalances() {
 
         {/* Projections */}
         {projections && projections.length > 0 && (
-          <div className="mb-6 p-4 rounded-xl border" style={{
-            backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.02)",
-            borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"
-          }}>
-            <h2 className={cn("text-sm font-medium mb-3", isDark ? "text-white/70" : "text-black/70")}>
+          <div className="mb-6 p-4 rounded-xl border border-subtle bg-surface-secondary">
+            <h2 className="text-sm font-medium mb-3 text-secondary">
               Cash Flow Projection
             </h2>
             <div className="space-y-2">
               {projections.map((proj) => (
                 <div key={proj.month} className="flex items-center gap-3">
-                  <span className={cn("text-xs w-16", isDark ? "text-white/60" : "text-black/60")}>
+                  <span className="text-xs w-16 text-secondary">
                     Month {proj.month}
                   </span>
-                  <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div className="flex-1 h-2 bg-surface-tertiary rounded-full overflow-hidden">
                     <div
                       className={cn(
                         "h-full",
-                        proj.confidence === "high" ? "bg-green-500" :
-                        proj.confidence === "medium" ? "bg-yellow-500" : "bg-gray-400"
+                        proj.confidence === "high" ? "bg-success" :
+                        proj.confidence === "medium" ? "bg-warning" : "bg-secondary"
                       )}
                       style={{ width: `${Math.min(100, (proj.projectedBalance / summary.totalBalance) * 100)}%` }}
                     />
                   </div>
-                  <span className={cn("text-xs w-24 text-right", isDark ? "text-white" : "text-black")}>
+                  <span className="text-xs w-24 text-right text-default">
                     {formatCurrency(proj.projectedBalance)}
                   </span>
                 </div>
@@ -424,7 +347,6 @@ export default function AccountBalances() {
         >
           <AnimatePresence mode="popLayout">
             {accounts.map((account) => {
-              // Map from new AccountOverviewContent format to widget Account interface
               const mappedAccount: Account = {
                 account_id: account.id,
                 name: account.name,
@@ -443,7 +365,6 @@ export default function AccountBalances() {
                   account={mappedAccount}
                   isExpanded={uiState.expandedAccountIds.includes(account.id)}
                   onToggle={() => toggleAccountExpanded(account.id)}
-                  isDark={isDark}
                 />
               );
             })}

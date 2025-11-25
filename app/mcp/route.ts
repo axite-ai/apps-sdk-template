@@ -149,7 +149,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
           mimeType: 'text/html+skybridge',
           _meta: {
             'openai/widgetDescription': widget.description,
-            'openai/widgetPrefersBorder': true,
+            'openai/widgetPrefersBorder': false,
           },
         },
         async () => {
@@ -162,7 +162,7 @@ const handler = withMcpAuth(auth, async (req, session) => {
               text: html,
               _meta: {
                 'openai/widgetDescription': widget.description,
-                'openai/widgetPrefersBorder': true,
+                'openai/widgetPrefersBorder': false,
                 'openai/widgetDomain': baseURL,
                 'openai/widgetCSP': {
                   'base-uri': ["'self'", baseURL], // Allow Next.js dev scripts to set the base URI

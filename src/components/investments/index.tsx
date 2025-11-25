@@ -2,16 +2,23 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, TrendingUp, TrendingDown, Wallet, PieChart } from "lucide-react";
+import {
+  Expand,
+  Trending,
+  Business,
+  Chart,
+} from "@openai/apps-sdk-ui/components/Icon";
+import { Button } from "@openai/apps-sdk-ui/components/Button";
+import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
 import { cn } from "@/lib/utils/cn";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { useWidgetState } from "@/src/use-widget-state";
 import { useDisplayMode } from "@/src/use-display-mode";
 import { useMaxHeight } from "@/src/use-max-height";
-import { useTheme } from "@/src/use-theme";
 import { formatCurrency, formatPercent } from "@/src/utils/format";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
+import WidgetLoadingSkeleton from "@/src/components/shared/widget-loading-skeleton";
 
 interface Account {
   account_id: string;
@@ -85,9 +92,7 @@ export default function Investments() {
 
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
-  const theme = useTheme();
   const isFullscreen = displayMode === "fullscreen";
-  const isDark = theme === "dark";
 
   // Max visible accounts in inline mode
   const MAX_VISIBLE_INLINE = 3;
@@ -107,19 +112,16 @@ export default function Investments() {
   const authComponent = checkWidgetAuth(toolOutput);
   if (authComponent) return authComponent;
 
-  if (!toolOutput && !toolMetadata) {
+  // Show loading state while waiting for tool output
+  if (!toolOutput) {
+    return <WidgetLoadingSkeleton />;
+  }
+
+  if (!toolMetadata && !toolOutput.totalValue) {
     return (
-      <div
-        className={cn(
-          "antialiased w-full relative flex items-center justify-center",
-          isDark ? "bg-gray-900 text-white" : "bg-gray-50 text-black"
-        )}
-        style={{ maxHeight: maxHeight ?? undefined }}
-      >
-        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
-          No investment data available
-        </p>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Title>No investment data available</EmptyMessage.Title>
+      </EmptyMessage>
     );
   }
 
@@ -132,17 +134,9 @@ export default function Investments() {
 
   if (holdingCount === 0) {
      return (
-      <div
-        className={cn(
-          "antialiased w-full relative flex items-center justify-center",
-          isDark ? "bg-gray-900 text-white" : "bg-gray-50 text-black"
-        )}
-        style={{ maxHeight: maxHeight ?? undefined }}
-      >
-        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
-          No investment holdings available
-        </p>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Title>No investment holdings available</EmptyMessage.Title>
+      </EmptyMessage>
     );
   }
 
@@ -167,8 +161,7 @@ export default function Investments() {
   return (
     <div
       className={cn(
-        "antialiased w-full relative",
-        isDark ? "bg-gray-900" : "bg-gray-50",
+        "antialiased w-full relative bg-transparent text-default",
         !isFullscreen && "overflow-hidden"
       )}
       style={{
@@ -178,28 +171,26 @@ export default function Investments() {
     >
       {/* Expand button (inline mode only) */}
       {!isFullscreen && (
-        <button
+        <Button
           onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
-          className={cn(
-            "absolute top-4 right-4 z-20 p-2 rounded-full shadow-lg transition-all ring-1",
-            isDark
-              ? "bg-gray-800 text-white hover:bg-gray-700 ring-white/10"
-              : "bg-white text-black hover:bg-gray-100 ring-black/5"
-          )}
+          variant="ghost"
+          color="secondary"
+          size="sm"
+          className="absolute top-4 right-4 z-20"
           aria-label="Expand to fullscreen"
         >
-          <Maximize2 strokeWidth={1.5} className="h-4 w-4" />
-        </button>
+          <Expand className="h-4 w-4" />
+        </Button>
       )}
 
       {/* Content */}
-      <div className={cn("w-full h-full overflow-y-auto", isFullscreen ? "p-8" : "p-5")}>
+      <div className={cn("w-full h-full overflow-y-auto", isFullscreen ? "p-8" : "p-0")}>
         {/* Header */}
         <div className="mb-6">
-          <h1 className={cn("text-2xl font-semibold mb-2", isDark ? "text-white" : "text-black")}>
+          <h1 className="heading-lg mb-2">
             Investments
           </h1>
-          <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+          <p className="text-sm text-secondary">
             Your investment portfolio overview
           </p>
         </div>
@@ -208,56 +199,36 @@ export default function Investments() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={cn(
-            "rounded-2xl border p-6 shadow-[0px_2px_6px_rgba(0,0,0,0.06)] mb-6",
-            isDark
-              ? "bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border-purple-500/20"
-              : "bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200"
-          )}
+          className="rounded-2xl border-none p-6 shadow-none mb-6 bg-discovery-soft"
         >
           <div className="flex items-center gap-3 mb-4">
-            <div
-              className={cn(
-                "p-3 rounded-xl",
-                isDark ? "bg-purple-500/30" : "bg-purple-100"
-              )}
-            >
-              <PieChart strokeWidth={1.5} className="h-6 w-6 text-purple-600" />
+            <div className="p-3 rounded-xl bg-discovery-surface">
+              <Chart strokeWidth={1.5} className="h-6 w-6 text-discovery" />
             </div>
             <div>
-              <div className={cn("text-sm font-medium mb-1", isDark ? "text-purple-300" : "text-purple-700")}>
+              <div className="text-sm font-medium mb-1 text-discovery-soft">
                 Total Portfolio Value
               </div>
-              <div className={cn("text-3xl font-bold", isDark ? "text-white" : "text-black")}>
+              <div className="text-3xl font-bold text-default">
                 {formatCurrency(totalValue)}
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div
-              className={cn(
-                "rounded-xl p-3",
-                isDark ? "bg-purple-500/10" : "bg-white"
-              )}
-            >
-              <div className={cn("text-xs font-medium mb-1", isDark ? "text-white/60" : "text-black/60")}>
+            <div className="rounded-xl p-3 bg-discovery-surface">
+              <div className="text-xs font-medium mb-1 text-secondary">
                 Accounts
               </div>
-              <div className={cn("text-xl font-semibold", isDark ? "text-white" : "text-black")}>
+              <div className="text-xl font-semibold text-default">
                 {accountCount}
               </div>
             </div>
-            <div
-              className={cn(
-                "rounded-xl p-3",
-                isDark ? "bg-purple-500/10" : "bg-white"
-              )}
-            >
-              <div className={cn("text-xs font-medium mb-1", isDark ? "text-white/60" : "text-black/60")}>
+            <div className="rounded-xl p-3 bg-discovery-surface">
+              <div className="text-xs font-medium mb-1 text-secondary">
                 Holdings
               </div>
-              <div className={cn("text-xl font-semibold", isDark ? "text-white" : "text-black")}>
+              <div className="text-xl font-semibold text-default">
                 {holdingCount}
               </div>
             </div>
@@ -280,44 +251,33 @@ export default function Investments() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className={cn(
-                  "rounded-2xl border shadow-[0px_2px_6px_rgba(0,0,0,0.06)] overflow-hidden",
-                  isDark ? "bg-gray-800 border-white/10" : "bg-white border-black/5"
-                )}
+                className="rounded-2xl border-none shadow-none overflow-hidden bg-surface"
               >
                 {/* Account Header */}
                 <div
-                  className={cn(
-                    "p-4 cursor-pointer transition-colors",
-                    isDark ? "hover:bg-gray-750" : "hover:bg-gray-50"
-                  )}
+                  className="p-4 cursor-pointer transition-colors hover:bg-surface-secondary"
                   onClick={() => toggleAccountExpanded(account.account_id)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "p-2 rounded-lg",
-                          isDark ? "bg-blue-500/20" : "bg-blue-100"
-                        )}
-                      >
-                        <Wallet strokeWidth={1.5} className="h-5 w-5 text-blue-600" />
+                      <div className="p-2 rounded-lg bg-info-soft">
+                        <Business strokeWidth={1.5} className="h-5 w-5 text-info" />
                       </div>
                       <div>
-                        <h3 className={cn("font-semibold", isDark ? "text-white" : "text-black")}>
+                        <h3 className="font-semibold text-default">
                           {account.name}
                         </h3>
-                        <p className={cn("text-sm", isDark ? "text-white/60" : "text-black/60")}>
+                        <p className="text-sm text-secondary">
                           {account.subtype || account.type}
                           {account.mask && ` • ****${account.mask}`}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={cn("text-lg font-bold", isDark ? "text-white" : "text-black")}>
+                      <div className="text-lg font-bold text-default">
                         {formatCurrency(accountValue, account.balances.iso_currency_code)}
                       </div>
-                      <div className={cn("text-xs", isDark ? "text-white/60" : "text-black/60")}>
+                      <div className="text-xs text-secondary">
                         {accountHoldings.length} holdings
                       </div>
                     </div>
@@ -334,12 +294,7 @@ export default function Investments() {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div
-                        className={cn(
-                          "border-t",
-                          isDark ? "border-white/10" : "border-black/5"
-                        )}
-                      >
+                      <div className="border-t border-subtle">
                         {accountHoldings.map((holding: Holding, idx: number) => {
                           const security: Security | undefined = securitiesMap.get(
                             holding.security_id
@@ -359,49 +314,29 @@ export default function Investments() {
                           return (
                             <div
                               key={`${holding.account_id}-${holding.security_id}-${idx}`}
-                              className={cn(
-                                "p-4 border-b last:border-b-0",
-                                isDark ? "border-white/10" : "border-black/5"
-                              )}
+                              className="p-4 border-b last:border-b-0 border-subtle"
                             >
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex-1">
-                                  <h4
-                                    className={cn(
-                                      "font-semibold mb-1",
-                                      isDark ? "text-white" : "text-black"
-                                    )}
-                                  >
+                                  <h4 className="font-semibold mb-1 text-default">
                                     {security.name}
                                   </h4>
                                   <div className="flex items-center gap-2 text-xs">
                                     {security.ticker_symbol && (
-                                      <span
-                                        className={cn(
-                                          "font-semibold px-2 py-0.5 rounded",
-                                          isDark
-                                            ? "bg-indigo-500/20 text-indigo-400"
-                                            : "bg-indigo-100 text-indigo-700"
-                                        )}
-                                      >
+                                      <span className="font-semibold px-2 py-0.5 rounded bg-info-soft text-info">
                                         {security.ticker_symbol}
                                       </span>
                                     )}
-                                    <span className={cn(isDark ? "text-white/60" : "text-black/60")}>
+                                    <span className="text-secondary">
                                       {security.type}
                                     </span>
-                                    <span className={cn(isDark ? "text-white/60" : "text-black/60")}>
+                                    <span className="text-secondary">
                                       {holding.quantity} shares
                                     </span>
                                   </div>
                                 </div>
                                 <div className="text-right">
-                                  <div
-                                    className={cn(
-                                      "text-lg font-bold mb-1",
-                                      isDark ? "text-white" : "text-black"
-                                    )}
-                                  >
+                                  <div className="text-lg font-bold mb-1 text-default">
                                     {formatCurrency(
                                       holding.institution_value,
                                       holding.iso_currency_code
@@ -412,15 +347,11 @@ export default function Investments() {
                                       className={cn(
                                         "text-xs font-semibold flex items-center gap-1 justify-end",
                                         gainLoss >= 0
-                                          ? "text-green-600 dark:text-green-400"
-                                          : "text-red-600 dark:text-red-400"
+                                          ? "text-success"
+                                          : "text-danger"
                                       )}
                                     >
-                                      {gainLoss >= 0 ? (
-                                        <TrendingUp strokeWidth={1.5} className="h-3 w-3" />
-                                      ) : (
-                                        <TrendingDown strokeWidth={1.5} className="h-3 w-3" />
-                                      )}
+                                      <Trending strokeWidth={1.5} className="h-3 w-3" />
                                       <span>
                                         {formatCurrency(
                                           Math.abs(gainLoss),
@@ -435,22 +366,12 @@ export default function Investments() {
                               </div>
 
                               {/* Details Grid */}
-                              <div
-                                className={cn(
-                                  "grid grid-cols-2 gap-3 pt-3 border-t text-xs",
-                                  isDark ? "border-white/10" : "border-black/5"
-                                )}
-                              >
+                              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-subtle text-xs">
                                 <div>
-                                  <div
-                                    className={cn(
-                                      "font-medium mb-1",
-                                      isDark ? "text-white/60" : "text-black/60"
-                                    )}
-                                  >
+                                  <div className="font-medium mb-1 text-secondary">
                                     Current Price
                                   </div>
-                                  <div className={cn(isDark ? "text-white" : "text-black")}>
+                                  <div className="text-default">
                                     {formatCurrency(
                                       holding.institution_price,
                                       holding.iso_currency_code
@@ -459,15 +380,10 @@ export default function Investments() {
                                 </div>
                                 {holding.cost_basis && (
                                   <div>
-                                    <div
-                                      className={cn(
-                                        "font-medium mb-1",
-                                        isDark ? "text-white/60" : "text-black/60"
-                                      )}
-                                    >
+                                    <div className="font-medium mb-1 text-secondary">
                                       Cost Basis
                                     </div>
-                                    <div className={cn(isDark ? "text-white" : "text-black")}>
+                                    <div className="text-default">
                                       {formatCurrency(
                                         holding.cost_basis,
                                         holding.iso_currency_code
@@ -489,20 +405,14 @@ export default function Investments() {
 
           {/* "+# more" indicator for inline mode */}
           {!isFullscreen && accounts.length > MAX_VISIBLE_INLINE && (
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: MAX_VISIBLE_INLINE * 0.05 }}
+            <Button
+              variant="outline"
+              color="secondary"
+              className="w-full"
               onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
-              className={cn(
-                "w-full flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm transition-all cursor-pointer",
-                isDark
-                  ? "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
-                  : "border-black/10 bg-white/40 text-black/60 hover:bg-white/50"
-              )}
             >
               +{accounts.length - MAX_VISIBLE_INLINE} more
-            </motion.button>
+            </Button>
           )}
         </div>
       </div>
