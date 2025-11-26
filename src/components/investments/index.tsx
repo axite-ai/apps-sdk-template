@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import {
   Expand,
   Trending,
@@ -10,6 +10,7 @@ import {
 } from "@openai/apps-sdk-ui/components/Icon";
 import { Button } from "@openai/apps-sdk-ui/components/Button";
 import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
 import { cn } from "@/lib/utils/cn";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
@@ -196,48 +197,46 @@ export default function Investments() {
         </div>
 
         {/* Portfolio Summary Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border-none p-6 shadow-none mb-6 bg-discovery-soft"
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 rounded-xl bg-discovery-surface">
-              <Chart strokeWidth={1.5} className="h-6 w-6 text-discovery" />
-            </div>
-            <div>
-              <div className="text-sm font-medium mb-1 text-discovery-soft">
-                Total Portfolio Value
+        <AnimateLayout>
+          <div key="portfolio-summary" className="rounded-2xl border-none p-6 shadow-none mb-6 bg-discovery-soft">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-xl bg-discovery-surface">
+                <Chart strokeWidth={1.5} className="h-6 w-6 text-discovery" />
               </div>
-              <div className="text-3xl font-bold text-default">
-                {formatCurrency(totalValue)}
+              <div>
+                <div className="text-sm font-medium mb-1 text-discovery-soft uppercase tracking-wide">
+                  Total Portfolio Value
+                </div>
+                <div className="text-3xl font-bold text-default">
+                  {formatCurrency(totalValue)}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-xl p-3 bg-discovery-surface">
-              <div className="text-xs font-medium mb-1 text-secondary">
-                Accounts
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-xl p-3 bg-discovery-surface">
+                <div className="text-xs font-medium mb-1 text-secondary uppercase tracking-wide">
+                  Accounts
+                </div>
+                <div className="text-xl font-semibold text-default">
+                  {accountCount}
+                </div>
               </div>
-              <div className="text-xl font-semibold text-default">
-                {accountCount}
-              </div>
-            </div>
-            <div className="rounded-xl p-3 bg-discovery-surface">
-              <div className="text-xs font-medium mb-1 text-secondary">
-                Holdings
-              </div>
-              <div className="text-xl font-semibold text-default">
-                {holdingCount}
+              <div className="rounded-xl p-3 bg-discovery-surface">
+                <div className="text-xs font-medium mb-1 text-secondary uppercase tracking-wide">
+                  Holdings
+                </div>
+                <div className="text-xl font-semibold text-default">
+                  {holdingCount}
+                </div>
               </div>
             </div>
           </div>
-        </motion.div>
+        </AnimateLayout>
 
         {/* Investment Accounts */}
         <div className="space-y-4">
-          {(isFullscreen ? accounts : accounts.slice(0, MAX_VISIBLE_INLINE)).map((account: Account, index: number) => {
+          {(isFullscreen ? accounts : accounts.slice(0, MAX_VISIBLE_INLINE)).map((account: Account) => {
             const accountHoldings: Holding[] = holdingsByAccount[account.account_id] || [];
             const accountValue = accountHoldings.reduce(
               (sum: number, h: Holding) => sum + h.institution_value,
@@ -246,160 +245,146 @@ export default function Investments() {
             const isExpanded = uiState.expandedAccountIds.includes(account.account_id);
 
             return (
-              <motion.div
-                key={account.account_id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="rounded-2xl border-none shadow-none overflow-hidden bg-surface"
-              >
-                {/* Account Header */}
-                <div
-                  className="p-4 cursor-pointer transition-colors hover:bg-surface-secondary"
-                  onClick={() => toggleAccountExpanded(account.account_id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-info-soft">
-                        <Business strokeWidth={1.5} className="h-5 w-5 text-info" />
+              <AnimateLayout key={account.account_id}>
+                <div key={account.account_id} className="rounded-2xl border border-subtle shadow-hairline overflow-hidden bg-surface">
+                  {/* Account Header */}
+                  <div
+                    className="p-4 cursor-pointer transition-colors hover:bg-surface-secondary"
+                    onClick={() => toggleAccountExpanded(account.account_id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-info-soft">
+                          <Business strokeWidth={1.5} className="h-5 w-5 text-info" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-default">
+                            {account.name}
+                          </h3>
+                          <p className="text-sm text-secondary">
+                            {account.subtype || account.type}
+                            {account.mask && ` • ****${account.mask}`}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-default">
-                          {account.name}
-                        </h3>
-                        <p className="text-sm text-secondary">
-                          {account.subtype || account.type}
-                          {account.mask && ` • ****${account.mask}`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-default">
-                        {formatCurrency(accountValue, account.balances.iso_currency_code)}
-                      </div>
-                      <div className="text-xs text-secondary">
-                        {accountHoldings.length} holdings
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-default">
+                          {formatCurrency(accountValue, account.balances.iso_currency_code)}
+                        </div>
+                        <div className="text-xs text-secondary">
+                          {accountHoldings.length} holdings
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Holdings List (Expanded) */}
-                <AnimatePresence>
+                  {/* Holdings List (Expanded) */}
                   {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="border-t border-subtle">
-                        {accountHoldings.map((holding: Holding, idx: number) => {
-                          const security: Security | undefined = securitiesMap.get(
-                            holding.security_id
-                          );
-                          if (!security) return null;
+                    <div className="border-t border-subtle">
+                      {accountHoldings.map((holding: Holding, idx: number) => {
+                        const security: Security | undefined = securitiesMap.get(
+                          holding.security_id
+                        );
+                        if (!security) return null;
 
-                          const gainLoss = holding.cost_basis
-                            ? holding.institution_value - holding.cost_basis * holding.quantity
+                        const gainLoss = holding.cost_basis
+                          ? holding.institution_value - holding.cost_basis * holding.quantity
+                          : null;
+                        const gainLossPercent =
+                          holding.cost_basis && holding.cost_basis > 0
+                            ? ((holding.institution_price - holding.cost_basis) /
+                                holding.cost_basis) *
+                              100
                             : null;
-                          const gainLossPercent =
-                            holding.cost_basis && holding.cost_basis > 0
-                              ? ((holding.institution_price - holding.cost_basis) /
-                                  holding.cost_basis) *
-                                100
-                              : null;
 
-                          return (
-                            <div
-                              key={`${holding.account_id}-${holding.security_id}-${idx}`}
-                              className="p-4 border-b last:border-b-0 border-subtle"
-                            >
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex-1">
-                                  <h4 className="font-semibold mb-1 text-default">
-                                    {security.name}
-                                  </h4>
-                                  <div className="flex items-center gap-2 text-xs">
-                                    {security.ticker_symbol && (
-                                      <span className="font-semibold px-2 py-0.5 rounded bg-info-soft text-info">
-                                        {security.ticker_symbol}
-                                      </span>
-                                    )}
-                                    <span className="text-secondary">
-                                      {security.type}
+                        return (
+                          <div
+                            key={`${holding.account_id}-${holding.security_id}-${idx}`}
+                            className="p-4 border-b last:border-b-0 border-subtle"
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <h4 className="font-semibold mb-1 text-default">
+                                  {security.name}
+                                </h4>
+                                <div className="flex items-center gap-2 text-xs">
+                                  {security.ticker_symbol && (
+                                    <span className="font-semibold px-2 py-0.5 rounded bg-info-soft text-info">
+                                      {security.ticker_symbol}
                                     </span>
-                                    <span className="text-secondary">
-                                      {holding.quantity} shares
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="text-lg font-bold mb-1 text-default">
-                                    {formatCurrency(
-                                      holding.institution_value,
-                                      holding.iso_currency_code
-                                    )}
-                                  </div>
-                                  {gainLoss !== null && (
-                                    <div
-                                      className={cn(
-                                        "text-xs font-semibold flex items-center gap-1 justify-end",
-                                        gainLoss >= 0
-                                          ? "text-success"
-                                          : "text-danger"
-                                      )}
-                                    >
-                                      <Trending strokeWidth={1.5} className="h-3 w-3" />
-                                      <span>
-                                        {formatCurrency(
-                                          Math.abs(gainLoss),
-                                          holding.iso_currency_code
-                                        )}
-                                        {gainLossPercent !== null &&
-                                          ` (${formatPercent(gainLossPercent / 100)})`}
-                                      </span>
-                                    </div>
                                   )}
+                                  <span className="text-secondary">
+                                    {security.type}
+                                  </span>
+                                  <span className="text-secondary">
+                                    {holding.quantity} shares
+                                  </span>
                                 </div>
                               </div>
-
-                              {/* Details Grid */}
-                              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-subtle text-xs">
-                                <div>
-                                  <div className="font-medium mb-1 text-secondary">
-                                    Current Price
-                                  </div>
-                                  <div className="text-default">
-                                    {formatCurrency(
-                                      holding.institution_price,
-                                      holding.iso_currency_code
-                                    )}
-                                  </div>
+                              <div className="text-right">
+                                <div className="text-lg font-bold mb-1 text-default">
+                                  {formatCurrency(
+                                    holding.institution_value,
+                                    holding.iso_currency_code
+                                  )}
                                 </div>
-                                {holding.cost_basis && (
-                                  <div>
-                                    <div className="font-medium mb-1 text-secondary">
-                                      Cost Basis
-                                    </div>
-                                    <div className="text-default">
+                                {gainLoss !== null && (
+                                  <div
+                                    className={cn(
+                                      "text-xs font-semibold flex items-center gap-1 justify-end",
+                                      gainLoss >= 0
+                                        ? "text-success"
+                                        : "text-danger"
+                                    )}
+                                  >
+                                    <Trending strokeWidth={1.5} className="h-3 w-3" />
+                                    <span>
                                       {formatCurrency(
-                                        holding.cost_basis,
+                                        Math.abs(gainLoss),
                                         holding.iso_currency_code
                                       )}
-                                    </div>
+                                      {gainLossPercent !== null &&
+                                        ` (${formatPercent(gainLossPercent / 100)})`}
+                                    </span>
                                   </div>
                                 )}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
+
+                            {/* Details Grid */}
+                            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-subtle text-xs">
+                              <div>
+                                <div className="font-medium mb-1 text-secondary uppercase tracking-wide">
+                                  Current Price
+                                </div>
+                                <div className="text-default">
+                                  {formatCurrency(
+                                    holding.institution_price,
+                                    holding.iso_currency_code
+                                  )}
+                                </div>
+                              </div>
+                              {holding.cost_basis && (
+                                <div>
+                                  <div className="font-medium mb-1 text-secondary uppercase tracking-wide">
+                                    Cost Basis
+                                  </div>
+                                  <div className="text-default">
+                                    {formatCurrency(
+                                      holding.cost_basis,
+                                      holding.iso_currency_code
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
-                </AnimatePresence>
-              </motion.div>
+                </div>
+              </AnimateLayout>
             );
           })}
 

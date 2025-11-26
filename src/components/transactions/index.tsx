@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import {
   Expand,
   Search,
@@ -10,13 +10,13 @@ import {
   ArrowDown,
   ArrowUp,
   DollarCircle,
-  ChevronDown,
 } from "@openai/apps-sdk-ui/components/Icon";
 import { Button } from "@openai/apps-sdk-ui/components/Button";
 import { Input } from "@openai/apps-sdk-ui/components/Input";
 import { Badge } from "@openai/apps-sdk-ui/components/Badge";
 import { Select } from "@openai/apps-sdk-ui/components/Select";
 import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { useWidgetState } from "@/src/use-widget-state";
@@ -223,7 +223,7 @@ export default function Transactions() {
                 <div className="p-2 rounded-lg bg-success-surface text-success-soft">
                   <ArrowUp className="h-4 w-4" />
                 </div>
-                <div className="text-xs font-medium text-success-soft">
+                <div className="text-xs font-medium text-success-soft uppercase tracking-wide">
                   Income
                 </div>
               </div>
@@ -237,7 +237,7 @@ export default function Transactions() {
                 <div className="p-2 rounded-lg bg-danger-surface text-danger-soft">
                   <ArrowDown className="h-4 w-4" />
                 </div>
-                <div className="text-xs font-medium text-danger-soft">
+                <div className="text-xs font-medium text-danger-soft uppercase tracking-wide">
                   Spending
                 </div>
               </div>
@@ -251,7 +251,7 @@ export default function Transactions() {
                 <div className="p-2 rounded-lg bg-info-surface text-info-soft">
                   <DollarCircle className="h-4 w-4" />
                 </div>
-                <div className="text-xs font-medium text-info-soft">
+                <div className="text-xs font-medium text-info-soft uppercase tracking-wide">
                   Net Flow
                 </div>
               </div>
@@ -268,7 +268,7 @@ export default function Transactions() {
                 <div className="p-2 rounded-lg bg-discovery-surface text-discovery-soft">
                   <Calendar className="h-4 w-4" />
                 </div>
-                <div className="text-xs font-medium text-discovery-soft">
+                <div className="text-xs font-medium text-discovery-soft uppercase tracking-wide">
                   Pending
                 </div>
               </div>
@@ -290,6 +290,7 @@ export default function Transactions() {
                 value={uiState.searchQuery}
                 onChange={(e) => setUiState(s => ({ ...s, searchQuery: e.target.value }))}
                 startAdornment={<Search className="text-tertiary" />}
+                size="md"
               />
             </div>
 
@@ -305,12 +306,14 @@ export default function Transactions() {
               ]}
               placeholder="All Categories"
               dropdownIconType="chevronDown"
+              size="md"
             />
 
             <Button
               variant={uiState.showPendingOnly ? "solid" : "outline"}
               color="discovery"
               onClick={() => setUiState(s => ({...s, showPendingOnly: !s.showPendingOnly}))}
+              size="md"
             >
               <Filter className="mr-2" />
               {uiState.showPendingOnly ? "Show All" : "Pending"}
@@ -338,7 +341,7 @@ export default function Transactions() {
 
                 <div className="space-y-2">
                   <AnimatePresence mode="popLayout">
-                    {(isFullscreen || expandedDateGroupsSet.has(date) ? txs : txs.slice(0, MAX_VISIBLE_INLINE)).map((tx, txIndex) => {
+                    {(isFullscreen || expandedDateGroupsSet.has(date) ? txs : txs.slice(0, MAX_VISIBLE_INLINE)).map((tx) => {
                       const isExpanded = uiState.expandedTx === tx.transaction_id;
                       const merchantName = tx.merchant_name || tx.name || "Unknown";
                       const category = tx.personal_finance_category?.primary || "UNCATEGORIZED";
@@ -348,23 +351,20 @@ export default function Transactions() {
                       const logo = tx.logo_url || tx.counterparties?.[0]?.logo_url;
 
                       return (
-                        <motion.div
-                          key={tx.transaction_id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ delay: (groupIndex * 0.02) + (txIndex * 0.02) }}
-                          className="rounded-2xl border-none bg-surface shadow-none cursor-pointer hover:bg-surface-secondary transition-colors"
-                          onClick={() => setUiState(s => ({...s, expandedTx: isExpanded ? null : tx.transaction_id}))}
-                        >
-                          <div className="p-4">
-                            <div className="flex items-center gap-4">
+                        <AnimateLayout key={tx.transaction_id}>
+                          <div
+                            key={tx.transaction_id}
+                            className="rounded-2xl border border-subtle bg-surface shadow-hairline cursor-pointer hover:bg-surface-secondary transition-colors"
+                            onClick={() => setUiState(s => ({...s, expandedTx: isExpanded ? null : tx.transaction_id}))}
+                          >
+                            <div className="p-4">
+                              <div className="flex items-center gap-4">
                               <div className="flex-shrink-0">
                                 {logo ? (
                                   <img
                                     src={logo}
                                     alt={merchantName}
-                                    className="w-12 h-12 rounded-full object-cover border-2 border-subtle"
+                                    className="w-12 h-12 rounded-full object-cover border border-subtle"
                                     onError={(e) => {
                                       (e.target as HTMLImageElement).style.display = "none";
                                       const fallback = document.createElement("div");
@@ -411,70 +411,61 @@ export default function Transactions() {
                                   }
                                 </div>
                               </div>
+                              </div>
                             </div>
                           </div>
 
-                          <AnimatePresence>
-                            {isExpanded && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="overflow-hidden"
-                              >
-                                <div className="px-4 pb-4 border-t border-subtle">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                                    <div className="space-y-3">
-                                      <div>
-                                        <div className="text-xs font-medium uppercase mb-1 text-tertiary">Category</div>
-                                        <div className="text-sm text-default">{formatCategoryName(categoryDetailed)}</div>
-                                      </div>
-                                      {tx.payment_channel && (
-                                        <div>
-                                          <div className="text-xs font-medium uppercase mb-1 text-tertiary">Payment Channel</div>
-                                          <div className="text-sm capitalize text-default">{tx.payment_channel}</div>
-                                        </div>
-                                      )}
-                                      {tx.location?.city && (
-                                        <div>
-                                          <div className="text-xs font-medium uppercase mb-1 text-tertiary">Location</div>
-                                          <div className="text-sm text-default">
-                                            {[tx.location.address, tx.location.city, tx.location.region].filter(Boolean).join(", ")}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <div className="space-y-3">
-                                      {tx.check_number && (
-                                        <div>
-                                          <div className="text-xs font-medium uppercase mb-1 text-tertiary">Check Number</div>
-                                          <div className="text-sm text-default">#{tx.check_number}</div>
-                                        </div>
-                                      )}
-                                      {tx.original_description && (
-                                        <div>
-                                          <div className="text-xs font-medium uppercase mb-1 text-tertiary">Bank Description</div>
-                                          <div className="text-sm font-mono text-secondary">{tx.original_description}</div>
-                                        </div>
-                                      )}
-                                      {tx.counterparties && tx.counterparties.length > 0 && (
-                                        <div>
-                                          <div className="text-xs font-medium uppercase mb-1 text-tertiary">Counterparty</div>
-                                          <div className="text-sm text-default">
-                                            {tx.counterparties[0].name}
-                                            {tx.counterparties[0].type && <span className="ml-1 text-secondary">({tx.counterparties[0].type})</span>}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
+                          {isExpanded && (
+                            <div className="px-4 pb-4 border-t border-subtle">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                                <div className="space-y-3">
+                                  <div>
+                                    <div className="text-xs font-medium uppercase mb-1 text-tertiary">Category</div>
+                                    <div className="text-sm text-default">{formatCategoryName(categoryDetailed)}</div>
                                   </div>
+                                  {tx.payment_channel && (
+                                    <div>
+                                      <div className="text-xs font-medium uppercase mb-1 text-tertiary">Payment Channel</div>
+                                      <div className="text-sm capitalize text-default">{tx.payment_channel}</div>
+                                    </div>
+                                  )}
+                                  {tx.location?.city && (
+                                    <div>
+                                      <div className="text-xs font-medium uppercase mb-1 text-tertiary">Location</div>
+                                      <div className="text-sm text-default">
+                                        {[tx.location.address, tx.location.city, tx.location.region].filter(Boolean).join(", ")}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </motion.div>
+
+                                <div className="space-y-3">
+                                  {tx.check_number && (
+                                    <div>
+                                      <div className="text-xs font-medium uppercase mb-1 text-tertiary">Check Number</div>
+                                      <div className="text-sm text-default">#{tx.check_number}</div>
+                                    </div>
+                                  )}
+                                  {tx.original_description && (
+                                    <div>
+                                      <div className="text-xs font-medium uppercase mb-1 text-tertiary">Bank Description</div>
+                                      <div className="text-sm font-mono text-secondary">{tx.original_description}</div>
+                                    </div>
+                                  )}
+                                  {tx.counterparties && tx.counterparties.length > 0 && (
+                                    <div>
+                                      <div className="text-xs font-medium uppercase mb-1 text-tertiary">Counterparty</div>
+                                      <div className="text-sm text-default">
+                                        {tx.counterparties[0].name}
+                                        {tx.counterparties[0].type && <span className="ml-1 text-secondary">({tx.counterparties[0].type})</span>}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </AnimateLayout>
                       );
                     })}
                   </AnimatePresence>

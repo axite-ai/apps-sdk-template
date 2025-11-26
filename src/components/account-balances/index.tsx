@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Expand,
   ChevronDown,
@@ -12,6 +11,7 @@ import {
 import { Button } from "@openai/apps-sdk-ui/components/Button";
 import { Badge } from "@openai/apps-sdk-ui/components/Badge";
 import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { useWidgetState } from "@/src/use-widget-state";
@@ -95,95 +95,76 @@ function AccountCard({ account, isExpanded, onToggle }: AccountCardProps) {
     account.balances.available !== account.balances.current;
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-      className="group relative overflow-hidden rounded-2xl border-none bg-surface shadow-none hover:bg-surface-secondary transition-all"
-    >
-      <div className="relative p-5">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div
-              className={cn(
-                "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl",
-                getAccountColorClass(account.type)
-              )}
-            >
-              {getAccountIcon(account.type, account.subtype)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-base truncate text-default">
-                {account.name}
-              </h3>
-              <p className="text-sm mt-0.5 text-secondary">
-                {account.type}
-                {account.mask && ` • ****${account.mask}`}
-              </p>
-            </div>
+    <div className="relative p-5">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div
+            className={cn(
+              "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl",
+              getAccountColorClass(account.type)
+            )}
+          >
+            {getAccountIcon(account.type, account.subtype)}
           </div>
-
-          {hasAvailable && (
-            <Button
-              variant="ghost"
-              size="sm"
-              color="secondary"
-              onClick={onToggle}
-              aria-label={isExpanded ? "Show less" : "Show more"}
-            >
-              {isExpanded ? (
-                <ChevronUp className="w-4 h-4" />
-              ) : (
-                <ChevronDown className="w-4 h-4" />
-              )}
-            </Button>
-          )}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-base truncate text-default">
+              {account.name}
+            </h3>
+            <p className="text-sm mt-0.5 text-secondary">
+              {account.type}
+              {account.mask && ` • ****${account.mask}`}
+            </p>
+          </div>
         </div>
 
-        {/* Current Balance */}
-        {account.balances.current !== null && (
-          <div className="mb-3">
-            <div className="text-xs font-medium mb-1 text-tertiary">
-              Current Balance
-            </div>
-            <div className="text-2xl font-semibold text-default">
-              {formatCurrency(
-                account.balances.current,
-                account.balances.iso_currency_code
-              )}
-            </div>
-          </div>
+        {hasAvailable && (
+          <Button
+            variant="ghost"
+            size="sm"
+            color="secondary"
+            onClick={onToggle}
+            aria-label={isExpanded ? "Show less" : "Show more"}
+          >
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </Button>
         )}
-
-        {/* Available Balance (expandable) */}
-        <AnimatePresence initial={false}>
-          {hasAvailable && isExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
-              className="overflow-hidden"
-            >
-              <div className="pt-3 mt-3 border-t border-subtle">
-                <div className="text-xs font-medium mb-1 text-tertiary">
-                  Available Balance
-                </div>
-                <div className="text-lg font-semibold text-success">
-                  {formatCurrency(
-                    account.balances.available!,
-                    account.balances.iso_currency_code
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
-    </motion.div>
+
+      {/* Current Balance */}
+      {account.balances.current !== null && (
+        <div className="mb-3">
+          <div className="text-xs font-medium mb-1 text-tertiary uppercase tracking-wide">
+            Current Balance
+          </div>
+          <div className="text-2xl font-semibold text-default">
+            {formatCurrency(
+              account.balances.current,
+              account.balances.iso_currency_code
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Available Balance (expandable) */}
+      {hasAvailable && isExpanded && (
+        <div className="pt-3 mt-3 border-t border-subtle">
+          <div className="text-xs font-medium mb-1 text-tertiary uppercase tracking-wide">
+            Available Balance
+          </div>
+          <div className="text-lg font-semibold text-success">
+            {formatCurrency(
+              account.balances.available!,
+              account.balances.iso_currency_code
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -345,30 +326,33 @@ export default function AccountBalances() {
               : "grid-cols-1"
           )}
         >
-          <AnimatePresence mode="popLayout">
-            {accounts.map((account) => {
-              const mappedAccount: Account = {
-                account_id: account.id,
-                name: account.name,
-                type: account.type,
-                subtype: account.subtype,
-                mask: null,
-                balances: {
-                  current: account.balance,
-                  available: account.available,
-                  iso_currency_code: account.currencyCode
-                }
-              };
-              return (
-                <AccountCard
-                  key={account.id}
-                  account={mappedAccount}
-                  isExpanded={uiState.expandedAccountIds.includes(account.id)}
-                  onToggle={() => toggleAccountExpanded(account.id)}
-                />
-              );
-            })}
-          </AnimatePresence>
+          {accounts.map((account) => {
+            const mappedAccount: Account = {
+              account_id: account.id,
+              name: account.name,
+              type: account.type,
+              subtype: account.subtype,
+              mask: null,
+              balances: {
+                current: account.balance,
+                available: account.available,
+                iso_currency_code: account.currencyCode
+              }
+            };
+            return (
+              <AnimateLayout
+                key={account.id}
+                className="group relative overflow-hidden rounded-2xl border border-subtle bg-surface shadow-hairline hover:bg-surface-secondary transition-colors"
+              >
+                  <AccountCard
+                    key={"card"}
+                    account={mappedAccount}
+                    isExpanded={uiState.expandedAccountIds.includes(account.id)}
+                    onToggle={() => toggleAccountExpanded(account.id)}
+                  />
+              </AnimateLayout>
+            );
+          })}
         </div>
       </div>
     </div>

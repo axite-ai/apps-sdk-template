@@ -15,6 +15,7 @@ import { Button, ButtonLink } from "@openai/apps-sdk-ui/components/Button";
 import { Badge } from "@openai/apps-sdk-ui/components/Badge";
 import { Alert } from "@openai/apps-sdk-ui/components/Alert";
 import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
@@ -197,41 +198,43 @@ export default function ConnectItem() {
           </h3>
           <div className="space-y-3">
             {status.items.map((item) => (
-              <div
-                key={item.id}
-                className="p-4 rounded-lg border-none bg-surface-secondary"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center flex-1 gap-3">
-                    <div className="p-2 rounded-lg bg-surface text-secondary">
-                      <Business className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium">{item.institutionName || "Financial Institution"}</p>
-                        {getStatusBadge(item.status)}
+              <AnimateLayout key={item.id}>
+                <div
+                  key={item.id}
+                  className="p-4 rounded-lg border-none bg-surface-secondary"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center flex-1 gap-3">
+                      <div className="p-2 rounded-lg bg-surface text-secondary">
+                        <Business className="w-5 h-5" />
                       </div>
-                      <p className="text-xs text-secondary">
-                        {item.accountCount} {item.accountCount === 1 ? "account" : "accounts"} • Connected {new Date(item.connectedAt).toLocaleDateString()}
-                      </p>
-                      {item.status === "error" && item.errorMessage && (
-                        <p className="text-xs mt-1 text-danger">
-                          {item.errorMessage}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium">{item.institutionName || "Financial Institution"}</p>
+                          {getStatusBadge(item.status)}
+                        </div>
+                        <p className="text-xs text-secondary">
+                          {item.accountCount} {item.accountCount === 1 ? "account" : "accounts"} • Connected {new Date(item.connectedAt).toLocaleDateString()}
                         </p>
-                      )}
+                        {item.status === "error" && item.errorMessage && (
+                          <p className="text-xs mt-1 text-danger">
+                            {item.errorMessage}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      color="danger"
+                      size="sm"
+                      onClick={handleOpenConnectPage}
+                      className="shrink-0"
+                    >
+                      <Trash className="w-5 h-5" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    color="danger"
-                    size="sm"
-                    onClick={handleOpenConnectPage}
-                    className="shrink-0"
-                  >
-                    <Trash className="w-5 h-5" />
-                  </Button>
                 </div>
-              </div>
+              </AnimateLayout>
             ))}
           </div>
         </div>

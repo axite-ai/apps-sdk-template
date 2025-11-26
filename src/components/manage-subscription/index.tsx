@@ -12,6 +12,7 @@ import {
 } from "@openai/apps-sdk-ui/components/Icon";
 import { Button } from "@openai/apps-sdk-ui/components/Button";
 import { Badge } from "@openai/apps-sdk-ui/components/Badge";
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
 import { cn } from "@/lib/utils/cn";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useDisplayMode } from "@/src/use-display-mode";
@@ -86,25 +87,23 @@ export default function ManageSubscription() {
         }}
       >
         <div className={cn("w-full h-full overflow-y-auto", isFullscreen ? "p-8" : "p-5")}>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border p-6 shadow-sm bg-danger-soft border-danger-surface"
-          >
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-xl flex items-center justify-center flex-shrink-0 bg-danger-surface">
-                <CloseBold strokeWidth={1.5} className="h-6 w-6 text-danger" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-semibold mb-2 text-danger">
-                  Configuration Error
-                </h2>
-                <p className="text-sm text-danger-soft">
-                  Billing portal is not configured. Please contact support for assistance.
-                </p>
+          <AnimateLayout>
+            <div key="error-config" className="rounded-2xl border p-6 shadow-hairline bg-danger-soft border-danger-surface">
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-xl flex items-center justify-center flex-shrink-0 bg-danger-surface">
+                  <CloseBold strokeWidth={1.5} className="h-6 w-6 text-danger" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold mb-2 text-danger">
+                    Configuration Error
+                  </h2>
+                  <p className="text-sm text-danger-soft">
+                    Billing portal is not configured. Please contact support for assistance.
+                  </p>
+                </div>
               </div>
             </div>
-          </motion.div>
+          </AnimateLayout>
         </div>
       </div>
     );
@@ -148,76 +147,74 @@ export default function ManageSubscription() {
         </div>
 
         {/* Main Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border-none p-6 shadow-none bg-surface"
-        >
-          {/* Header with Icon */}
-          <div className="flex items-start gap-4 mb-6">
-            <div className="p-3 rounded-xl flex items-center justify-center flex-shrink-0 bg-discovery-solid text-white">
-              <Settings strokeWidth={1.5} className="h-6 w-6" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold mb-1 text-default">
-                Manage Your Subscription
-              </h2>
-              <p className="text-sm text-secondary">
-                Update your plan, payment methods, or billing information
-              </p>
-            </div>
-          </div>
-
-          {/* Current Plan Badge */}
-          {currentPlan && (
-            <div className="mb-6 p-4 rounded-xl border bg-info-soft border-info-surface">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-info">
-                  Current Plan
-                </span>
-                <Badge color="info" size="lg" pill>
-                  {currentPlan}
-                </Badge>
+        <AnimateLayout>
+          <div key="manage-sub-content" className="rounded-2xl border border-subtle p-6 shadow-hairline bg-surface">
+            {/* Header with Icon */}
+            <div className="flex items-start gap-4 mb-6">
+              <div className="p-3 rounded-xl flex items-center justify-center flex-shrink-0 bg-discovery-solid text-white">
+                <Settings strokeWidth={1.5} className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-semibold mb-1 text-default">
+                  Manage Your Subscription
+                </h2>
+                <p className="text-sm text-secondary">
+                  Update your plan, payment methods, or billing information
+                </p>
               </div>
             </div>
-          )}
 
-          {/* Features List */}
-          <div className="mb-6 space-y-3">
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-start gap-3"
-              >
-                <div className="p-2 rounded-lg flex items-center justify-center flex-shrink-0 bg-success-soft text-success">
-                  <feature.icon strokeWidth={1.5} className="h-4 w-4" />
+            {/* Current Plan Badge */}
+            {currentPlan && (
+              <div className="mb-6 p-4 rounded-xl border bg-info-soft border-info-surface">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-info">
+                    Current Plan
+                  </span>
+                  <Badge color="info" size="lg" pill>
+                    {currentPlan}
+                  </Badge>
                 </div>
-                <p className="text-sm pt-1 text-secondary">
-                  {feature.text}
-                </p>
-              </motion.div>
-            ))}
+              </div>
+            )}
+
+            {/* Features List */}
+            <div className="mb-6 space-y-3">
+              {features.map((feature, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-start gap-3"
+                >
+                  <div className="p-2 rounded-lg flex items-center justify-center flex-shrink-0 bg-success-soft text-success">
+                    <feature.icon strokeWidth={1.5} className="h-4 w-4" />
+                  </div>
+                  <p className="text-sm pt-1 text-secondary">
+                    {feature.text}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* CTA Button */}
+            <Button
+              onClick={handleManageSubscription}
+              color="primary"
+              size="xl"
+              block
+            >
+              Open Billing Portal
+              <LinkExternalWebsite className="ml-2 h-4 w-4" />
+            </Button>
+
+            {/* Footer Note */}
+            <p className="text-xs text-center mt-4 text-tertiary">
+              Secure billing portal powered by Stripe
+            </p>
           </div>
-
-          {/* CTA Button */}
-          <Button
-            onClick={handleManageSubscription}
-            color="primary"
-            size="xl"
-            block
-          >
-            Open Billing Portal
-            <LinkExternalWebsite className="ml-2 h-4 w-4" />
-          </Button>
-
-          {/* Footer Note */}
-          <p className="text-xs text-center mt-4 text-tertiary">
-            Secure billing portal powered by Stripe
-          </p>
-        </motion.div>
+        </AnimateLayout>
       </div>
     </div>
   );

@@ -6,7 +6,15 @@ import type { ExpenseCategorizationContent } from "@/lib/types/tool-responses";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 import { useState } from "react";
 import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
+import { Button } from "@openai/apps-sdk-ui/components/Button";
+import { Select } from "@openai/apps-sdk-ui/components/Select";
+import { Badge } from "@openai/apps-sdk-ui/components/Badge";
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
+import { Expand } from "@openai/apps-sdk-ui/components/Icon";
 import { cn } from "@/lib/utils/cn";
+import { useDisplayMode } from "@/src/use-display-mode";
+import { useMaxHeight } from "@/src/use-max-height";
+import { formatCurrency } from "@/src/utils/format";
 
 interface ExpenseSuggestion {
   transaction_id: string;
@@ -32,6 +40,10 @@ export default function ExpenseCategorizerWidget() {
     "all"
   );
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  const displayMode = useDisplayMode();
+  const maxHeight = useMaxHeight();
+  const isFullscreen = displayMode === "fullscreen";
 
   const authComponent = checkWidgetAuth(toolOutput);
   if (authComponent) return authComponent;
@@ -63,195 +75,241 @@ export default function ExpenseCategorizerWidget() {
   const taxCategoryList = Object.keys(taxCategories);
 
   return (
-    <div className="flex flex-col gap-4 p-0 bg-transparent min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Expense Categorizer</h1>
-        <div className="text-sm text-gray-600">${totalAmount.toFixed(2)} total expenses</div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-none p-4">
-          <div className="text-sm text-gray-600">Auto-Categorized</div>
-          <div className="text-2xl font-bold text-green-600">{categorized}</div>
-          <div className="text-xs text-gray-500 mt-1">High confidence</div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-none p-4">
-          <div className="text-sm text-gray-600">Needs Review</div>
-          <div className="text-2xl font-bold text-yellow-600">{needsReview}</div>
-          <div className="text-xs text-gray-500 mt-1">Manual check required</div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-none p-4">
-          <div className="text-sm text-gray-600">Tax Categories</div>
-          <div className="text-2xl font-bold text-blue-600">{taxCategoryList.length}</div>
-          <div className="text-xs text-gray-500 mt-1">Distinct categories</div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-none p-4">
-          <div className="text-sm text-gray-600">Total Expenses</div>
-          <div className="text-2xl font-bold text-gray-800">{allSuggestions.length}</div>
-          <div className="text-xs text-gray-500 mt-1">Transactions reviewed</div>
-        </div>
-      </div>
-
-      {/* Confidence Distribution */}
-      {confidenceDistribution && (
-        <div className="bg-white rounded-lg shadow-none p-4">
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">Confidence Distribution</h2>
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-24 text-sm text-gray-600">High (≥80%)</div>
-              <div className="flex-1 h-6 bg-gray-100 rounded-lg overflow-hidden">
-                <div
-                  className="h-full bg-green-500"
-                  style={{
-                    width: `${(confidenceDistribution.high / allSuggestions.length) * 100}%`,
-                  }}
-                />
-              </div>
-              <span className="text-sm font-medium text-gray-800">
-                {confidenceDistribution.high}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-24 text-sm text-gray-600">Medium (60-80%)</div>
-              <div className="flex-1 h-6 bg-gray-100 rounded-lg overflow-hidden">
-                <div
-                  className="h-full bg-yellow-500"
-                  style={{
-                    width: `${(confidenceDistribution.medium / allSuggestions.length) * 100}%`,
-                  }}
-                />
-              </div>
-              <span className="text-sm font-medium text-gray-800">
-                {confidenceDistribution.medium}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-24 text-sm text-gray-600">Low (&lt;60%)</div>
-              <div className="flex-1 h-6 bg-gray-100 rounded-lg overflow-hidden">
-                <div
-                  className="h-full bg-red-500"
-                  style={{
-                    width: `${(confidenceDistribution.low / allSuggestions.length) * 100}%`,
-                  }}
-                />
-              </div>
-              <span className="text-sm font-medium text-gray-800">
-                {confidenceDistribution.low}
-              </span>
-            </div>
-          </div>
-        </div>
+    <div
+      className={cn(
+        "antialiased w-full relative bg-transparent text-default",
+        !isFullscreen && "overflow-hidden"
+      )}
+      style={{
+        maxHeight: maxHeight ?? undefined,
+        height: isFullscreen ? maxHeight ?? undefined : undefined,
+      }}
+    >
+      {/* Fullscreen expand button */}
+      {!isFullscreen && (
+        <Button
+          onClick={() => {
+            if (typeof window !== "undefined" && window.openai) {
+              window.openai.requestDisplayMode({ mode: "fullscreen" });
+            }
+          }}
+          variant="ghost"
+          color="secondary"
+          size="sm"
+          className="absolute top-4 right-4 z-20"
+          aria-label="Expand to fullscreen"
+        >
+          <Expand className="h-4 w-4" />
+        </Button>
       )}
 
-      {/* Tax Category Breakdown */}
-      <div className="bg-white rounded-lg shadow-none p-4">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">Tax Category Breakdown</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {taxCategoryList.map((category) => (
-            <div
-              key={category}
-              className="border-none bg-gray-50 rounded-lg p-3 hover:bg-blue-50 transition-colors cursor-pointer"
-              onClick={() =>
-                setSelectedCategory(selectedCategory === category ? "all" : category)
-              }
-            >
-              <div className="text-sm font-medium text-gray-800">{category}</div>
-              <div className="text-xl font-bold text-blue-600 mt-1">
-                ${taxCategories[category].toFixed(2)}
-              </div>
+      {/* Content */}
+      <div className={cn("w-full h-full overflow-y-auto", isFullscreen ? "p-8" : "p-0")}>
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="heading-lg mb-2">Expense Categorizer</h1>
+          <div className="text-sm text-secondary">{formatCurrency(totalAmount)} total expenses</div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <AnimateLayout>
+            <div key="auto-categorized" className="bg-surface rounded-2xl border border-subtle p-4 shadow-hairline">
+              <div className="text-sm text-secondary mb-1">Auto-Categorized</div>
+              <div className="text-2xl font-bold text-success">{categorized}</div>
+              <div className="text-xs text-tertiary mt-1 uppercase tracking-wide">High confidence</div>
             </div>
-          ))}
+          </AnimateLayout>
+
+          <AnimateLayout>
+            <div key="needs-review" className="bg-surface rounded-2xl border border-subtle p-4 shadow-hairline">
+              <div className="text-sm text-secondary mb-1">Needs Review</div>
+              <div className="text-2xl font-bold text-warning">{needsReview}</div>
+              <div className="text-xs text-tertiary mt-1 uppercase tracking-wide">Manual check required</div>
+            </div>
+          </AnimateLayout>
+
+          <AnimateLayout>
+            <div key="tax-categories" className="bg-surface rounded-2xl border border-subtle p-4 shadow-hairline">
+              <div className="text-sm text-secondary mb-1">Tax Categories</div>
+              <div className="text-2xl font-bold text-info">{taxCategoryList.length}</div>
+              <div className="text-xs text-tertiary mt-1 uppercase tracking-wide">Distinct categories</div>
+            </div>
+          </AnimateLayout>
+
+          <AnimateLayout>
+            <div key="total-expenses" className="bg-surface rounded-2xl border border-subtle p-4 shadow-hairline">
+              <div className="text-sm text-secondary mb-1">Total Expenses</div>
+              <div className="text-2xl font-bold text-default">{allSuggestions.length}</div>
+              <div className="text-xs text-tertiary mt-1 uppercase tracking-wide">Transactions reviewed</div>
+            </div>
+          </AnimateLayout>
         </div>
-      </div>
 
-      {/* Filters */}
-      <div className="flex gap-4 items-center">
-        <select
-          value={filterReview}
-          onChange={(e) => setFilterReview(e.target.value as any)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-        >
-          <option value="all">All Suggestions</option>
-          <option value="needs_review">Needs Review</option>
-          <option value="high_confidence">High Confidence</option>
-        </select>
-
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-        >
-          <option value="all">All Categories</option>
-          {taxCategoryList.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
-
-        <div className="text-sm text-gray-600">
-          Showing {filteredSuggestions.length} of {allSuggestions.length} expenses
-        </div>
-      </div>
-
-      {/* Suggestions List */}
-      <div className="space-y-2">
-        {filteredSuggestions.map((suggestion) => (
-          <div
-            key={suggestion.transaction_id}
-            className={`bg-white rounded-lg shadow-none p-4 hover:bg-gray-50 transition-colors ${
-              suggestion.needsReview ? "border-l-4 border-yellow-500" : ""
-            }`}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-800">{suggestion.merchant}</h3>
-                  {suggestion.needsReview && (
-                    <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">
-                      Review
-                    </span>
-                  )}
-                </div>
-                <div className="text-sm text-gray-600 mt-1">
-                  {new Date(suggestion.date).toLocaleDateString()}
-                </div>
-                {suggestion.plaidCategory && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    Plaid: {suggestion.plaidCategory}
-                    {suggestion.plaidDetailed && ` → ${suggestion.plaidDetailed}`}
+        {/* Confidence Distribution */}
+        {confidenceDistribution && (
+          <AnimateLayout>
+            <div key="confidence-distribution" className="bg-surface rounded-2xl border border-subtle p-6 shadow-hairline mb-6">
+              <h2 className="text-lg font-semibold text-default mb-4">Confidence Distribution</h2>
+              <div className="space-y-3">
+                <div className="flex items-center gap-4">
+                  <div className="w-24 text-sm text-secondary">High (≥80%)</div>
+                  <div className="flex-1 h-6 bg-surface-secondary rounded-lg overflow-hidden">
+                    <div
+                      className="h-full bg-success"
+                      style={{
+                        width: `${(confidenceDistribution.high / allSuggestions.length) * 100}%`,
+                      }}
+                    />
                   </div>
-                )}
-              </div>
+                  <span className="text-sm font-medium text-default w-8 text-right">
+                    {confidenceDistribution.high}
+                  </span>
+                </div>
 
-              <div className="text-right">
-                <div className="text-xl font-bold text-gray-800">
-                  ${suggestion.amount.toFixed(2)}
+                <div className="flex items-center gap-4">
+                  <div className="w-24 text-sm text-secondary">Medium (60-80%)</div>
+                  <div className="flex-1 h-6 bg-surface-secondary rounded-lg overflow-hidden">
+                    <div
+                      className="h-full bg-warning"
+                      style={{
+                        width: `${(confidenceDistribution.medium / allSuggestions.length) * 100}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-sm font-medium text-default w-8 text-right">
+                    {confidenceDistribution.medium}
+                  </span>
                 </div>
-                <div className="text-xs text-gray-600 mt-1">
-                  {suggestion.suggestedTaxCategory}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {(suggestion.confidence * 100).toFixed(0)}% confidence
+
+                <div className="flex items-center gap-4">
+                  <div className="w-24 text-sm text-secondary">Low ({'<'}60%)</div>
+                  <div className="flex-1 h-6 bg-surface-secondary rounded-lg overflow-hidden">
+                    <div
+                      className="h-full bg-danger"
+                      style={{
+                        width: `${(confidenceDistribution.low / allSuggestions.length) * 100}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-sm font-medium text-default w-8 text-right">
+                    {confidenceDistribution.low}
+                  </span>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          </AnimateLayout>
+        )}
 
-      {filteredSuggestions.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No expenses found with the current filters
+        {/* Tax Category Breakdown */}
+        <AnimateLayout>
+          <div key="tax-breakdown" className="bg-surface rounded-2xl border border-subtle p-6 shadow-hairline mb-6">
+            <h2 className="text-lg font-semibold text-default mb-4">Tax Category Breakdown</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {taxCategoryList.map((category) => (
+                <div
+                  key={category}
+                  className="border border-subtle bg-surface-secondary rounded-xl p-3 hover:bg-surface-tertiary transition-colors cursor-pointer"
+                  onClick={() =>
+                    setSelectedCategory(selectedCategory === category ? "all" : category)
+                  }
+                >
+                  <div className="text-sm font-medium text-default truncate">{category}</div>
+                  <div className="text-xl font-bold text-info mt-1">
+                    {formatCurrency(taxCategories[category])}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </AnimateLayout>
+
+        {/* Filters */}
+        <div className="flex gap-4 items-center mb-4">
+          <div className="w-48">
+            <Select
+              value={filterReview}
+              onChange={(val: any) => setFilterReview(val.value)}
+              options={[
+                { value: "all", label: "All Suggestions" },
+                { value: "needs_review", label: "Needs Review" },
+                { value: "high_confidence", label: "High Confidence" }
+              ]}
+              size="sm"
+            />
+          </div>
+
+          <div className="w-48">
+            <Select
+              value={selectedCategory}
+              onChange={(val: any) => setSelectedCategory(val.value)}
+              options={[
+                { value: "all", label: "All Categories" },
+                ...taxCategoryList.map(cat => ({ value: cat, label: cat }))
+              ]}
+              size="sm"
+            />
+          </div>
+
+          <div className="text-sm text-secondary ml-auto">
+            Showing {filteredSuggestions.length} of {allSuggestions.length} expenses
+          </div>
         </div>
-      )}
+
+        {/* Suggestions List */}
+        <div className="space-y-3">
+          {filteredSuggestions.map((suggestion) => (
+            <AnimateLayout key={suggestion.transaction_id}>
+              <div
+                key={suggestion.transaction_id}
+                className={cn(
+                  "bg-surface rounded-xl border border-subtle p-4 shadow-hairline hover:bg-surface-secondary transition-colors",
+                  suggestion.needsReview && "border-l-4 border-l-warning border-y-subtle border-r-subtle"
+                )}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-default">{suggestion.merchant}</h3>
+                      {suggestion.needsReview && (
+                        <Badge color="warning" size="sm" pill>Review</Badge>
+                      )}
+                    </div>
+                    <div className="text-sm text-secondary">
+                      {new Date(suggestion.date).toLocaleDateString()}
+                    </div>
+                    {suggestion.plaidCategory && (
+                      <div className="text-xs text-tertiary mt-1">
+                        Plaid: {suggestion.plaidCategory}
+                        {suggestion.plaidDetailed && ` → ${suggestion.plaidDetailed}`}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-xl font-bold text-default">
+                      {formatCurrency(suggestion.amount)}
+                    </div>
+                    <div className="text-xs font-medium text-info mt-1">
+                      {suggestion.suggestedTaxCategory}
+                    </div>
+                    <div className="text-xs text-tertiary mt-1">
+                      {(suggestion.confidence * 100).toFixed(0)}% confidence
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </AnimateLayout>
+          ))}
+        </div>
+
+        {filteredSuggestions.length === 0 && (
+          <EmptyMessage>
+            <EmptyMessage.Title>No expenses found</EmptyMessage.Title>
+            <EmptyMessage.Description>Try adjusting your filters</EmptyMessage.Description>
+          </EmptyMessage>
+        )}
+      </div>
     </div>
   );
 }

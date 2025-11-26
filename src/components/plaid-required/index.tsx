@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import { motion } from "framer-motion";
+import React from "react";
 import {
   CreditCard,
   Check,
@@ -11,7 +10,7 @@ import {
   BarChart,
 } from "@openai/apps-sdk-ui/components/Icon";
 import { Button } from "@openai/apps-sdk-ui/components/Button";
-import { cn } from "@/lib/utils/cn";
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { useWidgetState } from "@/src/use-widget-state";
@@ -79,13 +78,10 @@ export default function PlaidRequired() {
     }
   };
 
-  // Note: Plaid Link operates within the same page context via the usePlaidLink hook,
-  // so no postMessage communication is needed. The /connect-bank page handles success
-  // via the onSuccess callback directly.
-
   return (
     <div className="antialiased w-full p-6 rounded-2xl border-none shadow-none bg-surface text-default">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <AnimateLayout>
+        <div key="plaid-required-content">
         {/* Header */}
         <div className="flex items-start mb-6">
           <div className="p-3 rounded-xl mr-4 flex-shrink-0 bg-success-soft">
@@ -103,43 +99,32 @@ export default function PlaidRequired() {
 
         {/* Status Messages */}
         {uiState?.successMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 border rounded-xl text-sm bg-success-soft border-success-surface text-success"
-          >
+          <div className="mb-4 p-3 border rounded-xl text-sm bg-success-soft border-success-surface text-success">
             {uiState.successMessage}
-          </motion.div>
+          </div>
         )}
         {uiState?.errorMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 border rounded-xl text-sm bg-danger-soft border-danger-surface text-danger"
-          >
+          <div className="mb-4 p-3 border rounded-xl text-sm bg-danger-soft border-danger-surface text-danger">
             {uiState.errorMessage}
-          </motion.div>
+          </div>
         )}
 
         {/* Features List */}
-        <div className="rounded-xl p-5 mb-6 bg-surface-secondary">
+        <div className="rounded-xl p-5 mb-6 bg-surface-secondary border border-subtle">
           <h3 className="font-semibold mb-4 text-sm text-default">
             What You'll Get:
           </h3>
           <div className="space-y-3">
             {features.map((feature, index) => (
-              <motion.div
+              <div
                 key={index}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
                 className="flex items-center text-sm text-secondary"
               >
                 <div className="p-1.5 rounded-lg mr-3 flex-shrink-0 bg-success-soft">
                   <feature.icon strokeWidth={1.5} className="h-4 w-4 text-success" />
                 </div>
                 <span>{feature.text}</span>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -175,7 +160,8 @@ export default function PlaidRequired() {
             Powered by Plaid
           </p>
         </div>
-      </motion.div>
+        </div>
+      </AnimateLayout>
     </div>
   );
 }

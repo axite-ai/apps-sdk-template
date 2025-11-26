@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Expand, ArrowDown, Trending } from "@openai/apps-sdk-ui/components/Icon";
+import { AnimatePresence, motion } from "framer-motion";
+import { Expand, Trending } from "@openai/apps-sdk-ui/components/Icon";
 import { Button } from "@openai/apps-sdk-ui/components/Button";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
@@ -13,6 +13,7 @@ import { formatCurrency, formatPercent } from "@/src/utils/format";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 import { cn } from "@/lib/utils/cn";
 import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
 import WidgetLoadingSkeleton from "@/src/components/shared/widget-loading-skeleton";
 
 interface Category {
@@ -73,64 +74,57 @@ interface CategoryBarProps {
 
 function CategoryBar({ category, index, isSelected, onClick }: CategoryBarProps) {
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{
-        type: "spring",
-        bounce: 0.2,
-        duration: 0.6,
-        delay: index * 0.05,
-      }}
-      onClick={onClick}
-      className={cn(
-        "group cursor-pointer rounded-xl border-none transition-all p-4 bg-surface shadow-none hover:bg-surface-secondary",
-        isSelected && "ring-2 ring-primary"
-      )}
-    >
-      <div className="flex items-center gap-3 mb-3">
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
-          style={{
-            background: `linear-gradient(135deg, ${category.color.from}, ${category.color.to})`,
-            color: "white"
-          }}
-        >
-          {getCategoryIcon(category.name)}
+    <AnimateLayout>
+      <div
+        key={category.name}
+        onClick={onClick}
+        className={cn(
+          "group cursor-pointer rounded-xl border border-subtle transition-all p-4 bg-surface shadow-hairline hover:bg-surface-secondary",
+          isSelected && "ring-2 ring-primary border-transparent"
+        )}
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
+            style={{
+              background: `linear-gradient(135deg, ${category.color.from}, ${category.color.to})`,
+              color: "white"
+            }}
+          >
+            {getCategoryIcon(category.name)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-sm truncate text-default">
+              {category.name}
+            </h3>
+            <p className="text-xs text-secondary">
+              {formatPercent(category.percentage / 100)}
+            </p>
+          </div>
+          <div className="text-base font-semibold text-default">
+            {formatCurrency(Math.abs(category.amount))}
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-sm truncate text-default">
-            {category.name}
-          </h3>
-          <p className="text-xs text-secondary">
-            {formatPercent(category.percentage / 100)}
-          </p>
-        </div>
-        <div className="text-base font-semibold text-default">
-          {formatCurrency(Math.abs(category.amount))}
-        </div>
-      </div>
 
-      {/* Progress bar */}
-      <div className="h-2 rounded-full overflow-hidden bg-surface-tertiary">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${category.percentage}%` }}
-          transition={{
-            type: "spring",
-            bounce: 0.3,
-            duration: 1,
-            delay: index * 0.05 + 0.3,
-          }}
-          className="h-full"
-          style={{
-            background: `linear-gradient(90deg, ${category.color.from}, ${category.color.to})`
-          }}
-        />
+        {/* Progress bar */}
+        <div className="h-2 rounded-full overflow-hidden bg-surface-tertiary">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${category.percentage}%` }}
+            transition={{
+              type: "spring",
+              bounce: 0.3,
+              duration: 1,
+              delay: index * 0.05 + 0.3,
+            }}
+            className="h-full"
+            style={{
+              background: `linear-gradient(90deg, ${category.color.from}, ${category.color.to})`
+            }}
+          />
+        </div>
       </div>
-    </motion.div>
+    </AnimateLayout>
   );
 }
 
@@ -231,7 +225,7 @@ function DonutChart({
 
       {/* Center text */}
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <div className="text-xs font-medium text-secondary">
+        <div className="text-xs font-medium text-secondary uppercase tracking-wide">
           Total Spent
         </div>
         <div className="text-2xl font-bold mt-1 text-default">
@@ -343,7 +337,8 @@ export default function SpendingInsights() {
             isFullscreen ? "grid-cols-1 lg:grid-cols-[300px,1fr]" : "grid-cols-1"
           )}
         >
-          {/* Donut Chart (fullscreen only) */}
+          {/* Donut Chart (fullscreen only or always visible if preferred, keeping logic consistent with original but refined style) */}
+          {/* Note: Original code only showed Donut in fullscreen. Preserving that behavior but making it robust. */}
           {isFullscreen && (
             <div className="flex items-start justify-center lg:sticky lg:top-0">
               <DonutChart

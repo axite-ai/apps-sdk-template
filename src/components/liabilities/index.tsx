@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import {
   Expand,
   CreditCard,
@@ -12,6 +12,7 @@ import {
 } from "@openai/apps-sdk-ui/components/Icon";
 import { Button } from "@openai/apps-sdk-ui/components/Button";
 import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
 import { cn } from "@/lib/utils/cn";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
@@ -270,82 +271,80 @@ export default function Liabilities() {
 
         {/* Summary Header */}
         {summary && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border-none p-6 shadow-none mb-6 bg-danger-soft"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 rounded-xl bg-danger-surface">
-                <Paid strokeWidth={1.5} className="h-6 w-6 text-danger" />
-              </div>
-              <div>
-                <div className="text-sm font-medium mb-1 text-danger-soft">
-                  Total Debt
+          <AnimateLayout>
+            <div key="summary" className="rounded-2xl border-none p-6 shadow-none mb-6 bg-danger-soft">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-xl bg-danger-surface">
+                  <Paid strokeWidth={1.5} className="h-6 w-6 text-danger" />
                 </div>
-                <div className="text-3xl font-bold text-default">
-                  {formatCurrency(summary.totalDebt)}
+                <div>
+                  <div className="text-sm font-medium mb-1 text-danger-soft uppercase tracking-wide">
+                    Total Debt
+                  </div>
+                  <div className="text-3xl font-bold text-default">
+                    {formatCurrency(summary.totalDebt)}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="rounded-xl p-3 bg-danger-surface">
-                <div className="text-xs font-medium mb-1 text-secondary">
-                  Min Payment
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="rounded-xl p-3 bg-danger-surface">
+                  <div className="text-xs font-medium mb-1 text-secondary uppercase tracking-wide">
+                    Min Payment
+                  </div>
+                  <div className="text-lg font-semibold text-default">
+                    {formatCurrency(summary.totalMinimumPayment)}
+                  </div>
                 </div>
-                <div className="text-lg font-semibold text-default">
-                  {formatCurrency(summary.totalMinimumPayment)}
+                <div className="rounded-xl p-3 bg-danger-surface">
+                  <div className="text-xs font-medium mb-1 text-secondary uppercase tracking-wide">
+                    Total Accounts
+                  </div>
+                  <div className="text-lg font-semibold text-default">
+                    {totalLiabilities}
+                  </div>
                 </div>
+                {summary.accountsOverdue > 0 ? (
+                  <div className="rounded-xl p-3 bg-warning-soft border border-warning-surface">
+                    <div className="text-xs font-medium mb-1 text-warning uppercase tracking-wide">
+                      <Warning className="inline h-3 w-3 mr-1" />
+                      Overdue
+                    </div>
+                    <div className="text-lg font-semibold text-warning">
+                      {summary.accountsOverdue}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl p-3 bg-success-soft border border-success-surface">
+                    <div className="text-xs font-medium mb-1 text-success uppercase tracking-wide">
+                      ✓ Status
+                    </div>
+                    <div className="text-sm font-semibold text-success">
+                      All Current
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="rounded-xl p-3 bg-danger-surface">
-                <div className="text-xs font-medium mb-1 text-secondary">
-                  Total Accounts
-                </div>
-                <div className="text-lg font-semibold text-default">
-                  {totalLiabilities}
-                </div>
-              </div>
-              {summary.accountsOverdue > 0 ? (
-                <div className="rounded-xl p-3 bg-warning-soft border border-warning-surface">
-                  <div className="text-xs font-medium mb-1 text-warning">
-                    <Warning className="inline h-3 w-3 mr-1" />
-                    Overdue
-                  </div>
-                  <div className="text-lg font-semibold text-warning">
-                    {summary.accountsOverdue}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-xl p-3 bg-success-soft border border-success-surface">
-                  <div className="text-xs font-medium mb-1 text-success">
-                    ✓ Status
-                  </div>
-                  <div className="text-sm font-semibold text-success">
-                    All Current
-                  </div>
+
+              {summary.nextPaymentDue && (
+                <div className="mt-4 text-sm text-secondary">
+                  Next payment due:{" "}
+                  <strong>{formatDate(summary.nextPaymentDue)}</strong>
+                  {(() => {
+                    const days = getDaysUntil(summary.nextPaymentDue);
+                    if (days !== null) {
+                      return days < 0
+                        ? ` (${Math.abs(days)} days overdue)`
+                        : days === 0
+                        ? " (due today)"
+                        : ` (in ${days} days)`;
+                    }
+                    return "";
+                  })()}
                 </div>
               )}
             </div>
-
-            {summary.nextPaymentDue && (
-              <div className="mt-4 text-sm text-secondary">
-                Next payment due:{" "}
-                <strong>{formatDate(summary.nextPaymentDue)}</strong>
-                {(() => {
-                  const days = getDaysUntil(summary.nextPaymentDue);
-                  if (days !== null) {
-                    return days < 0
-                      ? ` (${Math.abs(days)} days overdue)`
-                      : days === 0
-                      ? " (due today)"
-                      : ` (in ${days} days)`;
-                  }
-                  return "";
-                })()}
-              </div>
-            )}
-          </motion.div>
+          </AnimateLayout>
         )}
 
         {/* Liabilities List */}
@@ -362,102 +361,90 @@ export default function Liabilities() {
             const isExpanded = uiState.expandedIds.includes(card.account_id);
 
             return (
-              <motion.div
-                key={card.account_id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="rounded-2xl border-none shadow-none overflow-hidden bg-surface"
-              >
-                <div
-                  className="p-4 cursor-pointer transition-colors hover:bg-surface-secondary"
-                  onClick={() => toggleExpanded(card.account_id)}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-info-soft">
-                        <CreditCard strokeWidth={1.5} className="h-5 w-5 text-info" />
+              <AnimateLayout key={card.account_id}>
+                <div key={card.account_id} className="rounded-2xl border border-subtle shadow-hairline overflow-hidden bg-surface">
+                  <div
+                    className="p-4 cursor-pointer transition-colors hover:bg-surface-secondary"
+                    onClick={() => toggleExpanded(card.account_id)}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-info-soft">
+                          <CreditCard strokeWidth={1.5} className="h-5 w-5 text-info" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-default">
+                            {account.name}
+                          </h3>
+                          <p className="text-sm text-secondary">
+                            Credit Card{account.mask && ` • ****${account.mask}`}
+                          </p>
+                        </div>
+                      </div>
+                      {card.is_overdue && (
+                        <span className="px-2 py-1 bg-danger-soft text-danger text-xs font-bold rounded">
+                          OVERDUE
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mb-2">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-secondary">Balance</span>
+                        <span className="font-bold text-default">
+                          {formatCurrency(balance)}
+                        </span>
+                      </div>
+                      {limit > 0 && (
+                        <>
+                          <div className="h-2 rounded-full overflow-hidden bg-surface-tertiary">
+                            <div
+                              className={cn(
+                                "h-full transition-all",
+                                utilization > 80
+                                  ? "bg-danger"
+                                  : utilization > 50
+                                  ? "bg-warning"
+                                  : "bg-success"
+                              )}
+                              style={{ width: `${Math.min(utilization, 100)}%` }}
+                            />
+                          </div>
+                          <div className="text-xs mt-1 text-secondary">
+                            {formatPercent(utilization / 100)} of {formatCurrency(limit)} limit
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="block text-secondary uppercase tracking-wide">
+                          Min Payment
+                        </span>
+                        <span className="font-semibold text-default">
+                          {formatCurrency(card.minimum_payment_amount || 0)}
+                        </span>
                       </div>
                       <div>
-                        <h3 className="font-semibold text-default">
-                          {account.name}
-                        </h3>
-                        <p className="text-sm text-secondary">
-                          Credit Card{account.mask && ` • ****${account.mask}`}
-                        </p>
+                        <span className="block text-secondary uppercase tracking-wide">Due Date</span>
+                        <span
+                          className={cn(
+                            "font-semibold",
+                            daysUntilDue !== null && daysUntilDue < 7
+                              ? "text-danger"
+                              : "text-default"
+                          )}
+                        >
+                          {card.next_payment_due_date ? formatDate(card.next_payment_due_date) : 'N/A'}
+                        </span>
                       </div>
                     </div>
-                    {card.is_overdue && (
-                      <span className="px-2 py-1 bg-danger-soft text-danger text-xs font-bold rounded">
-                        OVERDUE
-                      </span>
-                    )}
                   </div>
 
-                  <div className="mb-2">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-secondary">Balance</span>
-                      <span className="font-bold text-default">
-                        {formatCurrency(balance)}
-                      </span>
-                    </div>
-                    {limit > 0 && (
-                      <>
-                        <div className="h-2 rounded-full overflow-hidden bg-surface-tertiary">
-                          <div
-                            className={cn(
-                              "h-full transition-all",
-                              utilization > 80
-                                ? "bg-danger"
-                                : utilization > 50
-                                ? "bg-warning"
-                                : "bg-success"
-                            )}
-                            style={{ width: `${Math.min(utilization, 100)}%` }}
-                          />
-                        </div>
-                        <div className="text-xs mt-1 text-secondary">
-                          {formatPercent(utilization / 100)} of {formatCurrency(limit)} limit
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <span className="block text-secondary">
-                        Min Payment
-                      </span>
-                      <span className="font-semibold text-default">
-                        {formatCurrency(card.minimum_payment_amount || 0)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block text-secondary">Due Date</span>
-                      <span
-                        className={cn(
-                          "font-semibold",
-                          daysUntilDue !== null && daysUntilDue < 7
-                            ? "text-danger"
-                            : "text-default"
-                        )}
-                      >
-                        {card.next_payment_due_date ? formatDate(card.next_payment_due_date) : 'N/A'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Expanded Details */}
-                <AnimatePresence>
-                  {isExpanded && card.aprs && card.aprs.length > 0 && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
+                  {/* Expanded Details */}
+                  <AnimatePresence>
+                    {isExpanded && card.aprs && card.aprs.length > 0 && (
                       <div className="px-4 pb-4 border-t border-subtle space-y-2">
                         <div className="text-xs font-semibold uppercase pt-3 text-secondary">
                           APR Breakdown
@@ -476,10 +463,10 @@ export default function Liabilities() {
                           </div>
                         ))}
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </AnimateLayout>
             );
           })}
 
@@ -503,71 +490,67 @@ export default function Liabilities() {
             const balance = account.balances.current || 0;
 
             return (
-              <motion.div
-                key={loan.account_id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: (credit.length + index) * 0.05 }}
-                className="rounded-2xl border-none shadow-none bg-surface"
-              >
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-discovery-soft">
-                        <Graduate strokeWidth={1.5} className="h-5 w-5 text-discovery" />
+              <AnimateLayout key={loan.account_id}>
+                <div key={loan.account_id} className="rounded-2xl border border-subtle shadow-hairline bg-surface">
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-discovery-soft">
+                          <Graduate strokeWidth={1.5} className="h-5 w-5 text-discovery" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-default">
+                            {loan.loan_name || account.name}
+                          </h3>
+                          <p className="text-sm text-secondary">
+                            Student Loan
+                          </p>
+                        </div>
+                      </div>
+                      {loan.is_overdue && (
+                        <span className="px-2 py-1 bg-danger-soft text-danger text-xs font-bold rounded">
+                          OVERDUE
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="block mb-1 text-secondary uppercase tracking-wide">
+                          Balance
+                        </span>
+                        <span className="font-bold text-base text-default">
+                          {formatCurrency(balance)}
+                        </span>
                       </div>
                       <div>
-                        <h3 className="font-semibold text-default">
-                          {loan.loan_name || account.name}
-                        </h3>
-                        <p className="text-sm text-secondary">
-                          Student Loan
-                        </p>
+                        <span className="block mb-1 text-secondary uppercase tracking-wide">
+                          Interest Rate
+                        </span>
+                        <span className="font-bold text-base text-default">
+                          {formatPercent(loan.interest_rate_percentage / 100)}
+                        </span>
                       </div>
-                    </div>
-                    {loan.is_overdue && (
-                      <span className="px-2 py-1 bg-danger-soft text-danger text-xs font-bold rounded">
-                        OVERDUE
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <span className="block mb-1 text-secondary">
-                        Balance
-                      </span>
-                      <span className="font-bold text-base text-default">
-                        {formatCurrency(balance)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block mb-1 text-secondary">
-                        Interest Rate
-                      </span>
-                      <span className="font-bold text-base text-default">
-                        {formatPercent(loan.interest_rate_percentage / 100)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block mb-1 text-secondary">
-                        Min Payment
-                      </span>
-                      <span className="font-semibold text-default">
-                        {formatCurrency(loan.minimum_payment_amount || 0)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block mb-1 text-secondary">
-                        Due Date
-                      </span>
-                      <span className="font-semibold text-default">
-                        {loan.next_payment_due_date ? formatDate(loan.next_payment_due_date) : 'N/A'}
-                      </span>
+                      <div>
+                        <span className="block mb-1 text-secondary uppercase tracking-wide">
+                          Min Payment
+                        </span>
+                        <span className="font-semibold text-default">
+                          {formatCurrency(loan.minimum_payment_amount || 0)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="block mb-1 text-secondary uppercase tracking-wide">
+                          Due Date
+                        </span>
+                        <span className="font-semibold text-default">
+                          {loan.next_payment_due_date ? formatDate(loan.next_payment_due_date) : 'N/A'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </AnimateLayout>
             );
           })}
 
@@ -591,82 +574,78 @@ export default function Liabilities() {
             const balance = account.balances.current || 0;
 
             return (
-              <motion.div
-                key={mtg.account_id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: (credit.length + student.length + index) * 0.05 }}
-                className="rounded-2xl border-none shadow-none bg-surface"
-              >
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-success-soft">
-                        <Home strokeWidth={1.5} className="h-5 w-5 text-success" />
+              <AnimateLayout key={mtg.account_id}>
+                <div key={mtg.account_id} className="rounded-2xl border border-subtle shadow-hairline bg-surface">
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-success-soft">
+                          <Home strokeWidth={1.5} className="h-5 w-5 text-success" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-default">
+                            {account.name}
+                          </h3>
+                          <p className="text-sm text-secondary">
+                            Mortgage
+                          </p>
+                        </div>
+                      </div>
+                      {mtg.past_due_amount && mtg.past_due_amount > 0 && (
+                        <span className="px-2 py-1 bg-danger-soft text-danger text-xs font-bold rounded">
+                          PAST DUE
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="block mb-1 text-secondary uppercase tracking-wide">
+                          Balance
+                        </span>
+                        <span className="font-bold text-base text-default">
+                          {formatCurrency(balance)}
+                        </span>
                       </div>
                       <div>
-                        <h3 className="font-semibold text-default">
-                          {account.name}
-                        </h3>
-                        <p className="text-sm text-secondary">
-                          Mortgage
-                        </p>
+                        <span className="block mb-1 text-secondary uppercase tracking-wide">
+                          Interest Rate
+                        </span>
+                        <span className="font-bold text-base text-default">
+                          {formatPercent((mtg.interest_rate.percentage || 0) / 100)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="block mb-1 text-secondary uppercase tracking-wide">
+                          Monthly Payment
+                        </span>
+                        <span className="font-semibold text-default">
+                          {formatCurrency(mtg.next_monthly_payment || 0)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="block mb-1 text-secondary uppercase tracking-wide">
+                          Due Date
+                        </span>
+                        <span className="font-semibold text-default">
+                          {mtg.next_payment_due_date ? formatDate(mtg.next_payment_due_date) : 'N/A'}
+                        </span>
                       </div>
                     </div>
-                    {mtg.past_due_amount && mtg.past_due_amount > 0 && (
-                      <span className="px-2 py-1 bg-danger-soft text-danger text-xs font-bold rounded">
-                        PAST DUE
-                      </span>
+
+                    {mtg.loan_term && (
+                      <div className="mt-3 pt-3 border-t border-subtle text-xs">
+                        <span className="block mb-1 text-secondary uppercase tracking-wide">
+                          Loan Term
+                        </span>
+                        <span className="font-semibold text-default">
+                          {mtg.loan_term}
+                        </span>
+                      </div>
                     )}
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <span className="block mb-1 text-secondary">
-                        Balance
-                      </span>
-                      <span className="font-bold text-base text-default">
-                        {formatCurrency(balance)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block mb-1 text-secondary">
-                        Interest Rate
-                      </span>
-                      <span className="font-bold text-base text-default">
-                        {formatPercent((mtg.interest_rate.percentage || 0) / 100)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block mb-1 text-secondary">
-                        Monthly Payment
-                      </span>
-                      <span className="font-semibold text-default">
-                        {formatCurrency(mtg.next_monthly_payment || 0)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block mb-1 text-secondary">
-                        Due Date
-                      </span>
-                      <span className="font-semibold text-default">
-                        {mtg.next_payment_due_date ? formatDate(mtg.next_payment_due_date) : 'N/A'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {mtg.loan_term && (
-                    <div className="mt-3 pt-3 border-t border-subtle text-xs">
-                      <span className="block mb-1 text-secondary">
-                        Loan Term
-                      </span>
-                      <span className="font-semibold text-default">
-                        {mtg.loan_term}
-                      </span>
-                    </div>
-                  )}
                 </div>
-              </motion.div>
+              </AnimateLayout>
             );
           })}
 

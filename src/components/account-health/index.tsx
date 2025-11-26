@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import {
   Expand,
   Error,
@@ -11,6 +11,8 @@ import {
   ShieldCheck,
 } from "@openai/apps-sdk-ui/components/Icon";
 import { Button } from "@openai/apps-sdk-ui/components/Button";
+import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
 import { cn } from "@/lib/utils/cn";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useDisplayMode } from "@/src/use-display-mode";
@@ -50,78 +52,64 @@ function getWarningSeverity(warning: string): "error" | "warning" | "info" {
 interface WarningCardProps {
   account: HealthAccount;
   index: number;
-  isDark: boolean;
 }
 
-function WarningCard({ account, index }: Omit<WarningCardProps, "isDark">) {
+function WarningCard({ account, index }: WarningCardProps) {
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{
-        type: "spring",
-        bounce: 0.2,
-        duration: 0.6,
-        delay: index * 0.05,
-      }}
-      className="group relative overflow-hidden rounded-2xl border-none transition-all p-5 bg-surface shadow-none"
-    >
-      {/* Account Header */}
-      <div className="mb-4">
-        <h3 className="font-medium text-base text-default">
-          {account.name}
-        </h3>
-      </div>
+    <AnimateLayout>
+      <div
+        key={"account-warning-card-" + index}
+        className="group relative overflow-hidden rounded-2xl border border-subtle transition-all p-5 bg-surface shadow-hairline"
+      >
+        {/* Account Header */}
+        <div className="mb-4">
+          <h3 className="font-medium text-base text-default">{account.name}</h3>
+        </div>
 
-      {/* Warnings */}
-      <div className="space-y-3">
-        {account.warnings.map((warning, wIndex) => {
-          const severity = getWarningSeverity(warning);
-          return (
-            <div
-              key={wIndex}
-              className={cn(
-                "flex items-start gap-3 p-3 rounded-xl border",
-                severity === "error"
-                  ? "bg-danger-soft border-danger-surface"
-                  : severity === "warning"
-                  ? "bg-warning-soft border-warning-surface"
-                  : "bg-info-soft border-info-surface"
-              )}
-            >
-              <div className="text-xl flex-shrink-0">
-                {getWarningIcon(warning)}
+        {/* Warnings */}
+        <div className="space-y-3">
+          {account.warnings.map((warning, wIndex) => {
+            const severity = getWarningSeverity(warning);
+            return (
+              <div
+                key={wIndex}
+                className={cn(
+                  "flex items-start gap-3 p-3 rounded-xl border",
+                  severity === "error"
+                    ? "bg-danger-soft border-danger-surface"
+                    : severity === "warning"
+                    ? "bg-warning-soft border-warning-surface"
+                    : "bg-info-soft border-info-surface"
+                )}
+              >
+                <div className="text-xl flex-shrink-0">
+                  {getWarningIcon(warning)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={cn(
+                      "text-sm",
+                      severity === "error"
+                        ? "text-danger"
+                        : severity === "warning"
+                        ? "text-warning"
+                        : "text-info"
+                    )}
+                  >
+                    {warning}
+                  </p>
+                </div>
+                {severity === "error" ? (
+                  <Error className="w-4 h-4 flex-shrink-0 text-danger" />
+                ) : severity === "warning" ? (
+                  <Warning className="w-4 h-4 flex-shrink-0 text-warning" />
+                ) : null}
               </div>
-              <div className="flex-1 min-w-0">
-                <p
-                  className={cn(
-                    "text-sm",
-                    severity === "error"
-                      ? "text-danger"
-                      : severity === "warning"
-                      ? "text-warning"
-                      : "text-info"
-                  )}
-                >
-                  {warning}
-                </p>
-              </div>
-              {severity === "error" ? (
-                <Error
-                  className="w-4 h-4 flex-shrink-0 text-danger"
-                />
-              ) : severity === "warning" ? (
-                <Warning
-                  className="w-4 h-4 flex-shrink-0 text-warning"
-                />
-              ) : null}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </motion.div>
+    </AnimateLayout>
   );
 }
 
@@ -140,72 +128,75 @@ function HealthStatusCard({
   const isWarning = status === "warning";
 
   return (
-    <motion.div
-      initial={{ scale: 0.95, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: "spring", bounce: 0.2, duration: 0.8 }}
-      className={cn(
-        "relative overflow-hidden rounded-3xl border-none p-6",
-        isHealthy
-          ? "bg-success-soft"
-          : isWarning
-          ? "bg-warning-soft"
-          : "bg-danger-soft",
-        "shadow-none"
-      )}
-    >
-      <div className="flex items-start gap-4">
-        <div
-          className={cn(
-            "w-16 h-16 rounded-2xl flex items-center justify-center",
-            isHealthy
-              ? "bg-success-solid"
-              : isWarning
-              ? "bg-warning-solid"
-              : "bg-danger-solid"
-          )}
-        >
-          {isHealthy ? (
-            <CheckCircleFilled className="w-8 h-8 text-white" />
-          ) : (
-            <ShieldCheck className="w-8 h-8 text-white" />
-          )}
-        </div>
+    <AnimateLayout>
+      <div
+        key="health-status-card"
+        className={cn(
+          "relative overflow-hidden rounded-3xl border-none p-6 shadow-hairline",
+          isHealthy
+            ? "bg-success-soft"
+            : isWarning
+            ? "bg-warning-soft"
+            : "bg-danger-soft"
+        )}
+      >
+        <div className="flex items-start gap-4">
+          <div
+            className={cn(
+              "w-16 h-16 rounded-2xl flex items-center justify-center",
+              isHealthy
+                ? "bg-success-solid"
+                : isWarning
+                ? "bg-warning-solid"
+                : "bg-danger-solid"
+            )}
+          >
+            {isHealthy ? (
+              <CheckCircleFilled className="w-8 h-8 text-white" />
+            ) : (
+              <ShieldCheck className="w-8 h-8 text-white" />
+            )}
+          </div>
 
-        <div className="flex-1">
-          <h2
-            className={cn(
-              "text-2xl font-semibold mb-1",
-              isHealthy
-                ? "text-success"
+          <div className="flex-1">
+            <h2
+              className={cn(
+                "text-2xl font-semibold mb-1",
+                isHealthy
+                  ? "text-success"
+                  : isWarning
+                  ? "text-warning"
+                  : "text-danger"
+              )}
+            >
+              {isHealthy
+                ? "All Good!"
                 : isWarning
-                ? "text-warning"
-                : "text-danger"
-            )}
-          >
-            {isHealthy
-              ? "All Good!"
-              : isWarning
-              ? "Needs Attention"
-              : "Action Required"}
-          </h2>
-          <p
-            className={cn(
-              "text-sm",
-              isHealthy
-                ? "text-success-soft"
-                : isWarning
-                ? "text-warning-soft"
-                : "text-danger-soft"
-            )}
-          >
-            {isHealthy
-              ? `${accountsCount} accounts monitored, no issues detected`
-              : `${warningCount} ${warningCount === 1 ? "issue" : "issues"} detected across ${accountsCount} ${accountsCount === 1 ? "account" : "accounts"}`}
-          </p>
+                ? "Needs Attention"
+                : "Action Required"}
+            </h2>
+            <p
+              className={cn(
+                "text-sm",
+                isHealthy
+                  ? "text-success-soft"
+                  : isWarning
+                  ? "text-warning-soft"
+                  : "text-danger-soft"
+              )}
+            >
+              {isHealthy
+                ? `${accountsCount} accounts monitored, no issues detected`
+                : `${warningCount} ${
+                    warningCount === 1 ? "issue" : "issues"
+                  } detected across ${accountsCount} ${
+                    accountsCount === 1 ? "account" : "accounts"
+                  }`}
+            </p>
+          </div>
         </div>
       </div>
-    </motion.div>
+    </AnimateLayout>
   );
 }
 
@@ -222,17 +213,17 @@ export default function AccountHealth() {
 
   if (!toolOutput) {
     return (
-      <div className="p-8 text-center text-secondary">
-        <p>No health data available</p>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Title>No health data available</EmptyMessage.Title>
+      </EmptyMessage>
     );
   }
 
   if (!toolOutput.accounts || toolOutput.accounts.length === 0) {
     return (
-      <div className="p-8 text-center text-secondary">
-        <p>No accounts to monitor</p>
-      </div>
+      <EmptyMessage>
+        <EmptyMessage.Title>No accounts to monitor</EmptyMessage.Title>
+      </EmptyMessage>
     );
   }
 
@@ -282,16 +273,12 @@ export default function AccountHealth() {
       >
         {/* Header */}
         <div className="mb-6">
-          <h1 className="heading-lg mb-2">
-            Account Health
-          </h1>
+          <h1 className="heading-lg mb-2">Account Health</h1>
           <div className="flex items-center gap-3">
             <Trending
               className={cn(
                 "w-5 h-5",
-                overallStatus === "healthy"
-                  ? "text-success"
-                  : "text-warning"
+                overallStatus === "healthy" ? "text-success" : "text-warning"
               )}
             />
             <p className="text-sm text-secondary">
@@ -335,22 +322,17 @@ export default function AccountHealth() {
             </div>
           </div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-            className="text-center py-12 rounded-2xl border bg-surface border-subtle"
-          >
-            <CheckCircleFilled
-              className="w-16 h-16 mx-auto mb-4 text-success"
-            />
-            <h3 className="text-lg font-medium mb-2 text-default">
-              Everything looks great!
-            </h3>
-            <p className="text-sm text-secondary">
-              No issues detected across your accounts
-            </p>
-          </motion.div>
+          <AnimateLayout>
+            <div key="no-issues" className="text-center py-12 rounded-2xl border bg-surface border-subtle shadow-hairline">
+              <CheckCircleFilled className="w-16 h-16 mx-auto mb-4 text-success" />
+              <h3 className="text-lg font-medium mb-2 text-default">
+                Everything looks great!
+              </h3>
+              <p className="text-sm text-secondary">
+                No issues detected across your accounts
+              </p>
+            </div>
+          </AnimateLayout>
         )}
       </div>
     </div>

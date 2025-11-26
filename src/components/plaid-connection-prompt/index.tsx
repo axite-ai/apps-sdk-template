@@ -8,7 +8,7 @@ import {
   ShieldCheck,
 } from "@openai/apps-sdk-ui/components/Icon";
 import { Button } from "@openai/apps-sdk-ui/components/Button";
-import { cn } from "@/lib/utils/cn";
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
 
 /**
  * PlaidConnectionPrompt - A reusable component for prompting bank connection
@@ -34,58 +34,67 @@ export default function PlaidConnectionPrompt() {
   };
 
   return (
-    <div className="p-4 rounded-lg border-none shadow-none bg-surface">
-      <div className="flex items-start mb-3">
-        <Business className="w-5 h-5 mr-2 flex-shrink-0 text-success" />
-        <div className="flex-1">
-          <h3 className="text-base font-bold mb-1 text-default">
-            Connect Your Bank Account
-          </h3>
-          <p className="text-xs text-secondary">
-            Link your financial accounts to access this feature
-          </p>
+    <AnimateLayout>
+      <div key="plaid-prompt" className="p-4 rounded-2xl border border-subtle shadow-hairline bg-surface">
+        <div className="flex items-start mb-3">
+          <div className="p-2 rounded-lg bg-success-soft mr-3">
+            <Business className="w-5 h-5 text-success" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-bold mb-1 text-default">
+              Connect Your Bank Account
+            </h3>
+            <p className="text-xs text-secondary">
+              Link your financial accounts to access this feature
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div className="rounded-lg p-3 mb-3 bg-surface-secondary">
-        <ul className="space-y-2">
-          <li className="flex items-start text-xs text-secondary">
-            <Check className="w-3 h-3 mr-2 flex-shrink-0 mt-0.5 text-success" />
-            <span>Real-time account balances</span>
-          </li>
-          <li className="flex items-start text-xs text-secondary">
-            <Check className="w-3 h-3 mr-2 flex-shrink-0 mt-0.5 text-success" />
-            <span>Transaction history & insights</span>
-          </li>
-          <li className="flex items-start text-xs text-secondary">
-            <Check className="w-3 h-3 mr-2 flex-shrink-0 mt-0.5 text-success" />
-            <span>AI-powered spending analysis</span>
-          </li>
-        </ul>
-      </div>
-
-      <div className="border rounded-lg p-2 mb-3 bg-info-soft border-info-surface">
-        <div className="flex items-start">
-          <ShieldCheck className="w-3 h-3 mr-2 flex-shrink-0 mt-0.5 text-info" />
-          <p className="text-xs text-info">
-            Secured by Plaid. We never see your credentials.
-          </p>
+        <div className="rounded-xl p-3 mb-3 bg-surface-secondary border border-subtle">
+          <ul className="space-y-2">
+            <li className="flex items-start text-xs text-secondary">
+              <div className="p-0.5 rounded-full bg-success-surface mr-2 mt-0.5">
+                <Check className="w-3 h-3 text-success" />
+              </div>
+              <span>Real-time account balances</span>
+            </li>
+            <li className="flex items-start text-xs text-secondary">
+              <div className="p-0.5 rounded-full bg-success-surface mr-2 mt-0.5">
+                <Check className="w-3 h-3 text-success" />
+              </div>
+              <span>Transaction history & insights</span>
+            </li>
+            <li className="flex items-start text-xs text-secondary">
+              <div className="p-0.5 rounded-full bg-success-surface mr-2 mt-0.5">
+                <Check className="w-3 h-3 text-success" />
+              </div>
+              <span>AI-powered spending analysis</span>
+            </li>
+          </ul>
         </div>
+
+        <div className="border rounded-xl p-3 mb-3 bg-info-soft border-info-surface">
+          <div className="flex items-start">
+            <ShieldCheck className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5 text-info" />
+            <p className="text-xs text-info">
+              Secured by Plaid. We never see your credentials.
+            </p>
+          </div>
+        </div>
+
+        <Button
+          onClick={handleConnect}
+          color="success"
+          size="lg"
+          block
+        >
+          Connect Bank Account
+        </Button>
+
+        <p className="text-xs text-center mt-2 text-tertiary">
+          Powered by Plaid
+        </p>
       </div>
-
-      <Button
-        onClick={handleConnect}
-        color="success"
-        size="lg"
-        block
-      >
-        Connect Bank Account
-      </Button>
-
-      <p className="text-xs text-center mt-2 text-tertiary">
-        Powered by Plaid
-      </p>
-    </div>
+    </AnimateLayout>
   );
 }
-

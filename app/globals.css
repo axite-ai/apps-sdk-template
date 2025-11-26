@@ -7,86 +7,23 @@
 /* Root Variables */
 /* -------------------------------------- */
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+  Apps SDK UI provides a comprehensive set of CSS variables for theming.
+  We rely on the SDK's tokens for consistency.
 
-/* Tailwind v4 theme tokens */
+  See: https://openai.github.io/apps-sdk-ui/?path=/docs/foundations-design-tokens--docs
+*/
+
+/* Tailwind v4 theme tokens - mapping to Apps SDK UI tokens where possible */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-/* Support manual theme switching via data-theme attribute */
-[data-theme="dark"] {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-}
-
-[data-theme="light"] {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-background: var(--color-surface);
+  --color-foreground: var(--color-text);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-/* -------------------------------------- */
-/* Custom Scroll Utilities */
-/* -------------------------------------- */
-
-.overflow-auto > *,
-.overflow-scroll > *,
-.overflow-x-auto > *,
-.overflow-y-auto > * {
-  scrollbar-color: auto;
-}
-
-.overflow-auto,
-.overflow-scroll,
-.overflow-x-auto,
-.overflow-y-auto,
-.overflow-x-scroll,
-.overflow-y-scroll {
-  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
-}
-
-@media (prefers-color-scheme: dark) {
-  .overflow-auto,
-  .overflow-scroll,
-  .overflow-x-auto,
-  .overflow-y-auto,
-  .overflow-x-scroll,
-  .overflow-y-scroll {
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-  }
-}
-
-.overflow-auto:hover,
-.overflow-scroll:hover,
-.overflow-x-auto:hover,
-.overflow-y-auto:hover {
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-}
-
-@media (prefers-color-scheme: dark) {
-  .overflow-auto:hover,
-  .overflow-scroll:hover,
-  .overflow-x-auto:hover,
-  .overflow-y-auto:hover {
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-  }
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-sans);
 }

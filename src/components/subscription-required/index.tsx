@@ -11,6 +11,7 @@ import {
 import { Button } from "@openai/apps-sdk-ui/components/Button";
 import { Badge } from "@openai/apps-sdk-ui/components/Badge";
 import { Alert } from "@openai/apps-sdk-ui/components/Alert";
+import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { useDisplayMode } from "@/src/use-display-mode";
@@ -186,90 +187,86 @@ export default function SubscriptionRequired() {
             const isSelected = selectedPlan === plan.id;
 
             return (
-              <motion.div
-                key={plan.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={cn(
-                  "relative cursor-pointer rounded-2xl border-none p-4 transition-all",
-                  isSelected
-                    ? "bg-info-soft ring-2 ring-info"
-                    : "bg-surface hover:bg-surface-secondary",
-                  plan.popular && !isSelected && "border-none ring-1 ring-info"
-                )}
-                onClick={() => handleSelectPlan(plan.id)}
-              >
-                {/* Popular Badge */}
-                {plan.popular && (
-                    <div className="absolute -top-2 right-4">
-                      <Badge color="discovery" size="sm" pill className="shadow-sm">
-                        <Sparkle className="h-3 w-3 mr-1" />
-                        Popular
-                      </Badge>
-                    </div>
+              <AnimateLayout key={plan.id}>
+                <div
+                  key={plan.id}
+                  className={cn(
+                    "relative cursor-pointer rounded-2xl border-none p-4 transition-all",
+                    isSelected
+                      ? "bg-info-soft ring-2 ring-info"
+                      : "bg-surface hover:bg-surface-secondary",
+                    plan.popular && !isSelected && "border-none ring-1 ring-info"
                   )}
-
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="heading-sm text-default">
-                      {plan.name}
-                    </h3>
-                    {plan.trial && (
-                      <p className="text-xs font-medium text-info">
-                        {plan.trial}
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-default">
-                      {plan.price}
-                    </div>
-                    <div className="text-xs text-secondary">
-                      /{plan.interval}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Features List */}
-                <ul className="space-y-2">
-                  {plan.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-sm">
-                      <div className="p-0.5 rounded-full bg-success-surface flex-shrink-0">
-                        <Check
-                          className="h-3 w-3 text-success"
-                        />
+                  onClick={() => handleSelectPlan(plan.id)}
+                >
+                  {/* Popular Badge */}
+                  {plan.popular && (
+                      <div className="absolute -top-2 right-4">
+                        <Badge color="discovery" size="sm" pill className="shadow-sm">
+                          <Sparkle className="h-3 w-3 mr-1" />
+                          Popular
+                        </Badge>
                       </div>
-                      <span className="text-secondary">
-                        {feature}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
+                    )}
+
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="heading-sm text-default">
+                        {plan.name}
+                      </h3>
+                      {plan.trial && (
+                        <p className="text-xs font-medium text-info">
+                          {plan.trial}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-default">
+                        {plan.price}
+                      </div>
+                      <div className="text-xs text-secondary">
+                        /{plan.interval}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Features List */}
+                  <ul className="space-y-2">
+                    {plan.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-sm">
+                        <div className="p-0.5 rounded-full bg-success-surface flex-shrink-0">
+                          <Check
+                            className="h-3 w-3 text-success"
+                          />
+                        </div>
+                        <span className="text-secondary">
+                          {feature}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </AnimateLayout>
             );
           })}
         </div>
 
         {/* Subscribe Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mt-6"
-        >
-          <Button
-            id="subscribe-btn"
-            disabled={!selectedPlan || isLoading}
-            loading={isLoading}
-            onClick={handleSubscribe}
-            color="primary"
-            size="xl"
-            block
-          >
-            {isLoading ? "Opening Stripe..." : selectedPlan ? `Subscribe to ${PLANS.find((p) => p.id === selectedPlan)?.name}` : "Select a plan to continue"}
-          </Button>
-        </motion.div>
+        <AnimateLayout>
+          <div key="subscribe-button" className="mt-6">
+            <Button
+              id="subscribe-btn"
+              disabled={!selectedPlan || isLoading}
+              loading={isLoading}
+              onClick={handleSubscribe}
+              color="primary"
+              size="xl"
+              block
+            >
+              {isLoading ? "Opening Stripe..." : selectedPlan ? `Subscribe to ${PLANS.find((p) => p.id === selectedPlan)?.name}` : "Select a plan to continue"}
+            </Button>
+          </div>
+        </AnimateLayout>
 
         {/* Footer */}
         <p className="text-xs text-center mt-4 text-tertiary">
