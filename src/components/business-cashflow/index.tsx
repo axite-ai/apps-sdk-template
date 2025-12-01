@@ -25,9 +25,7 @@ interface CashFlowProjection {
   period: string;
 }
 
-interface ToolOutput extends Record<string, unknown> {
-  structuredContent?: BusinessCashFlowContent;
-}
+interface ToolOutput extends BusinessCashFlowContent, Record<string, unknown> {}
 
 export default function BusinessCashFlowWidget() {
   const toolOutput = useWidgetProps<ToolOutput>();
@@ -48,7 +46,7 @@ export default function BusinessCashFlowWidget() {
   if (authComponent) return authComponent;
 
   // Show empty state only if there's truly no data
-  if (!toolOutput?.structuredContent) {
+  if (!toolOutput.runway) {
     return (
       <EmptyMessage>
         <EmptyMessage.Title>No cash flow data available</EmptyMessage.Title>
@@ -56,7 +54,7 @@ export default function BusinessCashFlowWidget() {
     );
   }
 
-  const { runway, currentPeriod, projections: contentProjections, healthStatus } = toolOutput.structuredContent;
+  const { runway, currentPeriod, projections: contentProjections, healthStatus } = toolOutput;
   const projections = (toolMetadata?.projections ?? contentProjections ?? []) as CashFlowProjection[];
 
   const isHealthy = healthStatus === "positive";
@@ -65,8 +63,8 @@ export default function BusinessCashFlowWidget() {
   return (
     <div
       className={cn(
-        "antialiased w-full relative bg-transparent text-default",
-        !isFullscreen && "overflow-hidden"
+        "antialiased w-full relative bg-transparent text-default flex flex-col",
+        !isFullscreen && "overflow-hidden min-h-[400px]"
       )}
       style={{
         maxHeight: maxHeight ?? undefined,
@@ -92,11 +90,11 @@ export default function BusinessCashFlowWidget() {
       )}
 
       {/* Content */}
-      <div className={cn("w-full h-full overflow-y-auto", isFullscreen ? "p-8" : "p-0")}>
+      <div className={cn("w-full h-full overflow-y-auto flex flex-col", isFullscreen ? "p-8 justify-start" : "p-6 justify-center")}>
         {/* Header */}
-        <div className="mb-6">
+        <div className={cn("mb-6", !isFullscreen && "text-center")}>
           <h1 className="heading-lg mb-2">Business Cash Flow</h1>
-          <div className={cn("text-lg font-semibold flex items-center gap-2", isHealthy ? "text-success" : "text-danger")}>
+          <div className={cn("text-lg font-semibold flex items-center gap-2", isHealthy ? "text-success" : "text-danger", !isFullscreen && "justify-center")}>
             {isHealthy ? (
               <Badge color="success" variant="soft" size="lg">Positive Cash Flow</Badge>
             ) : (
@@ -129,8 +127,8 @@ export default function BusinessCashFlowWidget() {
           </div>
         </AnimateLayout>
 
-        {/* Projections Chart */}
-        {projections && projections.length > 0 && (
+        {/* Projections Chart - Only shown in fullscreen */}
+        {isFullscreen && projections && projections.length > 0 && (
           <AnimateLayout>
             <div key="projections" className="bg-surface rounded-xl border border-subtle p-4 shadow-sm">
               <div className="flex items-center justify-between mb-4">

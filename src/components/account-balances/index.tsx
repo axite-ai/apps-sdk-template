@@ -90,7 +90,7 @@ function AccountCard({ account, isExpanded, onToggle }: AccountCardProps) {
     >
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center text-lg flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center text-lg shrink-0">
             {getAccountIcon(account.type, account.subtype)}
           </div>
           <div className="min-w-0">
@@ -103,7 +103,7 @@ function AccountCard({ account, isExpanded, onToggle }: AccountCardProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           <div className="text-right">
             <div className="text-sm font-semibold text-default">
               {formatCurrency(

@@ -240,7 +240,7 @@ export default function Liabilities() {
       )}
       style={{
         maxHeight: maxHeight ?? undefined,
-        height: isFullscreen ? maxHeight ?? undefined : undefined,
+        height: isFullscreen ? maxHeight ?? undefined : 400,
       }}
     >
       {/* Expand button (inline mode only) */}
@@ -296,113 +296,120 @@ export default function Liabilities() {
         )}
 
         {/* Liabilities List */}
-        <div className="space-y-4">
-          {/* Credit Cards */}
-          {(isFullscreen ? credit : credit.slice(0, MAX_VISIBLE_INLINE)).map((card: CreditCard) => {
-            const account = accountMap.get(card.account_id);
-            if (!account) return null;
+        {isFullscreen ? (
+          <div className="space-y-4">
+            {/* Credit Cards */}
+            {credit.map((card: CreditCard) => {
+              const account = accountMap.get(card.account_id);
+              if (!account) return null;
 
-            const balance = Math.abs(account.balances.current || 0);
-            const limit = account.balances.limit || 0;
-            const utilization = limit > 0 ? (balance / limit) * 100 : 0;
-            const daysUntilDue = getDaysUntil(card.next_payment_due_date);
-            const isExpanded = uiState.expandedIds.includes(card.account_id);
+              const balance = Math.abs(account.balances.current || 0);
+              const limit = account.balances.limit || 0;
+              const utilization = limit > 0 ? (balance / limit) * 100 : 0;
+              const daysUntilDue = getDaysUntil(card.next_payment_due_date);
+              const isExpanded = uiState.expandedIds.includes(card.account_id);
 
-            return (
-              <AnimateLayout key={card.account_id}>
-                <div
-                  className={cn(
-                    "rounded-xl border border-subtle bg-surface shadow-sm overflow-hidden transition-all",
-                    isExpanded ? "ring-1 ring-secondary" : "hover:border-secondary"
-                  )}
-                >
+              return (
+                <AnimateLayout>
                   <div
-                    className="p-4 cursor-pointer"
-                    onClick={() => toggleExpanded(card.account_id)}
+                    key={card.account_id}
+                    className={cn(
+                      "rounded-xl border border-subtle bg-surface shadow-sm overflow-hidden transition-all",
+                      isExpanded ? "ring-1 ring-secondary" : "hover:border-secondary"
+                    )}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-surface-secondary flex items-center justify-center">
-                          <CreditCard className="h-5 w-5 text-secondary" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-sm text-default">
-                            {account.name}
-                          </h3>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-secondary">
-                              Credit Card
-                            </span>
-                            {card.is_overdue && (
-                              <span className="text-[10px] font-bold uppercase text-danger bg-danger-soft px-1.5 py-0.5 rounded">
-                                Overdue
+                    <div
+                      className="p-4 cursor-pointer"
+                      onClick={() => toggleExpanded(card.account_id)}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-surface-secondary flex items-center justify-center">
+                            <CreditCard className="h-5 w-5 text-secondary" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-sm text-default">
+                              {account.name}
+                            </h3>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-secondary">
+                                Credit Card
                               </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-bold text-default">
-                          {formatCurrency(balance)}
-                        </div>
-                        {limit > 0 && (
-                          <div className="text-xs text-secondary">
-                            {formatPercent(utilization / 100)} utilized
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {limit > 0 && (
-                      <div className="h-1.5 w-full bg-surface-tertiary rounded-full overflow-hidden mb-3">
-                        <div
-                          className={cn(
-                            "h-full rounded-full",
-                            utilization > 80 ? "bg-danger" : utilization > 50 ? "bg-warning" : "bg-success"
-                          )}
-                          style={{ width: `${Math.min(utilization, 100)}%` }}
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex justify-between items-center text-xs text-secondary border-t border-subtle pt-3">
-                      <div className="flex gap-4">
-                        <span>Min: <strong className="text-default">{formatCurrency(card.minimum_payment_amount || 0)}</strong></span>
-                        <span>Due: <strong className={cn(daysUntilDue !== null && daysUntilDue < 7 ? "text-danger" : "text-default")}>
-                          {card.next_payment_due_date ? formatDate(card.next_payment_due_date) : 'N/A'}
-                        </strong></span>
-                      </div>
-                      <div className="text-tertiary">
-                        {isExpanded ? "Less details" : "More details"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <AnimatePresence>
-                    {isExpanded && card.aprs && card.aprs.length > 0 && (
-                      <div className="px-4 pb-4 bg-surface-secondary/20 border-t border-subtle">
-                        <div className="text-xs font-medium text-secondary uppercase tracking-wide pt-3 mb-2">
-                          APR Details
-                        </div>
-                        <div className="space-y-1">
-                          {card.aprs.map((apr, idx) => (
-                            <div key={idx} className="flex justify-between text-xs">
-                              <span className="text-secondary capitalize">{apr.apr_type.replace(/_/g, " ")}</span>
-                              <span className="font-medium text-default">{formatPercent(apr.apr_percentage / 100)}</span>
+                              {card.is_overdue && (
+                                <span className="text-[10px] font-bold uppercase text-danger bg-danger-soft px-1.5 py-0.5 rounded">
+                                  Overdue
+                                </span>
+                              )}
                             </div>
-                          ))}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-default">
+                            {formatCurrency(balance)}
+                          </div>
+                          {limit > 0 && (
+                            <div className="text-xs text-secondary">
+                              {formatPercent(utilization / 100)} utilized
+                            </div>
+                          )}
                         </div>
                       </div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </AnimateLayout>
-            );
-          })}
 
-          {/* Student Loans & Mortgages follow similar pattern - simplified for brevity but maintaining consistency */}
-          {/* ... */}
-        </div>
+                      {limit > 0 && (
+                        <div className="h-1.5 w-full bg-surface-tertiary rounded-full overflow-hidden mb-3">
+                          <div
+                            className={cn(
+                              "h-full rounded-full",
+                              utilization > 80 ? "bg-danger" : utilization > 50 ? "bg-warning" : "bg-success"
+                            )}
+                            style={{ width: `${Math.min(utilization, 100)}%` }}
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center text-xs text-secondary border-t border-subtle pt-3">
+                        <div className="flex gap-4">
+                          <span>Min: <strong className="text-default">{formatCurrency(card.minimum_payment_amount || 0)}</strong></span>
+                          <span>Due: <strong className={cn(daysUntilDue !== null && daysUntilDue < 7 ? "text-danger" : "text-default")}>
+                            {card.next_payment_due_date ? formatDate(card.next_payment_due_date) : 'N/A'}
+                          </strong></span>
+                        </div>
+                        <div className="text-tertiary">
+                          {isExpanded ? "Less details" : "More details"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <AnimatePresence>
+                      {isExpanded && card.aprs && card.aprs.length > 0 && (
+                        <div className="px-4 pb-4 bg-surface-secondary/20 border-t border-subtle">
+                          <div className="text-xs font-medium text-secondary uppercase tracking-wide pt-3 mb-2">
+                            APR Details
+                          </div>
+                          <div className="space-y-1">
+                            {card.aprs.map((apr, idx) => (
+                              <div key={`${card.account_id}-apr-${idx}`} className="flex justify-between text-xs">
+                                <span className="text-secondary capitalize">{apr.apr_type.replace(/_/g, " ")}</span>
+                                <span className="font-medium text-default">{formatPercent(apr.apr_percentage / 100)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </AnimateLayout>
+              );
+            })}
+
+            {/* Student Loans & Mortgages follow similar pattern - simplified for brevity but maintaining consistency */}
+            {/* ... */}
+          </div>
+        ) : (
+          <div className="text-center text-secondary text-sm mt-8">
+            Click expand to view detailed liabilities
+          </div>
+        )}
       </div>
     </div>
   );

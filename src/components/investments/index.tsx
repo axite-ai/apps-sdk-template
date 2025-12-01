@@ -166,7 +166,7 @@ export default function Investments() {
       )}
       style={{
         maxHeight: maxHeight ?? undefined,
-        height: isFullscreen ? maxHeight ?? undefined : undefined,
+        height: isFullscreen ? maxHeight ?? undefined : 400,
       }}
     >
       {/* Expand button (inline mode only) */}
@@ -219,130 +219,125 @@ export default function Investments() {
           </div>
         </AnimateLayout>
 
-        {/* Investment Accounts List */}
-        <div className="border border-subtle rounded-xl overflow-hidden bg-surface shadow-sm">
-          {(isFullscreen ? accounts : accounts.slice(0, MAX_VISIBLE_INLINE)).map((account: Account, index: number) => {
-            const accountHoldings: Holding[] = holdingsByAccount[account.account_id] || [];
-            const accountValue = accountHoldings.reduce(
-              (sum: number, h: Holding) => sum + h.institution_value,
-              0
-            );
-            const isExpanded = uiState.expandedAccountIds.includes(account.account_id);
+        {/* Only show the full list in fullscreen mode, otherwise show summary if needed or nothing */}
+        {isFullscreen ? (
+          /* Investment Accounts List */
+          <div className="border border-subtle rounded-xl overflow-hidden bg-surface shadow-sm">
+            {accounts.map((account: Account, index: number) => {
+              const accountHoldings: Holding[] = holdingsByAccount[account.account_id] || [];
+              const accountValue = accountHoldings.reduce(
+                (sum: number, h: Holding) => sum + h.institution_value,
+                0
+              );
+              const isExpanded = uiState.expandedAccountIds.includes(account.account_id);
 
-            return (
-              <div key={account.account_id} className={cn(index !== 0 && "border-t border-subtle")}>
-                <div
-                  className="p-4 cursor-pointer hover:bg-surface-secondary/50 transition-colors"
-                  onClick={() => toggleAccountExpanded(account.account_id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-info-soft flex items-center justify-center text-info">
-                        <Business strokeWidth={1.5} className="h-5 w-5" />
+              return (
+                <div key={account.account_id} className={cn(index !== 0 && "border-t border-subtle")}>
+                  <div
+                    className="p-4 cursor-pointer hover:bg-surface-secondary/50 transition-colors"
+                    onClick={() => toggleAccountExpanded(account.account_id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-info-soft flex items-center justify-center text-info">
+                          <Business strokeWidth={1.5} className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-sm text-default">
+                            {account.name}
+                          </h3>
+                          <p className="text-xs text-secondary">
+                            {account.subtype || account.type} {account.mask && `• ${account.mask}`}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-sm text-default">
-                          {account.name}
-                        </h3>
-                        <p className="text-xs text-secondary">
-                          {account.subtype || account.type} {account.mask && `• ${account.mask}`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-semibold text-default">
-                        {formatCurrency(accountValue, account.balances.iso_currency_code)}
-                      </div>
-                      <div className="text-xs text-secondary">
-                        {accountHoldings.length} holdings
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-default">
+                          {formatCurrency(accountValue, account.balances.iso_currency_code)}
+                        </div>
+                        <div className="text-xs text-secondary">
+                          {accountHoldings.length} holdings
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <AnimateLayout>
-                  {isExpanded && (
-                    <div className="bg-surface-secondary/20 border-t border-subtle">
-                      {accountHoldings.map((holding: Holding, idx: number) => {
-                        const security: Security | undefined = securitiesMap.get(
-                          holding.security_id
-                        );
-                        if (!security) return null;
+                  <AnimateLayout>
+                    {isExpanded && (
+                      <div className="bg-surface-secondary/20 border-t border-subtle">
+                        {accountHoldings.map((holding: Holding, idx: number) => {
+                          const security: Security | undefined = securitiesMap.get(
+                            holding.security_id
+                          );
+                          if (!security) return null;
 
-                        const gainLoss = holding.cost_basis
-                          ? holding.institution_value - holding.cost_basis * holding.quantity
-                          : null;
-                        const gainLossPercent =
-                          holding.cost_basis && holding.cost_basis > 0
-                            ? ((holding.institution_price - holding.cost_basis) /
-                                holding.cost_basis) *
-                              100
+                          const gainLoss = holding.cost_basis
+                            ? holding.institution_value - holding.cost_basis * holding.quantity
                             : null;
+                          const gainLossPercent =
+                            holding.cost_basis && holding.cost_basis > 0
+                              ? ((holding.institution_price - holding.cost_basis) /
+                                  holding.cost_basis) *
+                                100
+                              : null;
 
-                        return (
-                          <div
-                            key={`${holding.account_id}-${holding.security_id}-${idx}`}
-                            className="p-3 pl-16 border-b last:border-b-0 border-subtle hover:bg-surface-secondary/50 transition-colors"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="min-w-0 flex-1 pr-4">
-                                <div className="flex items-center gap-2 mb-0.5">
-                                  <h4 className="font-medium text-sm text-default truncate">
-                                    {security.name}
-                                  </h4>
-                                  {security.ticker_symbol && (
-                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-surface-tertiary text-secondary">
-                                      {security.ticker_symbol}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-xs text-secondary">
-                                  {holding.quantity} shares • {formatCurrency(holding.institution_price, holding.iso_currency_code)}
-                                </div>
-                              </div>
-                              <div className="text-right flex-shrink-0">
-                                <div className="text-sm font-medium text-default">
-                                  {formatCurrency(
-                                    holding.institution_value,
-                                    holding.iso_currency_code
-                                  )}
-                                </div>
-                                {gainLoss !== null && (
-                                  <div
-                                    className={cn(
-                                      "text-xs font-medium flex items-center gap-1 justify-end",
-                                      gainLoss >= 0 ? "text-success" : "text-danger"
+                          return (
+                            <div
+                              key={`${holding.account_id}-${holding.security_id}-${idx}`}
+                              className="p-3 pl-16 border-b last:border-b-0 border-subtle hover:bg-surface-secondary/50 transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="min-w-0 flex-1 pr-4">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <h4 className="font-medium text-sm text-default truncate">
+                                      {security.name}
+                                    </h4>
+                                    {security.ticker_symbol && (
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-surface-tertiary text-secondary">
+                                        {security.ticker_symbol}
+                                      </span>
                                     )}
-                                  >
-                                    <span>
-                                      {gainLoss >= 0 ? "+" : ""}{formatPercent(gainLossPercent ? gainLossPercent / 100 : 0)}
-                                    </span>
                                   </div>
-                                )}
+                                  <div className="text-xs text-secondary">
+                                    {holding.quantity} shares • {formatCurrency(holding.institution_price, holding.iso_currency_code)}
+                                  </div>
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                  <div className="text-sm font-medium text-default">
+                                    {formatCurrency(
+                                      holding.institution_value,
+                                      holding.iso_currency_code
+                                    )}
+                                  </div>
+                                  {gainLoss !== null && (
+                                    <div
+                                      className={cn(
+                                        "text-xs font-medium flex items-center gap-1 justify-end",
+                                        gainLoss >= 0 ? "text-success" : "text-danger"
+                                      )}
+                                    >
+                                      <span>
+                                        {gainLoss >= 0 ? "+" : ""}{formatPercent(gainLossPercent ? gainLossPercent / 100 : 0)}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </AnimateLayout>
-              </div>
-            );
-          })}
-
-          {/* "+# more" indicator for inline mode */}
-          {!isFullscreen && accounts.length > MAX_VISIBLE_INLINE && (
-            <Button
-              variant="outline"
-              color="secondary"
-              className="w-full"
-              onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
-            >
-              +{accounts.length - MAX_VISIBLE_INLINE} more
-            </Button>
-          )}
-        </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </AnimateLayout>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center text-secondary text-sm mt-8">
+            Click expand to view detailed holdings and accounts
+          </div>
+        )}
       </div>
     </div>
   );

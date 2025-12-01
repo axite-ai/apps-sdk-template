@@ -269,107 +269,132 @@ export default function AccountHealth() {
         )}
       >
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="heading-lg mb-2">Account Health</h1>
-          <div className="flex items-center gap-3">
-            <Trending
-              className={cn(
-                "w-5 h-5",
-                overallStatus === "healthy" ? "text-success" : "text-warning"
-              )}
-            />
-            <p className="text-sm text-secondary">
-              Monitor your accounts for potential issues
-            </p>
+        {isFullscreen && (
+          <div className="mb-6">
+            <h1 className="heading-lg mb-2">Account Health</h1>
+            <div className="flex items-center gap-3">
+              <Trending
+                className={cn(
+                  "w-5 h-5",
+                  overallStatus === "healthy" ? "text-success" : "text-warning"
+                )}
+              />
+              <p className="text-sm text-secondary">
+                Monitor your accounts for potential issues
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Health Status Card */}
-        <div className="mb-6">
-          <AnimateLayout>
-            <div
-              key="health-status-card"
-              className={cn(
-                "rounded-xl border border-subtle p-6 shadow-sm overflow-hidden relative",
-                overallStatus === "healthy" ? "bg-success-soft/30" :
-                overallStatus === "warning" ? "bg-warning-soft/30" : "bg-danger-soft/30"
-              )}
-            >
-              <div className="flex items-center gap-4">
-                <div
-                  className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center text-2xl",
-                    overallStatus === "healthy" ? "bg-success-soft text-success" :
-                    overallStatus === "warning" ? "bg-warning-soft text-warning" : "bg-danger-soft text-danger"
-                  )}
-                >
-                  {overallStatus === "healthy" ? <CheckCircleFilled className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-default">
-                    {overallStatus === "healthy" ? "All Good" :
-                     overallStatus === "warning" ? "Needs Review" : "Action Required"}
-                  </h2>
-                  <p className="text-sm text-secondary">
-                    {totalWarnings === 0
-                      ? `${accounts.length} accounts monitored`
-                      : `${totalWarnings} issues detected across ${accountsWithWarnings.length} accounts`}
-                  </p>
-                </div>
-              </div>
+        {!isFullscreen ? (
+          <div className="w-full h-full min-h-[400px] flex flex-col items-center justify-center p-6">
+            <div className={cn(
+              "w-12 h-12 rounded-full flex items-center justify-center text-2xl mb-4",
+              overallStatus === "healthy" ? "bg-success-soft text-success" :
+              overallStatus === "warning" ? "bg-warning-soft text-warning" : "bg-danger-soft text-danger"
+            )}>
+              {overallStatus === "healthy" ? <CheckCircleFilled className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
             </div>
-          </AnimateLayout>
-        </div>
-
-        {/* Warning Cards */}
-        {accountsWithWarnings.length > 0 ? (
-          <div>
-            <h2 className="text-sm font-semibold text-secondary uppercase tracking-wide mb-3">
-              Action Items
+            <h2 className="text-lg font-semibold text-default mb-2">
+              {overallStatus === "healthy" ? "All Good" :
+               overallStatus === "warning" ? "Needs Review" : "Action Required"}
             </h2>
-            <div className="space-y-3">
-              {accountsWithWarnings.map((account, index) => (
-                <div key={account.account_id} className="bg-surface rounded-xl border border-subtle overflow-hidden">
-                  <div className="px-4 py-3 border-b border-subtle bg-surface-secondary/20">
-                    <h3 className="font-medium text-sm text-default">{account.accountName}</h3>
-                  </div>
-                  <div>
-                    {account.warnings.map((warning, wIndex) => {
-                      const severity = getWarningSeverity(warning);
-                      return (
-                        <div
-                          key={wIndex}
-                          className={cn(
-                            "flex items-start gap-3 p-3 border-b last:border-b-0 border-subtle",
-                            "hover:bg-surface-secondary/30 transition-colors"
-                          )}
-                        >
-                          <div className="mt-0.5">
-                            {severity === "error" ? (
-                              <Error className="w-4 h-4 text-danger" />
-                            ) : severity === "warning" ? (
-                              <Warning className="w-4 h-4 text-warning" />
-                            ) : (
-                              <div className="w-4 h-4 flex items-center justify-center text-xs">ℹ️</div>
-                            )}
-                          </div>
-                          <p className="text-sm text-default leading-snug">{warning}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="text-sm text-secondary text-center max-w-[200px]">
+              {totalWarnings === 0
+                ? `${accounts.length} accounts monitored`
+                : `${totalWarnings} issues detected across ${accountsWithWarnings.length} accounts`}
+            </p>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 bg-success-soft rounded-full flex items-center justify-center mb-4">
-              <CheckCircleFilled className="w-8 h-8 text-success" />
+          <>
+            <div className="mb-6">
+              <AnimateLayout>
+                <div
+                  key="health-status-card"
+                  className={cn(
+                    "rounded-xl border border-subtle p-6 shadow-sm overflow-hidden relative",
+                    overallStatus === "healthy" ? "bg-success-soft/30" :
+                    overallStatus === "warning" ? "bg-warning-soft/30" : "bg-danger-soft/30"
+                  )}
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={cn(
+                        "w-12 h-12 rounded-full flex items-center justify-center text-2xl",
+                        overallStatus === "healthy" ? "bg-success-soft text-success" :
+                        overallStatus === "warning" ? "bg-warning-soft text-warning" : "bg-danger-soft text-danger"
+                      )}
+                    >
+                      {overallStatus === "healthy" ? <CheckCircleFilled className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-default">
+                        {overallStatus === "healthy" ? "All Good" :
+                         overallStatus === "warning" ? "Needs Review" : "Action Required"}
+                      </h2>
+                      <p className="text-sm text-secondary">
+                        {totalWarnings === 0
+                          ? `${accounts.length} accounts monitored`
+                          : `${totalWarnings} issues detected across ${accountsWithWarnings.length} accounts`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </AnimateLayout>
             </div>
-            <h3 className="text-lg font-medium text-default mb-1">Everything looks healthy</h3>
-            <p className="text-sm text-secondary">We'll let you know if anything needs attention.</p>
-          </div>
+
+            {/* Warning Cards */}
+            {accountsWithWarnings.length > 0 ? (
+              <div>
+                <h2 className="text-sm font-semibold text-secondary uppercase tracking-wide mb-3">
+                  Action Items
+                </h2>
+                <div className="space-y-3">
+                  {accountsWithWarnings.map((account, index) => (
+                    <div key={account.account_id} className="bg-surface rounded-xl border border-subtle overflow-hidden">
+                      <div className="px-4 py-3 border-b border-subtle bg-surface-secondary/20">
+                        <h3 className="font-medium text-sm text-default">{account.accountName}</h3>
+                      </div>
+                      <div>
+                        {account.warnings.map((warning, wIndex) => {
+                          const severity = getWarningSeverity(warning);
+                          return (
+                            <div
+                              key={wIndex}
+                              className={cn(
+                                "flex items-start gap-3 p-3 border-b last:border-b-0 border-subtle",
+                                "hover:bg-surface-secondary/30 transition-colors"
+                              )}
+                            >
+                              <div className="mt-0.5">
+                                {severity === "error" ? (
+                                  <Error className="w-4 h-4 text-danger" />
+                                ) : severity === "warning" ? (
+                                  <Warning className="w-4 h-4 text-warning" />
+                                ) : (
+                                  <div className="w-4 h-4 flex items-center justify-center text-xs">ℹ️</div>
+                                )}
+                              </div>
+                              <p className="text-sm text-default leading-snug">{warning}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-16 h-16 bg-success-soft rounded-full flex items-center justify-center mb-4">
+                  <CheckCircleFilled className="w-8 h-8 text-success" />
+                </div>
+                <h3 className="text-lg font-medium text-default mb-1">Everything looks healthy</h3>
+                <p className="text-sm text-secondary">We'll let you know if anything needs attention.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

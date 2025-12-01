@@ -9,15 +9,11 @@ export function WidgetLoadingSkeleton({ className }: WidgetLoadingSkeletonProps 
   return (
     <div
       className={cn(
-        "w-full h-full min-h-[200px] flex flex-col items-center justify-center p-6 bg-surface rounded-2xl border border-default",
+        "w-full h-full min-h-[400px] flex flex-col items-center justify-center p-6",
         className
       )}
     >
-      <LoadingIndicator size="30" className="mb-4 text-secondary" />
-      <div className="space-y-2 w-full max-w-[200px] opacity-50">
-        <div className="h-4 w-full bg-surface-secondary rounded-full animate-pulse" />
-        <div className="h-4 w-2/3 bg-surface-secondary rounded-full animate-pulse mx-auto" />
-      </div>
+      <LoadingIndicator size={24} className="text-secondary" />
     </div>
   );
 }

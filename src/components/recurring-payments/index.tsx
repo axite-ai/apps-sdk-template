@@ -28,9 +28,7 @@ interface RecurringPayment {
   confidence: number;
 }
 
-interface ToolOutput extends Record<string, unknown> {
-  structuredContent?: RecurringPaymentsContent;
-}
+interface ToolOutput extends RecurringPaymentsContent, Record<string, unknown> {}
 
 export default function RecurringPaymentsWidget() {
   const toolOutput = useWidgetProps<ToolOutput>();
@@ -52,7 +50,7 @@ export default function RecurringPaymentsWidget() {
   if (authComponent) return authComponent;
 
   // Show empty state only if there's truly no data
-  if (!toolOutput?.structuredContent) {
+  if (typeof toolOutput.monthlyTotal !== 'number') {
     return (
       <EmptyMessage>
         <EmptyMessage.Title>No recurring payments data available</EmptyMessage.Title>
@@ -60,7 +58,7 @@ export default function RecurringPaymentsWidget() {
     );
   }
 
-  const { monthlyTotal, subscriptionCount, upcomingPayments, highestSubscription } = toolOutput.structuredContent;
+  const { monthlyTotal, subscriptionCount, upcomingPayments, highestSubscription } = toolOutput;
   const allStreams = (toolMetadata?.allStreams ?? upcomingPayments) as any[];
 
   // For now, show all streams (filtering by active/inactive not available in data)

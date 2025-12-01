@@ -401,7 +401,7 @@ export default function Transactions() {
 
                           <AnimateLayout>
                             {isExpanded && (
-                              <div className="px-4 pb-4 pt-1 bg-surface-secondary/20">
+                              <div key={`${tx.transaction_id}-details`} className="px-4 pb-4 pt-1 bg-surface-secondary/20">
                                 <div className="grid grid-cols-2 gap-4 text-xs">
                                   <div>
                                     <span className="block text-secondary mb-0.5">Category</span>

@@ -10,6 +10,7 @@ import {
   Flash,
   Business,
   Trash,
+  Expand,
 } from "@openai/apps-sdk-ui/components/Icon";
 import { Button, ButtonLink } from "@openai/apps-sdk-ui/components/Button";
 import { Badge } from "@openai/apps-sdk-ui/components/Badge";
@@ -21,6 +22,8 @@ import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 import SubscriptionRequired from "@/src/components/subscription-required";
 import { WidgetLoadingSkeleton } from "@/src/components/shared/widget-loading-skeleton";
+import { useDisplayMode } from "@/src/use-display-mode";
+import { useMaxHeight } from "@/src/use-max-height";
 import {
   type ConnectedItem,
   type ConnectItemStatus,
@@ -58,6 +61,9 @@ const features = [
 export default function ConnectItem() {
   const toolOutput = useWidgetProps<WidgetProps>();
   const toolMetadata = useOpenAiGlobal("toolResponseMetadata") as ConnectItemMetadata | null;
+  const displayMode = useDisplayMode();
+  const maxHeight = useMaxHeight();
+  const isFullscreen = displayMode === "fullscreen";
 
   const [status, setStatus] = useState<ConnectItemStatus | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -156,10 +162,68 @@ export default function ConnectItem() {
     }
   };
 
+  // Render minimal inline version (400px height optimization)
+  if (!isFullscreen) {
+    return (
+      <div
+        className="antialiased w-full relative flex flex-col h-full min-h-[400px] p-6 text-default bg-transparent"
+        style={{ height: "400px" }}
+      >
+        {/* Fullscreen toggle */}
+        <Button
+          onClick={() => {
+            if (typeof window !== "undefined" && window.openai) {
+              window.openai.requestDisplayMode({ mode: "fullscreen" });
+            }
+          }}
+          variant="ghost"
+          color="secondary"
+          size="sm"
+          className="absolute top-4 right-4 z-20"
+          aria-label="Expand to fullscreen"
+        >
+          <Expand className="h-4 w-4" />
+        </Button>
+
+        {/* Compact Header */}
+        <div className="flex flex-col items-center text-center mb-8 mt-4">
+          <div className="p-4 rounded-2xl bg-surface-secondary text-secondary mb-4">
+            <CreditCard className="h-8 w-8" />
+          </div>
+          <h2 className="heading-lg mb-2">Manage Accounts</h2>
+          <p className="text-secondary text-md max-w-xs">
+            {status?.items && status.items.length > 0
+              ? `${status.planLimits.current} of ${status.planLimits.maxFormatted} accounts connected`
+              : "Connect your first financial account"}
+          </p>
+        </div>
+
+        {/* Primary Action */}
+        <div className="mt-auto">
+          <Button
+            color="primary"
+            size="xl"
+            onClick={handleOpenConnectPage}
+            className="w-full"
+          >
+            <Plus className="mr-2" />
+            {status?.items && status.items.length > 0 ? "Connect Account" : "Connect First Account"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="antialiased w-full p-6 rounded-2xl border-none bg-surface shadow-none text-default">
+    <div
+      className="antialiased w-full relative bg-transparent text-default p-8"
+      style={{
+        maxHeight: maxHeight ?? undefined,
+        height: maxHeight ?? undefined,
+      }}
+    >
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between mb-8">
         <div className="flex items-start gap-4">
           <div className="p-3 rounded-xl bg-surface-secondary text-secondary">
             <CreditCard className="h-6 w-6" />
@@ -192,20 +256,20 @@ export default function ConnectItem() {
 
       {/* Connected Items List */}
       {status?.items && status.items.length > 0 ? (
-        <div className="mb-6">
+        <div className="mb-8">
           <h3 className="text-sm font-semibold mb-3 text-secondary">
             Connected Accounts
           </h3>
           <div className="space-y-3">
             {status.items.map((item) => (
-              <AnimateLayout key={item.id}>
+              <AnimateLayout>
                 <div
                   key={item.id}
-                  className="p-4 rounded-lg border-none bg-surface-secondary"
+                  className="p-4 rounded-lg border border-subtle bg-surface hover:border-default transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center flex-1 gap-3">
-                      <div className="p-2 rounded-lg bg-surface text-secondary">
+                      <div className="p-2 rounded-lg bg-surface-secondary text-secondary">
                         <Business className="w-5 h-5" />
                       </div>
                       <div className="flex-1">
@@ -239,7 +303,7 @@ export default function ConnectItem() {
           </div>
         </div>
       ) : (
-        <EmptyMessage className="mb-6">
+        <EmptyMessage className="mb-8">
           <EmptyMessage.Icon color="secondary">
             <CreditCard />
           </EmptyMessage.Icon>
@@ -249,16 +313,16 @@ export default function ConnectItem() {
       )}
 
       {/* Plan Status & Actions */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* Plan Progress */}
         {status?.planLimits && (
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-secondary">
+          <div className="p-4 rounded-xl bg-surface-secondary border border-subtle">
+            <div className="flex justify-between items-center mb-3">
+              <span className="font-medium text-default">
                 {status.planLimits.planName.charAt(0).toUpperCase() + status.planLimits.planName.slice(1)} Plan
               </span>
-              <span className="text-sm text-tertiary">
-                {status.planLimits.current} / {status.planLimits.maxFormatted}
+              <span className="text-sm text-secondary">
+                {status.planLimits.current} / {status.planLimits.maxFormatted} accounts
               </span>
             </div>
             <div className="h-2 rounded-full overflow-hidden bg-surface-tertiary">
@@ -279,19 +343,19 @@ export default function ConnectItem() {
               color="primary"
               size="lg"
               onClick={handleOpenConnectPage}
-              className="flex-1"
+              className="flex-1 h-12"
             >
               <Plus className="mr-2" />
               {status.items && status.items.length > 0 ? "Connect Another Account" : "Connect Your First Account"}
             </Button>
           ) : (
-            <div className="flex-1 flex gap-2 items-center p-3 rounded-lg border border-warning bg-surface-secondary">
-              <div className="flex-1 text-center">
-                <p className="text-sm font-medium mb-1 text-warning">
+            <div className="flex-1 flex gap-4 items-center p-4 rounded-xl border border-warning bg-surface-secondary">
+              <div className="flex-1">
+                <p className="font-semibold text-warning mb-1">
                   Account Limit Reached
                 </p>
-                <p className="text-xs text-secondary">
-                  Remove an account or upgrade
+                <p className="text-sm text-secondary">
+                  Remove an account or upgrade your plan to connect more.
                 </p>
               </div>
               <ButtonLink
@@ -308,15 +372,17 @@ export default function ConnectItem() {
 
       {/* Features (show if no items connected) */}
       {status?.items?.length === 0 && (
-        <div className="mt-6 pt-6 border-t border-subtle">
-          <p className="text-sm font-semibold mb-3 text-secondary">
+        <div className="mt-8 pt-8 border-t border-subtle">
+          <p className="font-semibold mb-4 text-default">
             What you'll get:
           </p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             {features.map((feature, index) => (
-              <div key={index} className="flex items-start gap-2">
-                <feature.icon className="w-4 h-4 mt-0.5 shrink-0 text-success" />
-                <span className="text-sm text-secondary">
+              <div key={index} className="flex items-start gap-3">
+                <div className="p-1 rounded bg-success-surface shrink-0 mt-0.5">
+                  <feature.icon className="w-4 h-4 text-success" />
+                </div>
+                <span className="text-sm text-secondary leading-snug">
                   {feature.text}
                 </span>
               </div>
