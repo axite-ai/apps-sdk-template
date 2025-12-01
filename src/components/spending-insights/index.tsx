@@ -43,12 +43,10 @@ interface SpendingUIState extends Record<string, unknown> {
 const CATEGORY_COLORS = [
   { from: "var(--color-blue-500)", to: "var(--color-blue-600)", text: "text-info" },
   { from: "var(--color-purple-500)", to: "var(--color-purple-600)", text: "text-discovery" },
-  { from: "var(--color-pink-500)", to: "var(--color-pink-600)", text: "text-discovery" }, // Approximate
   { from: "var(--color-red-500)", to: "var(--color-red-600)", text: "text-danger" },
   { from: "var(--color-orange-500)", to: "var(--color-orange-600)", text: "text-warning" },
-  { from: "var(--color-yellow-500)", to: "var(--color-yellow-600)", text: "text-caution" },
   { from: "var(--color-green-500)", to: "var(--color-green-600)", text: "text-success" },
-  { from: "var(--color-teal-500)", to: "var(--color-teal-600)", text: "text-success" }, // Approximate
+  { from: "var(--color-yellow-500)", to: "var(--color-yellow-600)", text: "text-caution" },
 ];
 
 function getCategoryIcon(name: string) {
@@ -74,57 +72,55 @@ interface CategoryBarProps {
 
 function CategoryBar({ category, index, isSelected, onClick }: CategoryBarProps) {
   return (
-    <AnimateLayout>
-      <div
-        key={category.category}
-        onClick={onClick}
-        className={cn(
-          "group cursor-pointer rounded-xl border border-subtle transition-all p-4 bg-surface shadow-hairline hover:bg-surface-secondary",
-          isSelected && "ring-2 ring-primary border-transparent"
-        )}
-      >
-        <div className="flex items-center gap-3 mb-3">
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
-            style={{
-              background: `linear-gradient(135deg, ${category.color.from}, ${category.color.to})`,
-              color: "white"
-            }}
-          >
-            {getCategoryIcon(category.category)}
-          </div>
-          <div className="flex-1 min-w-0">
+    <div
+      key={category.category}
+      onClick={onClick}
+      className={cn(
+        "group cursor-pointer rounded-lg border border-subtle transition-all p-3 bg-surface hover:bg-surface-secondary/50",
+        isSelected && "ring-1 ring-primary border-primary"
+      )}
+    >
+      <div className="flex items-center gap-3 mb-2">
+        <div
+          className="w-6 h-6 rounded-full flex items-center justify-center text-sm"
+          style={{
+            backgroundColor: category.color.from,
+            color: "white"
+          }}
+        >
+          {getCategoryIcon(category.category)}
+        </div>
+        <div className="flex-1 min-w-0 flex items-center justify-between">
+          <div className="min-w-0">
             <h3 className="font-medium text-sm truncate text-default">
               {category.category}
             </h3>
-            <p className="text-xs text-secondary">
-              {formatPercent(category.percentage / 100)}
-            </p>
           </div>
-          <div className="text-base font-semibold text-default">
-            {formatCurrency(Math.abs(category.amount))}
+          <div className="text-right">
+            <span className="text-sm font-semibold text-default block">
+              {formatCurrency(Math.abs(category.amount))}
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Progress bar */}
-        <div className="h-2 rounded-full overflow-hidden bg-surface-tertiary">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-surface-tertiary">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${category.percentage}%` }}
-            transition={{
-              type: "spring",
-              bounce: 0.3,
-              duration: 1,
-              delay: index * 0.05 + 0.3,
-            }}
+            transition={{ duration: 0.8, ease: "easeOut", delay: index * 0.05 }}
             className="h-full"
             style={{
-              background: `linear-gradient(90deg, ${category.color.from}, ${category.color.to})`
+              backgroundColor: category.color.to
             }}
           />
         </div>
+        <span className="text-xs text-secondary w-8 text-right tabular-nums">
+          {Math.round(category.percentage)}%
+        </span>
       </div>
-    </AnimateLayout>
+    </div>
   );
 }
 
@@ -157,7 +153,7 @@ function DonutChart({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="var(--color-surface-tertiary)"
+          stroke="var(--color-surface-secondary)"
           strokeWidth={strokeWidth}
         />
 
@@ -171,56 +167,27 @@ function DonutChart({
           accumulatedPercentage += percentage;
 
           return (
-          <motion.circle
-            key={category.category}
-            cx={size / 2}
+            <motion.circle
+              key={category.category}
+              cx={size / 2}
               cy={size / 2}
               r={radius}
               fill="none"
-              stroke={`url(#gradient-${index})`}
+              stroke={category.color.from}
               strokeWidth={strokeWidth}
               strokeDasharray={dashArray}
               strokeDashoffset={offset}
               initial={{ strokeDashoffset: circumference }}
               animate={{ strokeDashoffset: offset }}
-              transition={{
-                type: "spring",
-                bounce: 0.2,
-                duration: 1,
-                delay: index * 0.1,
-              }}
+              transition={{ duration: 0.8, ease: "easeOut", delay: index * 0.1 }}
               className={cn(
-                "cursor-pointer transition-all",
-                selectedIndex === index
-                  ? "opacity-100"
-                  : selectedIndex !== null
-                  ? "opacity-30"
-                  : "opacity-100 hover:opacity-80"
+                "cursor-pointer transition-all hover:opacity-80",
+                selectedIndex !== null && selectedIndex !== index && "opacity-30"
               )}
               onClick={() => onSelectCategory(index)}
-              style={{
-                strokeLinecap: "round",
-              }}
             />
           );
         })}
-
-        {/* Gradients */}
-        <defs>
-          {categories.map((category, index) => (
-            <linearGradient
-              key={`gradient-${index}`}
-              id={`gradient-${index}`}
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="100%"
-            >
-              <stop offset="0%" stopColor={category.color.from} />
-              <stop offset="100%" stopColor={category.color.to} />
-            </linearGradient>
-          ))}
-        </defs>
       </svg>
 
       {/* Center text */}
@@ -331,40 +298,32 @@ export default function SpendingInsights() {
         </div>
 
         {/* Layout: Chart + Categories */}
-        <div
-          className={cn(
-            "grid gap-6",
-            isFullscreen ? "grid-cols-1 lg:grid-cols-[300px,1fr]" : "grid-cols-1"
-          )}
-        >
-          {/* Donut Chart (fullscreen only or always visible if preferred, keeping logic consistent with original but refined style) */}
-          {/* Note: Original code only showed Donut in fullscreen. Preserving that behavior but making it robust. */}
-          {isFullscreen && (
-            <div className="flex items-start justify-center lg:sticky lg:top-0">
-              <DonutChart
-                categories={categoriesWithMetadata}
-                totalSpending={totalSpending}
-                selectedIndex={uiState.selectedIndex}
-                onSelectCategory={(index) =>
-                  setUiState(s => ({ ...s, selectedIndex: s.selectedIndex === index ? null : index }))
-                }
-              />
-            </div>
-          )}
+        <div className="flex flex-col gap-6">
+          {/* Donut Chart - Always visible but optimized for sizes */}
+          <div className="flex justify-center py-2">
+            <DonutChart
+              categories={categoriesWithMetadata}
+              totalSpending={totalSpending}
+              selectedIndex={uiState.selectedIndex}
+              onSelectCategory={(index) =>
+                setUiState(s => ({ ...s, selectedIndex: s.selectedIndex === index ? null : index }))
+              }
+            />
+          </div>
 
           {/* Categories List */}
-          <div className="space-y-3">
-              {categoriesWithMetadata.map((category, index) => (
-                <CategoryBar
-                  key={category.category}
-                  category={category}
-                  index={index}
-                  onClick={() =>
-                    setUiState(s => ({ ...s, selectedIndex: s.selectedIndex === index ? null : index }))
-                  }
-                  isSelected={uiState.selectedIndex === index}
-                />
-              ))}
+          <div className="space-y-2">
+            {categoriesWithMetadata.map((category, index) => (
+              <CategoryBar
+                key={category.category}
+                category={category}
+                index={index}
+                onClick={() =>
+                  setUiState(s => ({ ...s, selectedIndex: s.selectedIndex === index ? null : index }))
+                }
+                isSelected={uiState.selectedIndex === index}
+              />
+            ))}
           </div>
         </div>
       </div>

@@ -15,10 +15,10 @@
   .overflow-y-auto,
   .overflow-x-scroll,
   .overflow-y-scroll {
-    scrollbar-color: rgb(0, 0, 0, 0.1) transparent;
+    scrollbar-color: var(--color-border-subtle) transparent;
 
     @media (prefers-color-scheme: dark) {
-      scrollbar-color: rgb(255, 255, 255, 0.1) transparent;
+      scrollbar-color: var(--color-border-subtle) transparent;
     }
   }
 
@@ -27,10 +27,10 @@
   .overflow-scroll:hover,
   .overflow-x-auto:hover,
   .overflow-y-auto:hover {
-    scrollbar-color: rgb(0, 0, 0, 0.2) transparent;
+    scrollbar-color: var(--color-border) transparent;
 
     @media (prefers-color-scheme: dark) {
-      scrollbar-color: rgb(255, 255, 255, 0.2) transparent;
+      scrollbar-color: var(--color-border) transparent;
     }
   }
 }

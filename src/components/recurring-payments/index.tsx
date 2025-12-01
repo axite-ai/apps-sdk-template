@@ -175,49 +175,42 @@ export default function RecurringPaymentsWidget() {
         </div>
 
         {/* Streams List */}
-        <div className="space-y-3">
+        <div className="border border-subtle rounded-xl overflow-hidden bg-surface shadow-sm">
           {sortedStreams.map((stream: any, idx: number) => (
-            <AnimateLayout key={idx}>
-              <div
-                key={stream.streamId || idx}
-                className="bg-surface rounded-xl border border-subtle p-4 shadow-hairline hover:bg-surface-secondary transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-default">{stream.name}</h3>
-                      {stream.confidence && (
-                        <Badge
-                          size="sm"
-                          color={
-                            stream.confidence === "high" ? "success" :
-                            stream.confidence === "medium" ? "warning" : "secondary"
-                          }
-                          variant="soft"
-                        >
-                          {stream.confidence}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="text-sm text-secondary">{stream.frequency}</div>
+            <div
+              key={stream.streamId || idx}
+              className={cn(
+                "p-4 hover:bg-surface-secondary/50 transition-colors",
+                idx !== 0 && "border-t border-subtle"
+              )}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="font-medium text-sm text-default truncate">{stream.name}</h3>
+                    {stream.confidence && stream.confidence !== "high" && (
+                      <span className={cn(
+                        "text-[10px] font-bold px-1.5 py-0.5 rounded uppercase",
+                        stream.confidence === "medium" ? "bg-warning-soft text-warning" : "bg-surface-tertiary text-secondary"
+                      )}>
+                        {stream.confidence}
+                      </span>
+                    )}
                   </div>
-
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-default">
-                      {formatCurrency(stream.amount)}
-                    </div>
-                    <div className="text-xs text-tertiary">per payment</div>
+                  <div className="text-xs text-secondary flex items-center gap-1.5">
+                    <span className="capitalize">{stream.frequency}</span>
+                    <span>•</span>
+                    <span>Next: {new Date(stream.nextDate).toLocaleDateString()}</span>
                   </div>
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-subtle text-sm flex justify-between items-center">
-                  <span className="text-secondary">Next payment:</span>
-                  <span className="text-default font-medium">
-                    {new Date(stream.nextDate).toLocaleDateString()}
-                  </span>
+                <div className="text-right flex-shrink-0">
+                  <div className="text-sm font-semibold text-default">
+                    {formatCurrency(stream.amount)}
+                  </div>
                 </div>
               </div>
-            </AnimateLayout>
+            </div>
           ))}
         </div>
 

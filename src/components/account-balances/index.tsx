@@ -60,16 +60,6 @@ function getAccountIcon(type: string, subtype?: string) {
   return "💰";
 }
 
-function getAccountColorClass(type: string) {
-  const lower = type.toLowerCase();
-  if (lower.includes("checking")) return "bg-info-soft text-info";
-  if (lower.includes("savings")) return "bg-success-soft text-success";
-  if (lower.includes("credit")) return "bg-discovery-soft text-discovery";
-  if (lower.includes("investment")) return "bg-warning-soft text-warning";
-  if (lower.includes("loan")) return "bg-danger-soft text-danger";
-  return "bg-surface-secondary text-secondary";
-}
-
 function getHealthBadgeColor(score: number): "success" | "warning" | "danger" {
   if (score >= 80) return "success";
   if (score >= 60) return "warning";
@@ -94,75 +84,64 @@ function AccountCard({ account, isExpanded, onToggle }: AccountCardProps) {
     account.balances.available !== account.balances.current;
 
   return (
-    <div className="relative p-5">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          <div
-            className={cn(
-              "shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl",
-              getAccountColorClass(account.type)
-            )}
-          >
+    <div
+      className="p-4 cursor-pointer hover:bg-surface-secondary/50 transition-colors"
+      onClick={hasAvailable ? onToggle : undefined}
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center text-lg flex-shrink-0">
             {getAccountIcon(account.type, account.subtype)}
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-base truncate text-default">
+          <div className="min-w-0">
+            <h3 className="font-medium text-sm text-default truncate">
               {account.name}
             </h3>
-            <p className="text-sm mt-0.5 text-secondary">
-              {account.type}
-              {account.mask && ` • ****${account.mask}`}
+            <p className="text-xs text-secondary truncate">
+              {account.type} {account.mask && `• ${account.mask}`}
             </p>
           </div>
         </div>
 
-        {hasAvailable && (
-          <Button
-            variant="ghost"
-            size="sm"
-            color="secondary"
-            onClick={onToggle}
-            aria-label={isExpanded ? "Show less" : "Show more"}
-          >
-            {isExpanded ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="text-right">
+            <div className="text-sm font-semibold text-default">
+              {formatCurrency(
+                account.balances.current ?? 0,
+                account.balances.iso_currency_code
+              )}
+            </div>
+            {hasAvailable && (
+              <div className="text-xs text-secondary">
+                Current
+              </div>
             )}
-          </Button>
-        )}
+          </div>
+          {hasAvailable && (
+            <div className="text-secondary">
+              {isExpanded ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Current Balance */}
-      {account.balances.current !== null && (
-        <div className="mb-3">
-          <div className="text-xs font-medium mb-1 text-tertiary uppercase tracking-wide">
-            Current Balance
+      <AnimateLayout>
+        {hasAvailable && isExpanded ? (
+          <div key="available-balance" className="mt-3 pt-3 border-t border-subtle flex justify-between items-center text-sm">
+            <span className="text-secondary">Available Balance</span>
+            <span className="font-medium text-success">
+              {formatCurrency(
+                account.balances.available!,
+                account.balances.iso_currency_code
+              )}
+            </span>
           </div>
-          <div className="text-2xl font-semibold text-default">
-            {formatCurrency(
-              account.balances.current,
-              account.balances.iso_currency_code
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Available Balance (expandable) */}
-      {hasAvailable && isExpanded && (
-        <div className="pt-3 mt-3 border-t border-subtle">
-          <div className="text-xs font-medium mb-1 text-tertiary uppercase tracking-wide">
-            Available Balance
-          </div>
-          <div className="text-lg font-semibold text-success">
-            {formatCurrency(
-              account.balances.available!,
-              account.balances.iso_currency_code
-            )}
-          </div>
-        </div>
-      )}
+        ) : null}
+      </AnimateLayout>
     </div>
   );
 }
@@ -322,16 +301,9 @@ export default function AccountBalances() {
           </div>
         )}
 
-        {/* Account Grid */}
-        <div
-          className={cn(
-            "grid gap-4",
-            isFullscreen
-              ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-              : "grid-cols-1"
-          )}
-        >
-          {accounts.map((account) => {
+        {/* Account List */}
+        <div className="border border-subtle rounded-xl overflow-hidden bg-surface shadow-sm">
+          {accounts.map((account, index) => {
             const mappedAccount: Account = {
               account_id: account.id,
               name: account.name,
@@ -345,17 +317,13 @@ export default function AccountBalances() {
               }
             };
             return (
-              <AnimateLayout
-                key={account.id}
-                className="group relative overflow-hidden rounded-2xl border border-subtle bg-surface shadow-hairline hover:bg-surface-secondary transition-colors"
-              >
-                  <AccountCard
-                    key={"card"}
-                    account={mappedAccount}
-                    isExpanded={uiState.expandedAccountIds.includes(account.id)}
-                    onToggle={() => toggleAccountExpanded(account.id)}
-                  />
-              </AnimateLayout>
+              <div key={account.id} className={cn(index !== 0 && "border-t border-subtle")}>
+                <AccountCard
+                  account={mappedAccount}
+                  isExpanded={uiState.expandedAccountIds.includes(account.id)}
+                  onToggle={() => toggleAccountExpanded(account.id)}
+                />
+              </div>
             );
           })}
         </div>

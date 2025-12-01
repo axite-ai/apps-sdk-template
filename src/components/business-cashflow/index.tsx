@@ -105,129 +105,59 @@ export default function BusinessCashFlowWidget() {
           </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <AnimateLayout>
-            <div key="revenue" className="bg-surface rounded-2xl border border-subtle p-4 shadow-hairline">
-              <div className="text-sm text-secondary mb-1">Revenue</div>
-              <div className="text-2xl font-bold text-success">
-                +{formatCurrency(currentPeriod.revenue)}
-              </div>
-              <div className="text-xs text-tertiary mt-1 uppercase tracking-wide">Current period</div>
-            </div>
-          </AnimateLayout>
-
-          <AnimateLayout>
-            <div key="expenses" className="bg-surface rounded-2xl border border-subtle p-4 shadow-hairline">
-              <div className="text-sm text-secondary mb-1">Expenses</div>
-              <div className="text-2xl font-bold text-danger">
-                -{formatCurrency(currentPeriod.expenses)}
-              </div>
-              <div className="text-xs text-tertiary mt-1 uppercase tracking-wide">Current period</div>
-            </div>
-          </AnimateLayout>
-
-          <AnimateLayout>
-            <div key="net-cash-flow" className="bg-surface rounded-2xl border border-subtle p-4 shadow-hairline">
-              <div className="text-sm text-secondary mb-1">Net Cash Flow</div>
+        {/* Key Metrics */}
+        <AnimateLayout>
+          <div key="metrics" className="grid grid-cols-2 gap-4 mb-6">
+            <div className="bg-surface rounded-xl border border-subtle p-4 shadow-sm">
+              <div className="text-xs font-medium text-secondary uppercase tracking-wide mb-1">Net Flow</div>
               <div className={cn("text-2xl font-bold", currentPeriod.net >= 0 ? 'text-success' : 'text-danger')}>
                 {currentPeriod.net >= 0 ? '+' : ''}{formatCurrency(currentPeriod.net)}
               </div>
-              <div className="text-xs text-tertiary mt-1 uppercase tracking-wide">Current period</div>
-            </div>
-          </AnimateLayout>
-
-          <AnimateLayout>
-            <div key="runway" className="bg-surface rounded-2xl border border-subtle p-4 shadow-hairline">
-              <div className="text-sm text-secondary mb-1">Runway</div>
-              <div className="text-2xl font-bold text-discovery">{runwayMonths}</div>
-              <div className="text-xs text-tertiary mt-1 uppercase tracking-wide">months remaining</div>
-            </div>
-          </AnimateLayout>
-        </div>
-
-        {/* Burn Rate */}
-        <AnimateLayout>
-          <div key="burn-rate" className="bg-surface rounded-2xl border border-subtle p-6 shadow-hairline mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="text-sm text-secondary mb-1">Burn Rate</div>
-                <div className="text-3xl font-bold text-default">
-                  {formatCurrency(currentPeriod.burnRate)}
-                </div>
-                <div className="text-xs text-tertiary mt-1 uppercase tracking-wide">Per month</div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm text-secondary mb-1">Runway Status</div>
-                <Badge
-                  size="lg"
-                  color={
-                    runway.confidence === "high" ? "success" :
-                    runway.confidence === "medium" ? "warning" : "danger"
-                  }
-                  variant="soft"
-                >
-                  {runway.confidence} Confidence
-                </Badge>
+              <div className="mt-2 text-xs text-tertiary flex justify-between">
+                <span>In: <span className="text-success">+{formatCurrency(currentPeriod.revenue)}</span></span>
+                <span>Out: <span className="text-danger">-{formatCurrency(currentPeriod.expenses)}</span></span>
               </div>
             </div>
-            <div className="h-2 bg-surface-tertiary rounded-full overflow-hidden">
-              <div
-                className={cn("h-full", isHealthy ? "bg-success" : "bg-danger")}
-                style={{
-                  width: `${Math.min(100, Math.abs((currentPeriod.net / (currentPeriod.revenue || 1)) * 100))}%`,
-                }}
-              />
+
+            <div className="bg-surface rounded-xl border border-subtle p-4 shadow-sm">
+              <div className="text-xs font-medium text-secondary uppercase tracking-wide mb-1">Runway</div>
+              <div className="text-2xl font-bold text-discovery">{runwayMonths} <span className="text-sm font-normal text-secondary">months</span></div>
+              <div className="mt-2 text-xs text-tertiary">
+                Based on avg burn rate of {formatCurrency(currentPeriod.burnRate)}/mo
+              </div>
             </div>
           </div>
         </AnimateLayout>
 
-        {/* Projections */}
+        {/* Projections Chart */}
         {projections && projections.length > 0 && (
           <AnimateLayout>
-            <div key="projections" className="bg-surface rounded-2xl border border-subtle p-6 shadow-hairline">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-default">Cash Flow Projections</h2>
-                <span className="text-xs text-secondary uppercase tracking-wide">Based on current trends</span>
+            <div key="projections" className="bg-surface rounded-xl border border-subtle p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-default">6-Month Projection</h2>
+                <Badge size="sm" variant="soft" color="secondary">Forecast</Badge>
               </div>
-              <div className="space-y-4">
+
+              <div className="space-y-3">
                 {projections.map((proj: any, idx: number) => (
-                  <div key={idx} className="flex items-center gap-4">
-                    <div className="w-24 text-sm text-secondary font-medium">{proj.period}</div>
-                    <div className="flex-1 h-8 bg-surface-secondary rounded-lg overflow-hidden relative">
+                  <div key={idx} className="flex items-center gap-3 text-xs">
+                    <div className="w-12 text-secondary font-medium">{proj.period.split(' ')[0]}</div>
+                    <div className="flex-1 h-2 bg-surface-tertiary rounded-full overflow-hidden">
                       <div
-                        className={cn("h-full transition-all duration-500 ease-out",
-                          proj.projectedNet > 0
-                            ? "bg-success"
-                            : proj.projectedNet > -1000
-                            ? "bg-warning"
-                            : "bg-danger"
+                        className={cn("h-full rounded-full",
+                          proj.projectedNet > 0 ? "bg-success" : "bg-danger"
                         )}
                         style={{
-                          width: `${Math.min(
-                            100,
-                            Math.abs((proj.projectedNet / (currentPeriod.revenue || 1)) * 100)
-                          )}%`,
+                          width: `${Math.min(100, Math.abs((proj.projectedNet / Math.max(currentPeriod.revenue, 1)) * 100))}%`,
+                          opacity: 0.5 + (idx * 0.1) // Subtle gradient effect for future months
                         }}
                       />
-                      <span className="absolute inset-0 flex items-center justify-end pr-3 text-sm font-medium text-default mix-blend-exclusion">
-                        {proj.projectedNet >= 0 ? '+' : ''}{formatCurrency(proj.projectedNet)}
-                      </span>
                     </div>
-                    <Badge
-                      size="sm"
-                      color={
-                        proj.confidence === "high"
-                          ? "success"
-                          : proj.confidence === "medium"
-                          ? "warning"
-                          : "secondary"
-                      }
-                      variant="soft"
-                      className="w-20 justify-center"
-                    >
-                      {proj.confidence}
-                    </Badge>
+                    <div className={cn("w-20 text-right font-medium",
+                      proj.projectedNet >= 0 ? "text-success" : "text-danger"
+                    )}>
+                      {proj.projectedNet >= 0 ? '+' : ''}{formatCurrency(proj.projectedNet)}
+                    </div>
                   </div>
                 ))}
               </div>

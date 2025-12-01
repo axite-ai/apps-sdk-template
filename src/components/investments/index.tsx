@@ -197,45 +197,31 @@ export default function Investments() {
 
         {/* Portfolio Summary Card */}
         <AnimateLayout>
-          <div key="portfolio-summary" className="rounded-2xl border-none p-6 shadow-none mb-6 bg-discovery-soft">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 rounded-xl bg-discovery-surface">
-                <Chart strokeWidth={1.5} className="h-6 w-6 text-discovery" />
-              </div>
+          <div key="portfolio-summary" className="p-4 mb-6 bg-discovery-soft/30 rounded-xl border border-discovery-surface">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <div className="text-sm font-medium mb-1 text-discovery-soft uppercase tracking-wide">
-                  Total Portfolio Value
+                <div className="text-xs font-medium text-discovery mb-1 uppercase tracking-wide">
+                  Total Value
                 </div>
                 <div className="text-3xl font-bold text-default">
                   {formatCurrency(totalValue)}
                 </div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-xl p-3 bg-discovery-surface">
-                <div className="text-xs font-medium mb-1 text-secondary uppercase tracking-wide">
-                  Accounts
+              <div className="text-right">
+                <div className="text-sm font-medium text-default">
+                  {accountCount} Accounts
                 </div>
-                <div className="text-xl font-semibold text-default">
-                  {accountCount}
-                </div>
-              </div>
-              <div className="rounded-xl p-3 bg-discovery-surface">
-                <div className="text-xs font-medium mb-1 text-secondary uppercase tracking-wide">
-                  Holdings
-                </div>
-                <div className="text-xl font-semibold text-default">
-                  {holdingCount}
+                <div className="text-xs text-secondary">
+                  {holdingCount} Holdings
                 </div>
               </div>
             </div>
           </div>
         </AnimateLayout>
 
-        {/* Investment Accounts */}
-        <div className="space-y-4">
-          {(isFullscreen ? accounts : accounts.slice(0, MAX_VISIBLE_INLINE)).map((account: Account) => {
+        {/* Investment Accounts List */}
+        <div className="border border-subtle rounded-xl overflow-hidden bg-surface shadow-sm">
+          {(isFullscreen ? accounts : accounts.slice(0, MAX_VISIBLE_INLINE)).map((account: Account, index: number) => {
             const accountHoldings: Holding[] = holdingsByAccount[account.account_id] || [];
             const accountValue = accountHoldings.reduce(
               (sum: number, h: Holding) => sum + h.institution_value,
@@ -244,42 +230,39 @@ export default function Investments() {
             const isExpanded = uiState.expandedAccountIds.includes(account.account_id);
 
             return (
-              <AnimateLayout key={account.account_id}>
-                <div key={account.account_id} className="rounded-2xl border border-subtle shadow-hairline overflow-hidden bg-surface">
-                  {/* Account Header */}
-                  <div
-                    className="p-4 cursor-pointer transition-colors hover:bg-surface-secondary"
-                    onClick={() => toggleAccountExpanded(account.account_id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-info-soft">
-                          <Business strokeWidth={1.5} className="h-5 w-5 text-info" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-default">
-                            {account.name}
-                          </h3>
-                          <p className="text-sm text-secondary">
-                            {account.subtype || account.type}
-                            {account.mask && ` • ****${account.mask}`}
-                          </p>
-                        </div>
+              <div key={account.account_id} className={cn(index !== 0 && "border-t border-subtle")}>
+                <div
+                  className="p-4 cursor-pointer hover:bg-surface-secondary/50 transition-colors"
+                  onClick={() => toggleAccountExpanded(account.account_id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-info-soft flex items-center justify-center text-info">
+                        <Business strokeWidth={1.5} className="h-5 w-5" />
                       </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-default">
-                          {formatCurrency(accountValue, account.balances.iso_currency_code)}
-                        </div>
-                        <div className="text-xs text-secondary">
-                          {accountHoldings.length} holdings
-                        </div>
+                      <div>
+                        <h3 className="font-semibold text-sm text-default">
+                          {account.name}
+                        </h3>
+                        <p className="text-xs text-secondary">
+                          {account.subtype || account.type} {account.mask && `• ${account.mask}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold text-default">
+                        {formatCurrency(accountValue, account.balances.iso_currency_code)}
+                      </div>
+                      <div className="text-xs text-secondary">
+                        {accountHoldings.length} holdings
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Holdings List (Expanded) */}
+                <AnimateLayout>
                   {isExpanded && (
-                    <div className="border-t border-subtle">
+                    <div className="bg-surface-secondary/20 border-t border-subtle">
                       {accountHoldings.map((holding: Holding, idx: number) => {
                         const security: Security | undefined = securitiesMap.get(
                           holding.security_id
@@ -299,29 +282,26 @@ export default function Investments() {
                         return (
                           <div
                             key={`${holding.account_id}-${holding.security_id}-${idx}`}
-                            className="p-4 border-b last:border-b-0 border-subtle"
+                            className="p-3 pl-16 border-b last:border-b-0 border-subtle hover:bg-surface-secondary/50 transition-colors"
                           >
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1">
-                                <h4 className="font-semibold mb-1 text-default">
-                                  {security.name}
-                                </h4>
-                                <div className="flex items-center gap-2 text-xs">
+                            <div className="flex items-center justify-between">
+                              <div className="min-w-0 flex-1 pr-4">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <h4 className="font-medium text-sm text-default truncate">
+                                    {security.name}
+                                  </h4>
                                   {security.ticker_symbol && (
-                                    <span className="font-semibold px-2 py-0.5 rounded bg-info-soft text-info">
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-surface-tertiary text-secondary">
                                       {security.ticker_symbol}
                                     </span>
                                   )}
-                                  <span className="text-secondary">
-                                    {security.type}
-                                  </span>
-                                  <span className="text-secondary">
-                                    {holding.quantity} shares
-                                  </span>
+                                </div>
+                                <div className="text-xs text-secondary">
+                                  {holding.quantity} shares • {formatCurrency(holding.institution_price, holding.iso_currency_code)}
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <div className="text-lg font-bold mb-1 text-default">
+                              <div className="text-right flex-shrink-0">
+                                <div className="text-sm font-medium text-default">
                                   {formatCurrency(
                                     holding.institution_value,
                                     holding.iso_currency_code
@@ -330,60 +310,24 @@ export default function Investments() {
                                 {gainLoss !== null && (
                                   <div
                                     className={cn(
-                                      "text-xs font-semibold flex items-center gap-1 justify-end",
-                                      gainLoss >= 0
-                                        ? "text-success"
-                                        : "text-danger"
+                                      "text-xs font-medium flex items-center gap-1 justify-end",
+                                      gainLoss >= 0 ? "text-success" : "text-danger"
                                     )}
                                   >
-                                    <Trending strokeWidth={1.5} className="h-3 w-3" />
                                     <span>
-                                      {formatCurrency(
-                                        Math.abs(gainLoss),
-                                        holding.iso_currency_code
-                                      )}
-                                      {gainLossPercent !== null &&
-                                        ` (${formatPercent(gainLossPercent / 100)})`}
+                                      {gainLoss >= 0 ? "+" : ""}{formatPercent(gainLossPercent ? gainLossPercent / 100 : 0)}
                                     </span>
                                   </div>
                                 )}
                               </div>
-                            </div>
-
-                            {/* Details Grid */}
-                            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-subtle text-xs">
-                              <div>
-                                <div className="font-medium mb-1 text-secondary uppercase tracking-wide">
-                                  Current Price
-                                </div>
-                                <div className="text-default">
-                                  {formatCurrency(
-                                    holding.institution_price,
-                                    holding.iso_currency_code
-                                  )}
-                                </div>
-                              </div>
-                              {holding.cost_basis && (
-                                <div>
-                                  <div className="font-medium mb-1 text-secondary uppercase tracking-wide">
-                                    Cost Basis
-                                  </div>
-                                  <div className="text-default">
-                                    {formatCurrency(
-                                      holding.cost_basis,
-                                      holding.iso_currency_code
-                                    )}
-                                  </div>
-                                </div>
-                              )}
                             </div>
                           </div>
                         );
                       })}
                     </div>
                   )}
-                </div>
-              </AnimateLayout>
+                </AnimateLayout>
+              </div>
             );
           })}
 

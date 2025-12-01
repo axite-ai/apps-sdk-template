@@ -15,7 +15,7 @@ import { Input } from "@openai/apps-sdk-ui/components/Input";
 import { Badge } from "@openai/apps-sdk-ui/components/Badge";
 import { Select } from "@openai/apps-sdk-ui/components/Select";
 import { EmptyMessage } from "@openai/apps-sdk-ui/components/EmptyMessage";
-import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
+import { AnimateLayout, AnimateLayoutGroup } from "@openai/apps-sdk-ui/components/Transition";
 import { useWidgetProps } from "@/src/use-widget-props";
 import { useOpenAiGlobal } from "@/src/use-openai-global";
 import { useWidgetState } from "@/src/use-widget-state";
@@ -24,6 +24,7 @@ import { useMaxHeight } from "@/src/use-max-height";
 import { formatCurrency, formatDate } from "@/src/utils/format";
 import { checkWidgetAuth } from "@/src/utils/widget-auth-check";
 import { WidgetLoadingSkeleton } from "@/src/components/shared/widget-loading-skeleton";
+import { cn } from "@/lib/utils/cn";
 import type { Transaction } from "plaid";
 
 interface TransactionWithEnrichment extends Transaction {
@@ -287,43 +288,43 @@ export default function Transactions() {
 
         {/* Filters */}
         {metadata && (
-          <div
-            className={`mb-6 flex flex-col gap-3 ${isFullscreen ? "md:flex-row md:items-center" : ""}`}
-          >
-            <div className="flex-1">
-              <Input
-                placeholder="Search transactions..."
-                value={uiState.searchQuery}
-                onChange={(e) => setUiState(s => ({ ...s, searchQuery: e.target.value }))}
-                startAdornment={<Search className="text-tertiary" />}
-                size="md"
-              />
-            </div>
-
-            <Select
-              value={uiState.selectedCategory || ""}
-              onChange={(val: any) => setUiState(s => ({...s, selectedCategory: val?.value || null}))}
-              options={[
-                { value: "", label: "All Categories" },
-                ...metadata.categoryBreakdown.map((cat) => ({
-                  value: cat.category,
-                  label: `${formatCategoryName(cat.category)} (${cat.count})`
-                }))
-              ]}
-              placeholder="All Categories"
-              dropdownIconType="chevronDown"
+          <div className="mb-6 space-y-3">
+            <Input
+              placeholder="Search..."
+              value={uiState.searchQuery}
+              onChange={(e) => setUiState(s => ({ ...s, searchQuery: e.target.value }))}
+              startAdornment={<Search className="text-tertiary" />}
               size="md"
+              className="w-full"
             />
 
-            <Button
-              variant={uiState.showPendingOnly ? "solid" : "outline"}
-              color="discovery"
-              onClick={() => setUiState(s => ({...s, showPendingOnly: !s.showPendingOnly}))}
-              size="md"
-            >
-              <Filter className="mr-2" />
-              {uiState.showPendingOnly ? "Show All" : "Pending"}
-            </Button>
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <Select
+                value={uiState.selectedCategory || ""}
+                onChange={(val: any) => setUiState(s => ({...s, selectedCategory: val?.value || null}))}
+                options={[
+                  { value: "", label: "All Categories" },
+                  ...metadata.categoryBreakdown.map((cat) => ({
+                    value: cat.category,
+                    label: formatCategoryName(cat.category)
+                  }))
+                ]}
+                placeholder="Category"
+                size="sm"
+                variant="outline"
+                triggerClassName="min-w-[140px]"
+              />
+
+              <Button
+                variant={uiState.showPendingOnly ? "solid" : "outline"}
+                color={uiState.showPendingOnly ? "warning" : "secondary"}
+                onClick={() => setUiState(s => ({...s, showPendingOnly: !s.showPendingOnly}))}
+                size="sm"
+                className="whitespace-nowrap"
+              >
+                {uiState.showPendingOnly ? "Pending Only" : "Pending"}
+              </Button>
+            </div>
           </div>
         )}
 
@@ -339,153 +340,109 @@ export default function Transactions() {
               : groupedTransactions.slice(0, MAX_DATE_GROUPS_INLINE)
             ).map(([date, txs], groupIndex) => (
               <div key={date}>
-                <div className="mb-3">
-                  <h3 className="text-sm font-semibold text-secondary">
+                <div className="mb-2 px-1">
+                  <h3 className="text-xs font-medium text-secondary uppercase tracking-wide">
                     {formatDate(date)}
                   </h3>
                 </div>
 
-                <AnimateLayout transitionClassName="space-y-2">
-                    {(isFullscreen || expandedDateGroupsSet.has(date) ? txs : txs.slice(0, MAX_VISIBLE_INLINE)).map((tx) => {
+                <div className="border border-subtle rounded-xl overflow-hidden bg-surface shadow-sm">
+                  <AnimateLayoutGroup>
+                    {(isFullscreen || expandedDateGroupsSet.has(date) ? txs : txs.slice(0, MAX_VISIBLE_INLINE)).map((tx, index) => {
                       const isExpanded = uiState.expandedTx === tx.transaction_id;
                       const merchantName = tx.merchant_name || tx.name || "Unknown";
                       const category = tx.personal_finance_category?.primary || "UNCATEGORIZED";
                       const categoryDetailed =
                         tx.personal_finance_category?.detailed || "Uncategorized";
-                      const categoryStyle = CATEGORY_STYLES[category] || CATEGORY_STYLES.UNCATEGORIZED;
                       const logo = tx.logo_url || tx.counterparties?.[0]?.logo_url;
 
                       return (
-                          <div
-                            key={tx.transaction_id}
-                            className="rounded-2xl border border-subtle bg-surface shadow-hairline cursor-pointer hover:bg-surface-secondary transition-colors"
-                            onClick={() => setUiState(s => ({...s, expandedTx: isExpanded ? null : tx.transaction_id}))}
-                          >
-                            <div className="p-4">
-                              <div className="flex items-center gap-4">
-                              <div className="flex-shrink-0">
+                        <div
+                          key={tx.transaction_id}
+                          className={cn(
+                            "cursor-pointer hover:bg-surface-secondary/50 transition-colors",
+                            index !== 0 && "border-t border-subtle"
+                          )}
+                          onClick={() => setUiState(s => ({...s, expandedTx: isExpanded ? null : tx.transaction_id}))}
+                        >
+                          <div className="p-3 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-full bg-surface-secondary flex items-center justify-center text-lg flex-shrink-0 border border-subtle overflow-hidden">
                                 {logo ? (
-                                  <img
-                                    src={logo}
-                                    alt={merchantName}
-                                    className="w-12 h-12 rounded-full object-cover border border-subtle"
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).style.display = "none";
-                                      const fallback = document.createElement("div");
-                                      fallback.className = "w-12 h-12 rounded-full bg-surface-tertiary flex items-center justify-center text-default font-bold text-lg";
-                                      fallback.textContent = merchantName.charAt(0).toUpperCase();
-                                      e.currentTarget.parentElement?.appendChild(fallback);
-                                    }}
-                                  />
+                                  <img src={logo} alt="" className="w-full h-full object-cover" />
                                 ) : (
-                                  <div className="w-12 h-12 rounded-full bg-surface-tertiary flex items-center justify-center text-default font-bold text-lg">
-                                    {merchantName.charAt(0).toUpperCase()}
-                                  </div>
+                                  merchantName.charAt(0).toUpperCase()
                                 )}
                               </div>
-
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h3 className="font-semibold truncate text-default">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-medium text-sm text-default truncate">
                                     {merchantName}
                                   </h3>
                                   {tx.pending && (
-                                    <Badge color="warning" size="sm" pill>Pending</Badge>
-                                  )}
-                                  {tx.payment_channel && (
-                                    <span className="text-sm">
-                                      {PAYMENT_CHANNEL_ICONS[tx.payment_channel]}
+                                    <span className="text-[10px] font-bold uppercase text-warning bg-warning-soft px-1.5 py-0.5 rounded-full">
+                                      Pending
                                     </span>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2 text-xs">
-                                  <Badge color={categoryStyle.color} variant="soft" size="sm">
-                                    {categoryStyle.icon} {formatCategoryName(category)}
-                                  </Badge>
-                                </div>
-                              </div>
-
-                              <div className="text-right flex-shrink-0">
-                                <div
-                                  className={`text-lg font-bold ${tx.amount < 0 ? "text-success" : "text-default"}`}
-                                >
-                                  {tx.amount < 0
-                                    ? `+${formatCurrency(Math.abs(tx.amount), tx.iso_currency_code || "USD")}`
-                                    : `-${formatCurrency(tx.amount, tx.iso_currency_code || "USD")}`
-                                  }
-                                </div>
-                              </div>
+                                <p className="text-xs text-secondary truncate">
+                                  {formatCategoryName(category)}
+                                </p>
                               </div>
                             </div>
 
-                          {isExpanded && (
-                            <div className="px-4 pb-4 border-t border-subtle">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                                <div className="space-y-3">
+                            <div className={cn(
+                              "text-sm font-semibold flex-shrink-0",
+                              tx.amount < 0 ? "text-success" : "text-default"
+                            )}>
+                              {tx.amount < 0 ? "+" : ""}{formatCurrency(Math.abs(tx.amount), tx.iso_currency_code || "USD")}
+                            </div>
+                          </div>
+
+                          <AnimateLayout>
+                            {isExpanded && (
+                              <div className="px-4 pb-4 pt-1 bg-surface-secondary/20">
+                                <div className="grid grid-cols-2 gap-4 text-xs">
                                   <div>
-                                    <div className="text-xs font-medium uppercase mb-1 text-tertiary">Category</div>
-                                    <div className="text-sm text-default">{formatCategoryName(categoryDetailed)}</div>
+                                    <span className="block text-secondary mb-0.5">Category</span>
+                                    <span className="text-default font-medium">{formatCategoryName(categoryDetailed)}</span>
                                   </div>
                                   {tx.payment_channel && (
                                     <div>
-                                      <div className="text-xs font-medium uppercase mb-1 text-tertiary">Payment Channel</div>
-                                      <div className="text-sm capitalize text-default">{tx.payment_channel}</div>
-                                    </div>
-                                  )}
-                                  {tx.location?.city && (
-                                    <div>
-                                      <div className="text-xs font-medium uppercase mb-1 text-tertiary">Location</div>
-                                      <div className="text-sm text-default">
-                                        {[tx.location.address, tx.location.city, tx.location.region].filter(Boolean).join(", ")}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div className="space-y-3">
-                                  {tx.check_number && (
-                                    <div>
-                                      <div className="text-xs font-medium uppercase mb-1 text-tertiary">Check Number</div>
-                                      <div className="text-sm text-default">#{tx.check_number}</div>
+                                      <span className="block text-secondary mb-0.5">Payment Method</span>
+                                      <span className="text-default capitalize">{tx.payment_channel}</span>
                                     </div>
                                   )}
                                   {tx.original_description && (
-                                    <div>
-                                      <div className="text-xs font-medium uppercase mb-1 text-tertiary">Bank Description</div>
-                                      <div className="text-sm font-mono text-secondary">{tx.original_description}</div>
-                                    </div>
-                                  )}
-                                  {tx.counterparties && tx.counterparties.length > 0 && (
-                                    <div>
-                                      <div className="text-xs font-medium uppercase mb-1 text-tertiary">Counterparty</div>
-                                      <div className="text-sm text-default">
-                                        {tx.counterparties[0].name}
-                                        {tx.counterparties[0].type && <span className="ml-1 text-secondary">({tx.counterparties[0].type})</span>}
-                                      </div>
+                                    <div className="col-span-2">
+                                      <span className="block text-secondary mb-0.5">Statement Descriptor</span>
+                                      <span className="text-default font-mono text-[11px]">{tx.original_description}</span>
                                     </div>
                                   )}
                                 </div>
                               </div>
-                            </div>
-                          )}
+                            )}
+                          </AnimateLayout>
                         </div>
                       );
                     })}
-                </AnimateLayout>
-
-                  {!isFullscreen && !expandedDateGroupsSet.has(date) && txs.length > MAX_VISIBLE_INLINE && (
-                    <Button
-                      variant="outline"
-                      color="secondary"
-                      className="w-full"
-                      onClick={() => {
-                        setUiState(s => ({ ...s, expandedDateGroups: [...s.expandedDateGroups, date]}));
-                      }}
-                    >
-                      +{txs.length - MAX_VISIBLE_INLINE} more
-                    </Button>
-                  )}
+                  </AnimateLayoutGroup>
                 </div>
+
+                {!isFullscreen && !expandedDateGroupsSet.has(date) && txs.length > MAX_VISIBLE_INLINE && (
+                  <Button
+                    variant="ghost"
+                    color="secondary"
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={() => {
+                      setUiState(s => ({ ...s, expandedDateGroups: [...s.expandedDateGroups, date]}));
+                    }}
+                  >
+                    View {txs.length - MAX_VISIBLE_INLINE} more
+                  </Button>
+                )}
+              </div>
             ))}
 
             {!isFullscreen && !uiState.showAllDates && groupedTransactions.length > MAX_DATE_GROUPS_INLINE && (
@@ -495,7 +452,7 @@ export default function Transactions() {
                 className="w-full"
                 onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
               >
-                +{groupedTransactions.length - MAX_DATE_GROUPS_INLINE} more dates
+                View more history
               </Button>
             )}
           </div>
