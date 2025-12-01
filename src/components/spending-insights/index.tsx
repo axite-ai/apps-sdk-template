@@ -17,13 +17,13 @@ import { AnimateLayout } from "@openai/apps-sdk-ui/components/Transition";
 import { WidgetLoadingSkeleton } from "@/src/components/shared/widget-loading-skeleton";
 
 interface Category {
-  name: string;
+  category: string;
   amount: number;
   percentage: number;
 }
 
 interface ToolOutput extends Record<string, unknown> {
-  totalSpending?: number;
+  totalSpent?: number;
   categoryCount?: number;
   dateRange?: { start: string; end: string };
   message?: string;
@@ -32,7 +32,7 @@ interface ToolOutput extends Record<string, unknown> {
 }
 
 interface ToolMetadata {
-  categories: Category[];
+  allCategories: Category[];
 }
 
 interface SpendingUIState extends Record<string, unknown> {
@@ -52,7 +52,7 @@ const CATEGORY_COLORS = [
 ];
 
 function getCategoryIcon(name: string) {
-  const lower = name.toLowerCase();
+  const lower = (name || "").toLowerCase();
   if (lower.includes("food") || lower.includes("restaurant")) return "🍽️";
   if (lower.includes("transport") || lower.includes("travel")) return "🚗";
   if (lower.includes("shop") || lower.includes("retail")) return "🛍️";
@@ -76,7 +76,7 @@ function CategoryBar({ category, index, isSelected, onClick }: CategoryBarProps)
   return (
     <AnimateLayout>
       <div
-        key={category.name}
+        key={category.category}
         onClick={onClick}
         className={cn(
           "group cursor-pointer rounded-xl border border-subtle transition-all p-4 bg-surface shadow-hairline hover:bg-surface-secondary",
@@ -91,11 +91,11 @@ function CategoryBar({ category, index, isSelected, onClick }: CategoryBarProps)
               color: "white"
             }}
           >
-            {getCategoryIcon(category.name)}
+            {getCategoryIcon(category.category)}
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-sm truncate text-default">
-              {category.name}
+              {category.category}
             </h3>
             <p className="text-xs text-secondary">
               {formatPercent(category.percentage / 100)}
@@ -171,9 +171,9 @@ function DonutChart({
           accumulatedPercentage += percentage;
 
           return (
-            <motion.circle
-              key={category.name}
-              cx={size / 2}
+          <motion.circle
+            key={category.category}
+            cx={size / 2}
               cy={size / 2}
               r={radius}
               fill="none"
@@ -256,7 +256,7 @@ export default function SpendingInsights() {
     return <WidgetLoadingSkeleton />;
   }
 
-  if (!toolMetadata && !toolOutput.totalSpending) {
+  if (!toolMetadata && !toolOutput.totalSpent) {
     return (
       <EmptyMessage>
         <EmptyMessage.Title>No spending data available</EmptyMessage.Title>
@@ -264,8 +264,8 @@ export default function SpendingInsights() {
     );
   }
 
-  const rawCategories = toolMetadata?.categories || [];
-  const totalSpending = toolOutput?.totalSpending ?? rawCategories.reduce(
+  const rawCategories = toolMetadata?.allCategories || [];
+  const totalSpending = toolOutput?.totalSpent ?? rawCategories.reduce(
     (sum, cat) => sum + Math.abs(cat.amount),
     0
   );
@@ -356,7 +356,7 @@ export default function SpendingInsights() {
           <div className="space-y-3">
               {categoriesWithMetadata.map((category, index) => (
                 <CategoryBar
-                  key={category.name}
+                  key={category.category}
                   category={category}
                   index={index}
                   onClick={() =>

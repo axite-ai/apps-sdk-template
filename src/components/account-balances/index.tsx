@@ -42,9 +42,7 @@ interface Projection {
   confidence: "high" | "medium" | "low";
 }
 
-interface ToolOutput extends Record<string, unknown> {
-  structuredContent?: AccountOverviewContent;
-}
+interface ToolOutput extends AccountOverviewContent, Record<string, unknown> {}
 
 interface BalancesUIState extends Record<string, unknown> {
   expandedAccountIds: string[];
@@ -102,7 +100,7 @@ function AccountCard({ account, isExpanded, onToggle }: AccountCardProps) {
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <div
             className={cn(
-              "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl",
+              "shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl",
               getAccountColorClass(account.type)
             )}
           >
@@ -202,7 +200,7 @@ export default function AccountBalances() {
   if (authComponent) return authComponent;
 
   // Show empty state only if there's truly no data
-  if (!toolOutput?.structuredContent) {
+  if (!toolOutput?.summary || !toolOutput?.accounts) {
     return (
       <EmptyMessage>
         <EmptyMessage.Title>No account data available</EmptyMessage.Title>
@@ -210,8 +208,8 @@ export default function AccountBalances() {
     );
   }
 
-  const { summary, accounts } = toolOutput.structuredContent;
-  const projections = (toolMetadata?.projections ?? toolOutput.structuredContent.projections ?? []) as Projection[];
+  const { summary, accounts } = toolOutput;
+  const projections = (toolMetadata?.projections ?? toolOutput.projections ?? []) as Projection[];
 
   // No data check
   if (!accounts || accounts.length === 0) {

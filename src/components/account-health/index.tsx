@@ -21,13 +21,13 @@ import { WidgetLoadingSkeleton } from "@/src/components/shared/widget-loading-sk
 
 interface HealthAccount {
   account_id: string;
-  name: string;
+  accountName: string;
   warnings: string[];
 }
 
 interface ToolOutput extends Record<string, unknown> {
   accounts?: HealthAccount[];
-  overallStatus?: "healthy" | "warning" | "needs_attention";
+  overallStatus?: "healthy" | "warning" | "needs_attention" | "attention_needed";
   featureName?: string;
   message?: string;
   error_message?: string;
@@ -63,7 +63,7 @@ function WarningCard({ account, index }: WarningCardProps) {
       >
         {/* Account Header */}
         <div className="mb-4">
-          <h3 className="font-medium text-base text-default">{account.name}</h3>
+          <h3 className="font-medium text-base text-default">{account.accountName}</h3>
         </div>
 
         {/* Warnings */}
@@ -100,9 +100,9 @@ function WarningCard({ account, index }: WarningCardProps) {
                   </p>
                 </div>
                 {severity === "error" ? (
-                  <Error className="w-4 h-4 flex-shrink-0 text-danger" />
+                  <Error className="w-4 h-4 shrink-0 text-danger" />
                 ) : severity === "warning" ? (
-                  <Warning className="w-4 h-4 flex-shrink-0 text-warning" />
+                  <Warning className="w-4 h-4 shrink-0 text-warning" />
                 ) : null}
               </div>
             );
@@ -114,7 +114,7 @@ function WarningCard({ account, index }: WarningCardProps) {
 }
 
 interface HealthStatusCardProps {
-  status: "healthy" | "warning" | "needs_attention";
+  status: "healthy" | "warning" | "needs_attention" | "attention_needed";
   accountsCount: number;
   warningCount: number;
 }
