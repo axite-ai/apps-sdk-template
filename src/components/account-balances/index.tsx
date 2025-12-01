@@ -234,7 +234,7 @@ export default function AccountBalances() {
           <h1 className="heading-lg mb-2">
             Financial Overview
           </h1>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className={cn("grid gap-4 mb-4", isFullscreen ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1")}>
             <div>
               <p className="text-sm text-secondary">
                 Total Balance
@@ -246,32 +246,38 @@ export default function AccountBalances() {
                 {summary.accountCount} {summary.accountCount === 1 ? "account" : "accounts"}
               </p>
             </div>
-            <div>
-              <p className="text-sm text-secondary mb-1">
-                Health Score
-              </p>
-              <div className="flex items-center gap-2">
-                <Badge color={getHealthBadgeColor(summary.healthScore)} size="lg">
-                  {summary.healthScore} / 100
-                </Badge>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-secondary">
-                Trend
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                {getTrendIcon(summary.trend)}
-                <span className="text-lg font-medium capitalize text-default">
-                  {summary.trend}
-                </span>
-              </div>
-            </div>
+
+            {/* Additional stats only in fullscreen */}
+            {isFullscreen && (
+              <>
+                <div>
+                  <p className="text-sm text-secondary mb-1">
+                    Health Score
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Badge color={getHealthBadgeColor(summary.healthScore)} size="lg">
+                      {summary.healthScore} / 100
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm text-secondary">
+                    Trend
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    {getTrendIcon(summary.trend)}
+                    <span className="text-lg font-medium capitalize text-default">
+                      {summary.trend}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Projections */}
-        {projections && projections.length > 0 && (
+        {/* Projections - only in fullscreen */}
+        {isFullscreen && projections && projections.length > 0 && (
           <div className="mb-6 p-4 rounded-xl border border-subtle bg-surface-secondary">
             <h2 className="text-sm font-medium mb-3 text-secondary">
               Cash Flow Projection

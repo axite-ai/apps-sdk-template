@@ -454,14 +454,16 @@ export default function Transactions() {
             ))}
 
             {!isFullscreen && !uiState.showAllDates && groupedTransactions.length > MAX_DATE_GROUPS_INLINE && (
-              <Button
-                variant="outline"
-                color="secondary"
-                className="w-full"
-                onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
-              >
-                View more history
-              </Button>
+              <div className="pt-2 sticky bottom-0 bg-gradient-to-t from-surface to-transparent pb-1">
+                <Button
+                  variant="outline"
+                  color="secondary"
+                  className="w-full shadow-sm bg-surface"
+                  onClick={() => window.openai?.requestDisplayMode({ mode: "fullscreen" })}
+                >
+                  View more history
+                </Button>
+              </div>
             )}
           </div>
         )}
