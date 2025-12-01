@@ -6,7 +6,7 @@ const dbCredentials = {
   user: process.env.POSTGRES_USER || "postgres",
   password: process.env.POSTGRES_PASSWORD || "postgres",
   database: process.env.POSTGRES_DATABASE || "askmymoney",
-  ssl: process.env.POSTGRES_SSL === "true",
+  ssl: process.env.POSTGRES_SSL === "true" ? { rejectUnauthorized: false } : false,
 };
 
 if (process.env.NODE_ENV === 'test') {
