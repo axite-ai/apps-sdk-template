@@ -6,28 +6,23 @@
  */
 
 import { hasActiveSubscription } from "./subscription-helpers";
-import { UserService } from "../services/user-service";
 import {
   createLoginPromptResponse,
   createSubscriptionRequiredResponse,
-  createPlaidRequiredResponse,
   createSecurityRequiredResponse,
 } from "./auth-responses";
-import { auth } from "../auth";
 import { db } from "@/lib/db";
 import { passkey } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { logger } from "@/lib/services/logger-service";
+import { FEATURES } from "@/lib/config/features";
 
 interface AuthRequirements {
-  /** Require active subscription (default: true) */
+  /** Require active subscription (default: true if subscriptions enabled) */
   requireSubscription?: boolean;
-  /** Require Plaid bank connection (default: true) */
-  requirePlaid?: boolean;
-  /** Require passkey to be enabled (default: true) */
+  /** Require passkey to be enabled (default: false) */
   requireSecurity?: boolean;
-  /** Request headers (required for Plaid check to extract MCP token) */
-  headers?: Headers;
+  /** Custom validation function (optional) */
+  customCheck?: (userId: string) => Promise<{ valid: boolean; error?: any }>;
 }
 
 /**
@@ -41,11 +36,31 @@ interface AuthRequirements {
  *
  * @example
  * ```typescript
- * server.registerTool("get_transactions", config, async () => {
- *   const authCheck = await requireAuth(session, "transactions", {
- *     requireSubscription: true,
- *     requirePlaid: true,
- *     headers: req.headers,
+ * // Basic auth with subscription check
+ * server.registerTool("get_items", config, async () => {
+ *   const authCheck = await requireAuth(session, "items");
+ *   if (authCheck) return authCheck;
+ *
+ *   // ... actual tool logic
+ * });
+ *
+ * // Auth without subscription (free tier)
+ * server.registerTool("free_tool", config, async () => {
+ *   const authCheck = await requireAuth(session, "free tool", {
+ *     requireSubscription: false,
+ *   });
+ *   if (authCheck) return authCheck;
+ *
+ *   // ... actual tool logic
+ * });
+ *
+ * // Auth with custom validation
+ * server.registerTool("custom_tool", config, async () => {
+ *   const authCheck = await requireAuth(session, "custom feature", {
+ *     customCheck: async (userId) => {
+ *       const canAccess = await checkCustomPermission(userId);
+ *       return { valid: canAccess };
+ *     }
  *   });
  *   if (authCheck) return authCheck;
  *
@@ -58,14 +73,18 @@ export async function requireAuth(
   featureName: string,
   options: AuthRequirements = {}
 ) {
-  const { requireSubscription = true, requirePlaid = true, requireSecurity = true, headers } = options;
+  const {
+    requireSubscription = FEATURES.SUBSCRIPTIONS, // Default to true only if subscriptions enabled
+    requireSecurity = false,
+    customCheck,
+  } = options;
 
   console.log(`[requireAuth] Checking auth for ${featureName}:`, {
     hasSession: !!session,
     userId: session?.userId,
     requireSubscription,
-    requirePlaid,
     requireSecurity,
+    subscriptionsEnabled: FEATURES.SUBSCRIPTIONS,
   });
 
   // Check 1: Session exists (OAuth authentication)
@@ -78,7 +97,11 @@ export async function requireAuth(
   if (requireSecurity) {
     try {
       // Check Passkeys from database
-      const passkeys = await db.select().from(passkey).where(eq(passkey.userId, session.userId)).limit(1);
+      const passkeys = await db
+        .select()
+        .from(passkey)
+        .where(eq(passkey.userId, session.userId))
+        .limit(1);
       const hasPasskey = passkeys.length > 0;
 
       console.log(`[requireAuth] Security check:`, {
@@ -88,18 +111,20 @@ export async function requireAuth(
       });
 
       if (!hasPasskey) {
-        console.log(`[requireAuth] Passkey not enabled, returning Security Required response`);
-        return createSecurityRequiredResponse(featureName, session.userId, headers);
+        console.log(
+          `[requireAuth] Passkey not enabled, returning Security Required response`
+        );
+        return createSecurityRequiredResponse(featureName, session.userId);
       }
     } catch (error) {
       console.error(`[requireAuth] Error checking security status:`, error);
       // Fail closed
-      return createSecurityRequiredResponse(featureName, session.userId, headers);
+      return createSecurityRequiredResponse(featureName, session.userId);
     }
   }
 
-  // Check 3: Active subscription (if required)
-  if (requireSubscription) {
+  // Check 3: Active subscription (if required and feature enabled)
+  if (requireSubscription && FEATURES.SUBSCRIPTIONS) {
     const hasSubscription = await hasActiveSubscription(session.userId);
     console.log(`[requireAuth] Subscription check:`, {
       required: true,
@@ -107,27 +132,31 @@ export async function requireAuth(
     });
 
     if (!hasSubscription) {
-      console.log(`[requireAuth] No subscription, returning subscription required response`);
+      console.log(
+        `[requireAuth] No subscription, returning subscription required response`
+      );
       return createSubscriptionRequiredResponse(featureName, session.userId);
     }
   }
 
-  // Check 4: Plaid connection (if required)
-  if (requirePlaid) {
-    const accessTokens = await UserService.getUserAccessTokens(session.userId);
-    console.log(`[requireAuth] Plaid check:`, {
-      required: true,
-      tokenCount: accessTokens.length,
-    });
+  // Check 4: Custom validation (if provided)
+  if (customCheck) {
+    try {
+      const result = await customCheck(session.userId);
+      console.log(`[requireAuth] Custom check:`, {
+        valid: result.valid,
+        error: result.error,
+      });
 
-    if (accessTokens.length === 0) {
-      if (!headers) {
-        throw new Error(
-          `[requireAuth] Headers required for Plaid check but not provided for feature: ${featureName}`
-        );
+      if (!result.valid) {
+        console.log(`[requireAuth] Custom check failed`);
+        // TEMPLATE: Create a custom error response based on your needs
+        // For now, return a generic login prompt
+        return createLoginPromptResponse(featureName);
       }
-      console.log(`[requireAuth] No Plaid tokens, returning Plaid required response`);
-      return await createPlaidRequiredResponse(session.userId, headers);
+    } catch (error) {
+      console.error(`[requireAuth] Error in custom check:`, error);
+      return createLoginPromptResponse(featureName);
     }
   }
 

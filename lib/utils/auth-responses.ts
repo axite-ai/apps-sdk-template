@@ -20,8 +20,8 @@ import { logger } from "@/lib/services/logger-service";
  */
 export function createLoginPromptResponse(featureName?: string) {
   const baseMessage = featureName
-    ? `To access ${featureName}, please sign in to your AskMyMoney account.`
-    : "This feature requires authentication. Please sign in to your AskMyMoney account.";
+    ? `To access ${featureName}, please sign in to your account.`
+    : "This feature requires authentication. Please sign in to your account.";
 
   const responseMeta: OpenAIResponseMetadata = {
     "openai/toolInvocation/invoking": "Checking authentication",
@@ -89,77 +89,16 @@ export function createSubscriptionRequiredResponse(featureName?: string, userId?
 }
 
 /**
- * Create a response prompting the user to connect their bank via Plaid Link
- *
- * Extracts the MCP access token from headers and passes it to the widget
- * so it can be used when opening the /connect-bank popup
- *
- * @param userId - The user ID from the MCP session
- * @param headers - The headers from the MCP request (contains Authorization Bearer token)
- * @returns MCP tool response with Plaid connection widget
- */
-export async function createPlaidRequiredResponse(userId: string, headers: Headers) {
-  console.log('[Plaid Required Response] Creating response for user:', userId);
-
-  // Extract the Bearer token from the Authorization header
-  const authHeader = headers.get('authorization');
-  const mcpToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined;
-
-  console.log('[Plaid Required Response] MCP token:', mcpToken ? 'present' : 'missing');
-
-  const baseMessage = "Please connect your financial accounts to access your data.";
-
-  const responseMeta: OpenAIResponseMetadata = {
-    "openai/toolInvocation/invoking": "Checking bank connection",
-    "openai/toolInvocation/invoked": "Bank connection required",
-    "openai/outputTemplate": "ui://widget/plaid-required.html",
-    "openai/widgetAccessible": false,
-    "openai/resultCanProduceWidget": true,
-  };
-
-  const response = {
-    content: [
-      {
-        type: "text" as const,
-        text: baseMessage,
-      } as { [x: string]: unknown; type: "text"; text: string },
-    ],
-    // Pass the MCP access token to the widget so it can open /connect-bank with auth
-    structuredContent: {
-      baseUrl: baseURL,
-      message: "Bank connection required",
-    },
-    isError: false,
-    _meta: {
-      ...responseMeta,
-      userId,
-      mcpToken, // MCP Bearer token for authenticating /connect-bank popup
-    },
-  };
-
-  console.log('[Plaid Required Response] Widget will receive MCP token in props');
-
-  return response;
-}
-
-/**
  * Create a response prompting the user to set up security (Passkey)
  *
  * This is a security requirement - all users must enable a passkey.
  *
  * @param featureName - Optional name of the feature requiring security
  * @param userId - User ID from the authenticated session
- * @param headers - Request headers containing the MCP Bearer token
  * @returns MCP tool response indicating security setup is required
  */
-export function createSecurityRequiredResponse(featureName?: string, userId?: string, headers?: Headers) {
+export function createSecurityRequiredResponse(featureName?: string, userId?: string) {
   console.log('[Security Required Response] Creating response for user:', userId);
-
-  // Extract the Bearer token from the Authorization header
-  const authHeader = headers?.get('authorization');
-  const mcpToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined;
-
-  console.log('[Security Required Response] MCP token:', mcpToken ? 'present' : 'missing');
 
   const baseMessage = featureName
     ? `To access ${featureName}, you must first enable a passkey.`
@@ -180,7 +119,6 @@ export function createSecurityRequiredResponse(featureName?: string, userId?: st
         text: baseMessage,
       } as { [x: string]: unknown; type: "text"; text: string },
     ],
-    // Pass the MCP access token to the widget so it can open /onboarding with auth
     structuredContent: {
       message: "Security setup required",
       baseUrl: baseURL,
@@ -191,7 +129,6 @@ export function createSecurityRequiredResponse(featureName?: string, userId?: st
     _meta: {
       ...responseMeta,
       userId,
-      mcpToken, // MCP Bearer token for authenticating popup
     },
   };
 

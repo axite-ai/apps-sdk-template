@@ -1,7 +1,9 @@
 {
-  "name": "askmymoney-chatgpt-app",
-  "version": "0.1.0",
-  "private": true,
+  "name": "axite-mcp-template",
+  "version": "1.0.0",
+  "private": false,
+  "description": "Production-ready starter template for building ChatGPT MCP apps with Next.js, Better Auth, and optional Stripe subscriptions",
+  "keywords": ["mcp", "chatgpt", "openai", "template", "starter", "nextjs", "better-auth", "oauth"],
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
@@ -24,7 +26,9 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:all": "pnpm test:run && pnpm test:e2e",
-    "test:watch": "vitest watch"
+    "test:watch": "vitest watch",
+    "generate:tool": "tsx scripts/generate-tool.ts",
+    "generate:widget": "tsx scripts/generate-widget.ts"
   },
   "dependencies": {
     "@better-auth/core": "^1.4.4",
@@ -45,10 +49,8 @@
     "mcp-handler": "^1.0.2",
     "next": "15.5.4",
     "pg": "^8.16.3",
-    "plaid": "^39.0.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-plaid-link": "^4.1.1",
     "react-qr-code": "^2.0.18",
     "resend": "^6.4.0",
     "stripe": "^19.3.1",

@@ -6,11 +6,14 @@ import {
   boolean,
   integer,
   jsonb,
-  decimal,
   index,
   pgEnum
 } from "drizzle-orm/pg-core";
 import { createId } from "@paralleldrive/cuid2";
+
+// ============================================================================
+// BETTER AUTH CORE TABLES
+// ============================================================================
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -25,6 +28,28 @@ export const user = pgTable("user", {
     .notNull(),
   stripeCustomerId: text("stripe_customer_id"),
 });
+
+export const session = pgTable(
+  "session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at").notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at")
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("session_userId_idx").on(table.userId),
+    index("session_token_idx").on(table.token),
+  ],
+);
 
 export const account = pgTable(
   "account",
@@ -205,13 +230,26 @@ export const subscription = pgTable("subscription", {
   seats: integer("seats"),
 });
 
+// ============================================================================
+// BETTER AUTH RELATIONS
+// ============================================================================
+
 export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
+  sessions: many(session),
   passkeys: many(passkey),
   apikeys: many(apikey),
   oauthApplications: many(oauthApplication),
   oauthAccessTokens: many(oauthAccessToken),
   oauthConsents: many(oauthConsent),
+  userItems: many(userItems),
+}));
+
+export const sessionRelations = relations(session, ({ one }) => ({
+  user: one(user, {
+    fields: [session.userId],
+    references: [user.id],
+  }),
 }));
 
 export const accountRelations = relations(account, ({ one }) => ({
@@ -272,32 +310,29 @@ export const oauthConsentRelations = relations(oauthConsent, ({ one }) => ({
   }),
 }));
 
-
-
-// Custom application tables
+// ============================================================================
+// APPLICATION TABLES
+// TEMPLATE: Customize these tables for your application needs
+// ============================================================================
 
 /**
- * Plaid Item Status Lifecycle
- *
- * - 'active': Item is connected and ready to use (set immediately after token exchange)
- * - 'error': Item requires user action (login, MFA, etc.) - set by ERROR webhook
- * - 'revoked': User revoked access at their institution - set by USER_PERMISSION_REVOKED webhook
- * - 'deleted': Item was removed by user via deleteItem() - set by item deletion service
- * - 'pending': DEPRECATED - No longer used (items are active immediately after token exchange)
- *
- * Note: Plaid does NOT send an ITEM_READY webhook. Items are ready immediately after
- * public token exchange. See: https://plaid.com/docs/api/items/#webhooks
+ * Item Status Lifecycle
+ * - 'active': Item is active and available
+ * - 'archived': Item is archived but not deleted
+ * - 'deleted': Item is soft deleted
  */
-export const PlaidItemStatus = pgEnum("plaid_item_status", [
-  "pending",   // DEPRECATED - kept for backward compatibility with existing data
-  "active",    // Item connected and ready
-  "error",     // Requires user action
-  "revoked",   // User revoked access
-  "deleted",   // Soft deleted by user
-])
+export const ItemStatus = pgEnum("item_status", [
+  "active",
+  "archived",
+  "deleted",
+]);
 
-export const plaidItems = pgTable(
-  "plaid_items",
+/**
+ * Example user items table - demonstrates a typical CRUD resource
+ * TEMPLATE: Customize or replace with your own entities
+ */
+export const userItems = pgTable(
+  "user_items",
   {
     id: text("id")
       .primaryKey()
@@ -307,104 +342,55 @@ export const plaidItems = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
 
-    itemId: text("item_id").notNull().unique(),
+    title: text("title").notNull(),
+    description: text("description"),
 
-    accessToken: text("access_token").notNull(), // Encrypted
+    status: ItemStatus("status").default("active").notNull(),
 
-    institutionId: text("institution_id"),
-    institutionName: text("institution_name"),
+    // Flexible metadata field for custom properties
+    metadata: jsonb("metadata"),
 
-    status: PlaidItemStatus("status").default("active"), // Items are ready immediately after token exchange
+    // Ordering/priority
+    order: integer("order").default(0).notNull(),
 
-    consentExpiresAt: timestamp("consent_expires_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
 
-    transactionsCursor: text("transactions_cursor"),
-
-    errorCode: text("error_code"),
-    errorMessage: text("error_message"),
-
-    lastWebhookAt: timestamp("last_webhook_at"),
-
+    archivedAt: timestamp("archived_at"),
     deletedAt: timestamp("deleted_at"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
   },
   (table) => ({
-    itemIdIndex: index("plaid_items_item_id_idx").on(table.itemId),
-    userIdIndex: index("plaid_items_user_id_idx").on(table.userId),
-    statusIndex: index("plaid_items_status_idx").on(table.status),
+    userIdIndex: index("user_items_user_id_idx").on(table.userId),
+    statusIndex: index("user_items_status_idx").on(table.status),
+    createdAtIndex: index("user_items_created_at_idx").on(table.createdAt),
   })
 );
 
-export const plaidWebhooks = pgTable(
-  "plaid_webhooks",
+export const userItemsRelations = relations(userItems, ({ one }) => ({
+  user: one(user, {
+    fields: [userItems.userId],
+    references: [user.id],
+  }),
+}));
+
+/**
+ * App-level settings and configuration
+ * TEMPLATE: Store application-wide settings here
+ */
+export const appSettings = pgTable(
+  "app_settings",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
 
-    itemId: text("item_id"),
+    key: text("key").notNull().unique(),
+    value: jsonb("value"),
+    description: text("description"),
 
-    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
-
-    webhookType: text("webhook_type").notNull(),
-    webhookCode: text("webhook_code").notNull(),
-
-    errorCode: text("error_code"),
-
-    payload: jsonb("payload"),
-
-    processed: boolean("processed").default(false).notNull(),
-    processingError: jsonb("processing_error"),
-
-    retryCount: integer("retry_count").default(0).notNull(),
-
-    receivedAt: timestamp("received_at").defaultNow().notNull(),
-    processedAt: timestamp("processed_at"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => ({
-    itemIdProcessedIndex: index("plaid_webhooks_item_id_processed_idx").on(
-      table.itemId,
-      table.processed,
-      table.createdAt
-    ),
-    webhookTypeCodeIndex: index("plaid_webhooks_type_code_item_idx").on(
-      table.webhookType,
-      table.webhookCode,
-      table.itemId
-    ),
-  })
-);
-
-export const plaidAccounts = pgTable(
-  "plaid_accounts",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => createId()),
-    itemId: text("item_id")
-      .notNull()
-      .references(() => plaidItems.itemId, { onDelete: "cascade" }),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    accountId: text("account_id").notNull().unique(),
-    name: text("name").notNull(),
-    mask: text("mask"),
-    officialName: text("official_name"),
-    currentBalance: decimal("current_balance", { precision: 28, scale: 10 }),
-    availableBalance: decimal("available_balance", {
-      precision: 28,
-      scale: 10,
-    }),
-    isoCurrencyCode: text("iso_currency_code"),
-    type: text("type"),
-    subtype: text("subtype"),
-    persistentAccountId: text("persistent_account_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -412,75 +398,32 @@ export const plaidAccounts = pgTable(
       .notNull(),
   },
   (table) => ({
-    accountIdIndex: index("plaid_accounts_account_id_idx").on(table.accountId),
-    userIdIndex: index("plaid_accounts_user_id_idx").on(table.userId),
+    keyIndex: index("app_settings_key_idx").on(table.key),
   })
 );
 
-export const plaidTransactions = pgTable(
-  "plaid_transactions",
-  {
-    transactionId: text("transaction_id").primaryKey(),
-    accountId: text("account_id")
-      .notNull()
-      .references(() => plaidAccounts.accountId),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    amount: decimal("amount", { precision: 28, scale: 10 }).notNull(),
-    isoCurrencyCode: text("iso_currency_code"),
-    unofficialCurrencyCode: text("unofficial_currency_code"),
-    categoryPrimary: text("category_primary"),
-    categoryDetailed: text("category_detailed"),
-    categoryConfidence: text("category_confidence"),
-    checkNumber: text("check_number"),
-    date: timestamp("date").notNull(),
-    datetime: timestamp("datetime"),
-    authorizedDate: timestamp("authorized_date"),
-    authorizedDatetime: timestamp("authorized_datetime"),
-    location: jsonb("location"),
-    merchantName: text("merchant_name"),
-    paymentChannel: text("payment_channel"),
-    pending: boolean("pending").default(false).notNull(),
-    pendingTransactionId: text("pending_transaction_id"),
-    transactionCode: text("transaction_code"),
-    name: text("name"),
-    originalDescription: text("original_description"),
-    logoUrl: text("logo_url"),
-    website: text("website"),
-    counterparties: jsonb("counterparties"),
-    paymentMeta: jsonb("payment_meta"),
-    rawData: jsonb("raw_data"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => ({
-    transactionIdIndex: index("plaid_transactions_transaction_id_idx").on(
-      table.transactionId
-    ),
-    accountIdIndex: index("plaid_transactions_account_id_idx").on(
-      table.accountId
-    ),
-    userIdIndex: index("plaid_transactions_user_id_idx").on(table.userId),
-  })
-);
-
+/**
+ * Audit logs for tracking user actions
+ * TEMPLATE: Use this to track important events in your app
+ */
 export const auditLogs = pgTable(
   "audit_logs",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
+
     userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+
     eventType: text("event_type").notNull(),
     eventData: jsonb("event_data"),
+
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
+
     success: boolean("success").notNull(),
     errorMessage: text("error_message"),
+
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
@@ -490,60 +433,9 @@ export const auditLogs = pgTable(
   })
 );
 
-export const plaidLinkSessions = pgTable(
-  "plaid_link_sessions",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => createId()),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    linkToken: text("link_token").notNull(),
-    linkSessionId: text("link_session_id"),
-    plaidUserToken: text("plaid_user_token"),
-    status: text("status").default("pending").notNull(), // pending, active, completed, failed
-    publicTokens: jsonb("public_tokens"), // Array of public tokens from SESSION_FINISHED
-    itemsAdded: integer("items_added").default(0).notNull(),
-    metadata: jsonb("metadata"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-    completedAt: timestamp("completed_at"),
-  },
-  (table) => ({
-    userIdIndex: index("plaid_link_sessions_user_id_idx").on(table.userId),
-    linkTokenIndex: index("plaid_link_sessions_link_token_idx").on(table.linkToken),
-    linkSessionIdIndex: index("plaid_link_sessions_link_session_id_idx").on(table.linkSessionId),
-    statusIndex: index("plaid_link_sessions_status_idx").on(table.status),
-  })
-);
-
-export const plaidItemDeletions = pgTable(
-  "plaid_item_deletions",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => createId()),
-
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-
-    itemId: text("item_id").notNull(),
-
-    institutionId: text("institution_id"),
-    institutionName: text("institution_name"),
-
-    deletedAt: timestamp("deleted_at").defaultNow().notNull(),
-    reason: text("reason"),
-  },
-  (table) => ({
-    userIdDeletedAtIndex: index("plaid_item_deletions_user_id_deleted_at_idx").on(
-      table.userId,
-      table.deletedAt
-    ),
-  })
-);
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  user: one(user, {
+    fields: [auditLogs.userId],
+    references: [user.id],
+  }),
+}));
