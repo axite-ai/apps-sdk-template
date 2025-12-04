@@ -91,3 +91,8 @@ jobs:
           REDIS_URL: "redis://ci:6379"
           BETTER_AUTH_SECRET: "ci-build-placeholder-not-for-production"
           ENCRYPTION_KEY: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          # Email service (Resend) - dummy key for build
+          RESEND_API_KEY: "re_ci_placeholder_not_for_production"
+          # Stripe (optional feature) - dummy keys for build
+          STRIPE_SECRET_KEY: "sk_test_ci_placeholder_not_for_production"
+          STRIPE_WEBHOOK_SECRET: "whsec_ci_placeholder_not_for_production"
