@@ -167,11 +167,8 @@ const handler = withMcpAuth(auth, async (req: Request, session: any) => {
         },
         securitySchemes: [{ type: "oauth2", scopes: ["items:read"] }],
       } as any,
-      async (args): Promise<UserItemsResponse> => {
-        const { status = "active", limit = 50 } = args as {
-          status?: "active" | "archived" | "deleted";
-          limit?: number;
-        };
+      async (args: { status?: "active" | "archived" | "deleted"; limit?: number }): Promise<UserItemsResponse> => {
+        const { status = "active", limit = 50 } = args;
         try {
           // Check authentication and subscription
           const authCheck = await requireAuth(session, "user items", {
