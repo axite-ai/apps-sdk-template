@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore, useCallback } from "react";
 import { SET_GLOBALS_EVENT_TYPE } from "@/src/types";
 
 interface PreviewWrapperProps {
@@ -10,8 +10,13 @@ interface PreviewWrapperProps {
   title: string;
 }
 
+// Simple mounted subscription for SSR hydration
+const subscribe = () => () => {};
+const getSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 export function PreviewWrapper({ children, data, metadata, title }: PreviewWrapperProps) {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
@@ -63,8 +68,6 @@ export function PreviewWrapper({ children, data, metadata, title }: PreviewWrapp
       document.documentElement.setAttribute("data-theme", theme);
       // Also toggle class for Tailwind if configured to use class strategy (though data-theme is preferred)
       document.documentElement.classList.toggle("dark", theme === "dark");
-
-      setMounted(true);
     }
   }, [data, metadata, theme]);
 

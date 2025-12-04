@@ -6,7 +6,6 @@
  */
 
 import { betterAuth } from "better-auth";
-import { createAuthMiddleware } from "better-auth/api";
 import { mcp, apiKey, jwt } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";

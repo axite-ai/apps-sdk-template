@@ -35,7 +35,7 @@ export default function UserItemsWidget() {
         <div className="text-gray-500">
           <p className="text-lg font-medium">No items yet</p>
           <p className="text-sm mt-2">
-            Use the "manage_item" tool to create your first item.
+            Use the &quot;manage_item&quot; tool to create your first item.
           </p>
         </div>
       </div>
@@ -102,7 +102,7 @@ export default function UserItemsWidget() {
 
       <div className="mt-6 p-4 bg-blue-50 rounded-lg">
         <p className="text-sm text-blue-900">
-          <strong>💡 Tip:</strong> Use the "manage_item" tool to create, update, or
+          <strong>💡 Tip:</strong> Use the &quot;manage_item&quot; tool to create, update, or
           delete items.
         </p>
       </div>

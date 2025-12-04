@@ -146,7 +146,7 @@ export default function LoginForm() {
               </p>
 
               <p className="text-sm text-secondary">
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <button
                   onClick={handleGoogleSignIn}
                   disabled={loading}

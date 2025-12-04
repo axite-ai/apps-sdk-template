@@ -181,7 +181,7 @@ function RecoverContent() {
                   <ul className="text-sm text-secondary space-y-2 list-disc list-inside">
                     <li>All your existing sessions will be invalidated</li>
                     <li>All your existing passkeys will be deleted</li>
-                    <li>You'll need to create a new passkey</li>
+                    <li>You&apos;ll need to create a new passkey</li>
                     <li>This action will be logged for security purposes</li>
                   </ul>
                 </div>

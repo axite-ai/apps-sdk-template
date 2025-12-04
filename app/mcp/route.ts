@@ -167,7 +167,11 @@ const handler = withMcpAuth(auth, async (req: Request, session: any) => {
         },
         securitySchemes: [{ type: "oauth2", scopes: ["items:read"] }],
       } as any,
-      async ({ status = "active", limit = 50 }): Promise<UserItemsResponse> => {
+      async (args): Promise<UserItemsResponse> => {
+        const { status = "active", limit = 50 } = args as {
+          status?: "active" | "archived" | "deleted";
+          limit?: number;
+        };
         try {
           // Check authentication and subscription
           const authCheck = await requireAuth(session, "user items", {
@@ -177,7 +181,7 @@ const handler = withMcpAuth(auth, async (req: Request, session: any) => {
 
           // Fetch items from database
           const items = await ItemsService.getUserItems(session!.userId, {
-            status: status as "active" | "archived" | "deleted",
+            status,
             limit,
           });
 

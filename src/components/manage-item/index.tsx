@@ -71,7 +71,7 @@ export default function ManageItemWidget() {
       </div>
 
       <div className="mt-6 text-sm text-gray-600 text-center">
-        Use "get_user_items" to see all your items
+        Use &quot;get_user_items&quot; to see all your items
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { oAuthProtectedResourceMetadata } from "better-auth/plugins";
 import { auth } from "@/lib/auth";
 

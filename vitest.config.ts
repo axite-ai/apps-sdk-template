@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { loadEnv } from 'vite';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(() => {
   // Load .env.test file for test environment
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix
   const env = loadEnv('test', process.cwd(), '');

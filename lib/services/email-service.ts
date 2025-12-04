@@ -197,7 +197,7 @@ export const EmailService = {
     userName: string,
     institutionName: string
   ) {
-    return this.sendBankConnectionConfirmation(
+    return this.sendAccountConnectionConfirmation(
       email,
       userName,
       institutionName,

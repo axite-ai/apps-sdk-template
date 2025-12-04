@@ -88,7 +88,7 @@ export default function SecuritySettingsPage() {
               Passkeys
             </h2>
             <p className="text-sm text-secondary mt-1">
-              Passkeys allow you to sign in securely without a password using your device's biometrics or security key.
+              Passkeys allow you to sign in securely without a password using your device&apos;s biometrics or security key.
             </p>
           </div>
           <Button
