@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore, useCallback } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { SET_GLOBALS_EVENT_TYPE } from "@/src/types";
 
 interface PreviewWrapperProps {
@@ -10,7 +10,16 @@ interface PreviewWrapperProps {
   title: string;
 }
 
-// Simple mounted subscription for SSR hydration
+/**
+ * useSyncExternalStore pattern for SSR-safe "mounted" detection.
+ *
+ * - subscribe: No-op because we don't need to listen for changes (mounted is static after first render)
+ * - getSnapshot: Returns `true` on client - component is mounted
+ * - getServerSnapshot: Returns `false` on server - prevents hydration mismatch
+ *
+ * This avoids the lint error from calling setState in useEffect while still
+ * providing SSR-safe mounting detection without hydration mismatches.
+ */
 const subscribe = () => () => {};
 const getSnapshot = () => true;
 const getServerSnapshot = () => false;

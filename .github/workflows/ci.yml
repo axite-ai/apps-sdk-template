@@ -9,6 +9,8 @@ on:
 jobs:
   lint-and-typecheck:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout repository
@@ -49,6 +51,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     needs: lint-and-typecheck
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout repository
@@ -83,8 +87,9 @@ jobs:
       - name: Build application
         run: pnpm build
         env:
-          # Required env vars for build (can be dummy values)
-          DATABASE_URL: "postgresql://localhost:5432/test"
-          REDIS_URL: "redis://localhost:6379"
-          BETTER_AUTH_SECRET: "test-secret-for-build"
-          ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          # CI-only placeholder values for build - NOT for production use
+          # These allow the build to complete without real infrastructure
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci_build_check"
+          REDIS_URL: "redis://ci:6379"
+          BETTER_AUTH_SECRET: "ci-build-placeholder-not-for-production"
+          ENCRYPTION_KEY: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
