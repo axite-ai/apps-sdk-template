@@ -23,7 +23,7 @@ interface AuthRequirements {
   /** Require passkey to be enabled (default: false) */
   requireSecurity?: boolean;
   /** Custom validation function (optional) */
-  customCheck?: (userId: string) => Promise<{ valid: boolean; error?: any }>;
+  customCheck?: (userId: string) => Promise<{ valid: boolean; error?: Error | string }>;
 }
 
 /**
