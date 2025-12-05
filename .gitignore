@@ -51,3 +51,5 @@ next-env.d.ts
 
 .gemini/
 gha-creds-*.json
+
+llm_context/
