@@ -55,6 +55,8 @@ pnpm dev
 
 Your MCP server is now running at `http://localhost:3000/mcp`
 
+If you deploy the server separately, set `MCP_SERVER_URL` to the full MCP endpoint (including the `/mcp` path), for example `http://localhost:3001/mcp`.
+
 ## 📚 What's Included
 
 ### MCP Tools (5 examples)

@@ -8,28 +8,65 @@
 
 import { NextRequest } from "next/server";
 
-const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:3001";
+// Expects the FULL URL to the MCP endpoint (e.g. http://localhost:3001/mcp)
+const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:3001/mcp";
+
+export async function GET(request: NextRequest) {
+  return Response.json({
+    status: "active",
+    service: "MCP GPT Proxy",
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // Forward the request to the MCP server
-    const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
+    // 1. Prepare Headers for Upstream Request
+    const headers = new Headers();
+    headers.set("Content-Type", "application/json");
+
+    const auth = request.headers.get("Authorization");
+    if (auth) {
+      headers.set("Authorization", auth);
+    }
+
+    const accept = request.headers.get("Accept");
+    if (accept) {
+      headers.set("Accept", accept);
+    }
+
+    // 2. Forward Request to Upstream MCP Server
+    const response = await fetch(MCP_SERVER_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": request.headers.get("Content-Type") || "application/json",
-        Authorization: request.headers.get("Authorization") || "",
-      },
+      headers: headers,
       body: await request.text(),
     });
 
-    // Return the response from the MCP server
-    const data = await response.text();
+    // 3. Prepare Headers for Downstream Response (to Client)
+    const responseHeaders = new Headers();
+    response.headers.forEach((value, key) => {
+      // Forward critical headers for Auth and Content-Type
+      if (["content-type", "www-authenticate"].includes(key.toLowerCase())) {
+        responseHeaders.set(key, value);
+      }
+    });
 
-    return new Response(data, {
+    // 4. Return Response
+    return new Response(response.body, {
       status: response.status,
-      headers: {
-        "Content-Type": response.headers.get("Content-Type") || "application/json",
-      },
+      statusText: response.statusText,
+      headers: responseHeaders,
     });
   } catch (error) {
     console.error("[MCP Proxy] Failed to forward request:", error);

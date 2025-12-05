@@ -322,4 +322,4 @@ Deploy server and web as independent services:
 
 **Web**:
 - Deploy `packages/web` to Vercel
-- Set `MCP_SERVER_URL` to point to server
+- Set `MCP_SERVER_URL` to the full MCP endpoint (including `/mcp`), e.g. `https://your-mcp-server.com/mcp`

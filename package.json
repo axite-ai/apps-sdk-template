@@ -15,7 +15,7 @@
     "url": "https://github.com/yourusername/axite-mcp-template/issues"
   },
   "scripts": {
-    "dev": "pnpm run --parallel dev:server dev:web",
+    "dev": "pnpm -r --parallel --filter @axite/server --filter @axite/web dev",
     "dev:server": "pnpm --filter @axite/server dev",
     "dev:web": "pnpm --filter @axite/web dev",
     "build": "pnpm run build:shared && pnpm run --parallel build:server build:web",

@@ -7,6 +7,10 @@
 import { config } from "dotenv";
 import { z } from "zod";
 import path from "path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Environment schema
 const envSchema = z.object({
@@ -62,6 +66,13 @@ export function loadEnv(): Env {
   // Also try loading from server package .env (for overrides)
   const serverEnvPath = path.resolve(__dirname, "../../.env");
   config({ path: serverEnvPath, override: false });
+
+  // In development, provide minimal fallbacks so the proxy can start without manual env setup
+  if ((process.env.NODE_ENV ?? "development") !== "production") {
+    process.env.DATABASE_URL ??= "postgresql://user:pass@localhost:5432/devdb";
+    process.env.REDIS_URL ??= "redis://localhost:6379";
+    process.env.BETTER_AUTH_SECRET ??= "development-secret-key-that-is-32-chars";
+  }
 
   try {
     env = envSchema.parse(process.env);
