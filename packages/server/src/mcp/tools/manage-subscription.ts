@@ -6,10 +6,18 @@
  *
  * MCP Best Practices implemented:
  * - Tool naming with {service}_ prefix placeholder
- * - All four tool annotations (note: openWorldHint is true for Stripe API)
  * - Actionable error messages
+ * - Conditional tool registration (only if subscriptions enabled)
+ * - Full OpenAI Apps SDK metadata (outputTemplate, widgetAccessible, invoking/invoked)
+ *
+ * Tool Annotations (for model reasoning):
+ * - readOnlyHint: false     - Portal session creation is a write operation
+ * - destructiveHint: false  - Viewing doesn't destroy data
+ * - idempotentHint: false   - Portal sessions are unique each time
+ * - openWorldHint: true     - Calls Stripe API
  *
  * See: docs/mcp-builder/reference/mcp_best_practices.md
+ * See: https://developers.openai.com/apps-sdk/reference
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -55,11 +63,6 @@ No parameters required - uses authenticated user's subscription.
 
 Returns subscription details and portal URL.`,
     {},
-    // MCP Best Practice: Tool annotations (when SDK supports them)
-    // readOnlyHint: false     - Portal session creation is a write operation
-    // destructiveHint: false  - Viewing doesn't destroy data
-    // idempotentHint: false   - Portal sessions are unique each time
-    // openWorldHint: true     - Calls Stripe API
     async (): Promise<ManageSubscriptionResponse> => {
       try {
         // Check authentication (no subscription required to view subscription!)
@@ -118,7 +121,11 @@ Returns subscription details and portal URL.`,
               message: "Click below to manage your subscription",
             },
             {
+              // Widget rendering configuration
               "openai/outputTemplate": "ui://widget/manage-subscription.html",
+              "openai/widgetAccessible": true, // Allow widget to open billing portal
+              // Status messages shown in ChatGPT UI
+              "openai/toolInvocation/invoking": "Loading subscription details...",
               "openai/toolInvocation/invoked": "Subscription loaded",
             }
           );
@@ -134,7 +141,11 @@ Returns subscription details and portal URL.`,
               message: "You don't have an active subscription. Choose a plan to get started.",
             },
             {
+              // Widget rendering configuration
               "openai/outputTemplate": "ui://widget/manage-subscription.html",
+              "openai/widgetAccessible": true, // Allow widget to navigate to pricing
+              // Status messages shown in ChatGPT UI
+              "openai/toolInvocation/invoking": "Loading subscription details...",
               "openai/toolInvocation/invoked": "Subscription loaded",
             }
           );

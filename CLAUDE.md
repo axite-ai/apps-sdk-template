@@ -475,39 +475,75 @@ See `docs/TESTING.md` for comprehensive testing guide.
 
 ## MCP Best Practices
 
-This template implements patterns from `docs/mcp-builder/`, which contains general MCP development best practices. See `docs/MCP-PATTERNS.md` for the template-specific implementation guide.
+This template implements patterns from `docs/mcp-builder/`, which contains general MCP development best practices. See `docs/MCP-PATTERNS.md` for the template-specific implementation guide and `docs/DESIGN_PHILOSOPHY.md` for the Know/Do/Show framework.
+
+### Quick Reference: Tool Checklist
+
+When creating or modifying MCP tools, ensure all required metadata is included:
+
+```typescript
+// In your tool's createSuccessResponse() call:
+return createSuccessResponse(
+  textContent,
+  structuredContent,
+  {
+    // Required: Widget to render results
+    "openai/outputTemplate": "ui://widget/my-widget.html",
+
+    // Required: Status messages shown in ChatGPT UI (≤64 chars each)
+    "openai/toolInvocation/invoking": "Loading...",
+    "openai/toolInvocation/invoked": "Done!",
+
+    // Required for interactive widgets: Allow widget to call tools
+    "openai/widgetAccessible": true,  // or false for display-only
+  }
+);
+```
+
+### Annotation Guide
+
+Document tool behavior in the file header (model uses this for planning):
+
+| Scenario | readOnly | destructive | idempotent | openWorld |
+|----------|----------|-------------|------------|-----------|
+| List/Get data | true | false | true | false |
+| Create record | false | false | false | false |
+| Update record | false | false | true | false |
+| Delete record | false | true | true | false |
+| External API | true | false | true | true |
+| Calculator | true | false | true | false |
 
 ### Key Patterns Applied
 
-**Tool Naming**: All tools use `{service}_action_resource` format with a placeholder prefix:
+**Tool Naming**: All tools use `{service}_action_resource` format:
 ```typescript
 "{service}_get_user_items"  // TODO: Replace {service} with your app name
 ```
 
-**Tool Annotations**: All tools include four required annotations:
-```typescript
-{
-  annotations: {
-    readOnlyHint: true,      // Does this tool only read data?
-    destructiveHint: false,  // Can this tool delete data?
-    idempotentHint: true,    // Same input = same output?
-    openWorldHint: false,    // Does this tool call external APIs?
-  },
-}
-```
-
-**Pagination**: List tools include `limit`/`offset` parameters and return pagination metadata:
+**Pagination**: List tools include `limit`/`offset` and return metadata:
 ```typescript
 const pagination = calculatePagination(totalCount, offset, limit, items.length);
 // Returns: { total_count, count, offset, limit, has_more, next_offset }
 ```
 
-**Response Formats**: Tools support `response_format` parameter for markdown or JSON output.
+**Response Formats**: Tools support `response_format` parameter for markdown or JSON.
 
 **Character Limits**: Use `truncateIfNeeded()` to prevent overwhelming responses (25,000 char limit).
 
+**Client Metadata**: Extract locale/location for personalization:
+```typescript
+import { extractClientMetadata, formatDateForLocale } from "@axite/shared";
+
+async (rawParams, extra) => {
+  const clientMeta = extractClientMetadata(extra);
+  const date = formatDateForLocale(new Date(), clientMeta.locale);
+  // ...
+}
+```
+
 ### Reference Documentation
 
+- `docs/DESIGN_PHILOSOPHY.md` - Know/Do/Show framework and capability selection
 - `docs/MCP-PATTERNS.md` - Template-specific implementation guide
 - `docs/mcp-builder/reference/mcp_best_practices.md` - Core MCP standards
 - `docs/mcp-builder/reference/node_mcp_server.md` - TypeScript implementation guide

@@ -51,45 +51,78 @@ export type MCPContent =
 /**
  * OpenAI-specific metadata for tool responses
  * These control how ChatGPT renders and interacts with the response
+ *
+ * Reference: https://developers.openai.com/apps-sdk/reference
  */
 export interface OpenAIResponseMetadata {
+  // ============================================================================
+  // WIDGET RENDERING CONFIGURATION
+  // ============================================================================
+
+  /** Resource URI for component HTML template (e.g., "ui://widget/my-widget.html") */
+  "openai/outputTemplate"?: string;
+
   /** Widget description surfaced to the model when the component loads */
   "openai/widgetDescription"?: string;
 
   /** Hint that the component should render inside a bordered card */
   "openai/widgetPrefersBorder"?: boolean;
 
-  /** Whether the widget can call tools on its own */
+  /** Whether the widget can call tools on its own via window.openai.callTool() */
   "openai/widgetAccessible"?: boolean;
 
   /** Whether this result can produce a widget */
   "openai/resultCanProduceWidget"?: boolean;
 
-  /** Short status text while the tool runs */
-  "openai/toolInvocation/invoking"?: string;
+  /** Dedicated subdomain for hosted components (defaults to web-sandbox.oaiusercontent.com) */
+  "openai/widgetDomain"?: string;
 
-  /** Short status text after the tool completes */
-  "openai/toolInvocation/invoked"?: string;
-
-  /** Resource URI for component HTML template */
-  "openai/outputTemplate"?: string;
-
-  /** CSP configuration for the widget */
+  /** CSP configuration for the widget iframe */
   "openai/widgetCSP"?: {
+    /** Allowed domains for fetch/XHR requests (maps to connect-src) */
     connect_domains?: string[];
+    /** Allowed domains for assets - style-src, img-src, font-src, etc. */
     resource_domains?: string[];
   };
 
-  /** Dedicated subdomain for hosted components */
-  "openai/widgetDomain"?: string;
+  /** Unique session ID for correlating multiple calls within a widget lifecycle */
+  "openai/widgetSessionId"?: string;
 
-  /** Requested locale (BCP 47) */
+  /** Instruct the host to close/unmount the widget after this response */
+  "openai/closeWidget"?: boolean;
+
+  // ============================================================================
+  // TOOL INVOCATION STATUS
+  // ============================================================================
+
+  /** Short status text while the tool runs (≤64 chars, shown in ChatGPT UI) */
+  "openai/toolInvocation/invoking"?: string;
+
+  /** Short status text after the tool completes (≤64 chars, shown in ChatGPT UI) */
+  "openai/toolInvocation/invoked"?: string;
+
+  // ============================================================================
+  // TOOL VISIBILITY
+  // ============================================================================
+
+  /** Control tool visibility: "public" (default) or "private" (hidden from model but callable) */
+  "openai/visibility"?: "public" | "private";
+
+  // ============================================================================
+  // CLIENT-PROVIDED METADATA (sent by ChatGPT, use for personalization)
+  // IMPORTANT: Never rely on these for authorization!
+  // ============================================================================
+
+  /** Requested locale (BCP 47, e.g., "en-US", "de-DE") */
   "openai/locale"?: string;
 
   /** User agent hint for analytics or formatting */
-  "openai/userAgent"?: string;
+  "openai/userAgent"?: string | {
+    device?: { type?: "mobile" | "tablet" | "desktop" | "unknown" };
+    capabilities?: { hover?: boolean; touch?: boolean };
+  };
 
-  /** Coarse location hint */
+  /** Coarse location hint (not precise - do not use for geofencing) */
   "openai/userLocation"?: {
     city?: string;
     region?: string;
@@ -99,16 +132,24 @@ export interface OpenAIResponseMetadata {
     latitude?: number;
   };
 
-  /** Anonymized user id for rate limiting and identification */
+  /** Anonymized user id for rate limiting and identification (not auth!) */
   "openai/subject"?: string;
 
-  /** RFC 7235 WWW-Authenticate challenges to trigger OAuth */
+  // ============================================================================
+  // AUTHENTICATION
+  // ============================================================================
+
+  /** RFC 7235 WWW-Authenticate challenges to trigger OAuth flow */
   "mcp/www_authenticate"?: string | string[];
 
-  /** Legacy locale key */
+  // ============================================================================
+  // LEGACY / COMPATIBILITY
+  // ============================================================================
+
+  /** Legacy locale key (prefer openai/locale) */
   "webplus/i18n"?: string;
 
-  /** Additional metadata */
+  /** Additional metadata - allow arbitrary keys */
   [key: string]: unknown;
 }
 

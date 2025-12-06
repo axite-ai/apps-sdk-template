@@ -3,6 +3,14 @@
  *
  * Registers all widget resources that can be used by MCP tools.
  * Widgets are served from the web package.
+ *
+ * OpenAI Apps SDK widget metadata:
+ * - openai/widgetDescription: Model-visible summary of what the widget does
+ * - openai/widgetPrefersBorder: Hint to render widget in bordered card
+ * - openai/widgetDomain: Custom subdomain for the widget iframe
+ * - openai/widgetCSP: Content Security Policy configuration
+ *
+ * See: https://developers.openai.com/apps-sdk/reference
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -75,6 +83,11 @@ async function getWidgetHtml(path: string): Promise<string> {
 
 /**
  * Register all widget resources with the MCP server
+ *
+ * Each widget resource includes OpenAI Apps SDK metadata for:
+ * - Widget description (surfaced to model for context)
+ * - Border preference (visual rendering hint)
+ * - CSP configuration (security policy for network requests)
  */
 export function registerWidgets(server: McpServer, _context: McpContext): void {
   for (const widget of widgets) {
@@ -90,6 +103,22 @@ export function registerWidgets(server: McpServer, _context: McpContext): void {
                 uri: `ui://widget/${widget.id}.html`,
                 mimeType: "text/html+skybridge",
                 text: html,
+                // OpenAI Apps SDK widget metadata
+                _meta: {
+                  // Model-visible description - helps the model understand what this widget shows
+                  "openai/widgetDescription": widget.description,
+                  // Render with bordered card styling
+                  "openai/widgetPrefersBorder": true,
+                  // Custom domain for widget iframe (uses web app domain)
+                  "openai/widgetDomain": WEB_URL,
+                  // Content Security Policy for widget network requests
+                  "openai/widgetCSP": {
+                    // Allowed domains for fetch/XHR requests (connect-src)
+                    connect_domains: [WEB_URL],
+                    // Allowed domains for assets (style-src, img-src, font-src, etc.)
+                    resource_domains: [WEB_URL, "https://*.oaistatic.com"],
+                  },
+                },
               },
             ],
           };

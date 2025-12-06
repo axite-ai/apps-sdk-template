@@ -6,11 +6,18 @@
  *
  * MCP Best Practices implemented:
  * - Tool naming with {service}_ prefix placeholder
- * - All four tool annotations
  * - Strict Zod schema validation with descriptive constraints
  * - Response format support
+ * - Full OpenAI Apps SDK metadata (outputTemplate, invoking/invoked)
+ *
+ * Tool Annotations (for model reasoning):
+ * - readOnlyHint: true      - This tool only performs calculations
+ * - destructiveHint: false  - Never modifies anything
+ * - idempotentHint: true    - Same inputs always produce same results
+ * - openWorldHint: false    - Pure calculation, no external calls
  *
  * See: docs/mcp-builder/reference/mcp_best_practices.md
+ * See: https://developers.openai.com/apps-sdk/reference
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -74,11 +81,6 @@ Returns final value, total gain, and year-by-year breakdown.`,
       annualReturn: CalculateRoiInputSchema.shape.annualReturn,
       response_format: CalculateRoiInputSchema.shape.response_format,
     },
-    // MCP Best Practice: Tool annotations (when SDK supports them)
-    // readOnlyHint: true      - This tool only performs calculations
-    // destructiveHint: false  - Never modifies anything
-    // idempotentHint: true    - Same inputs always produce same results
-    // openWorldHint: false    - Pure calculation, no external calls
     async (rawParams: Record<string, unknown>): Promise<ROICalculatorResponse> => {
       // Validate and parse input
       const params = CalculateRoiInputSchema.parse(rawParams);
@@ -133,7 +135,11 @@ Returns final value, total gain, and year-by-year breakdown.`,
             calculatedAt: new Date().toISOString(),
           },
           {
+            // Widget rendering configuration
             "openai/outputTemplate": "ui://widget/roi-calculator.html",
+            "openai/widgetAccessible": false, // Calculator widget is display-only
+            // Status messages shown in ChatGPT UI
+            "openai/toolInvocation/invoking": "Calculating investment returns...",
             "openai/toolInvocation/invoked": "Calculation complete",
           }
         );

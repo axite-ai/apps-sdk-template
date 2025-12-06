@@ -6,11 +6,18 @@
  *
  * MCP Best Practices implemented:
  * - Tool naming with {service}_ prefix placeholder
- * - All four tool annotations
  * - Strict Zod schema validation
  * - Actionable error messages
+ * - Full OpenAI Apps SDK metadata (outputTemplate, widgetAccessible, invoking/invoked)
+ *
+ * Tool Annotations (for model reasoning):
+ * - readOnlyHint: false     - This tool modifies data
+ * - destructiveHint: true   - Delete action can permanently remove data
+ * - idempotentHint: false   - Create produces different results each time
+ * - openWorldHint: false    - Only modifies internal database
  *
  * See: docs/mcp-builder/reference/mcp_best_practices.md
+ * See: https://developers.openai.com/apps-sdk/reference
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -88,11 +95,6 @@ Returns the modified item with action confirmation.`,
       metadata: ManageItemInputSchema.shape.metadata,
       order: ManageItemInputSchema.shape.order,
     },
-    // MCP Best Practice: Tool annotations (when SDK supports them)
-    // readOnlyHint: false     - This tool modifies data
-    // destructiveHint: true   - Delete action can permanently remove data
-    // idempotentHint: false   - Create produces different results each time
-    // openWorldHint: false    - Only modifies internal database
     async (rawParams: Record<string, unknown>): Promise<ManageItemResponse> => {
       // Validate and parse input
       const params = ManageItemInputSchema.parse(rawParams);
@@ -184,7 +186,11 @@ Returns the modified item with action confirmation.`,
             message: `Item ${actionPerformed} successfully`,
           },
           {
+            // Widget rendering configuration
             "openai/outputTemplate": "ui://widget/manage-item.html",
+            "openai/widgetAccessible": true, // Allow widget to call tools (e.g., follow-up actions)
+            // Status messages shown in ChatGPT UI
+            "openai/toolInvocation/invoking": `Processing ${action}...`,
             "openai/toolInvocation/invoked": `Item ${actionPerformed}`,
           }
         );

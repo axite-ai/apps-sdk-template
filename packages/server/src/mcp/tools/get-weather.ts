@@ -6,11 +6,18 @@
  *
  * MCP Best Practices implemented:
  * - Tool naming with {service}_ prefix placeholder
- * - All four tool annotations (note: openWorldHint is true for external API)
  * - Strict Zod schema validation
  * - Actionable error messages
+ * - Full OpenAI Apps SDK metadata (outputTemplate, invoking/invoked)
+ *
+ * Tool Annotations (for model reasoning):
+ * - readOnlyHint: true      - This tool only reads data
+ * - destructiveHint: false  - Never modifies anything
+ * - idempotentHint: true    - Same location returns same weather (cached)
+ * - openWorldHint: true     - Calls external weather API
  *
  * See: docs/mcp-builder/reference/mcp_best_practices.md
+ * See: https://developers.openai.com/apps-sdk/reference
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -60,11 +67,6 @@ Returns current conditions (temperature, humidity, wind) and 3-day forecast.`,
       location: GetWeatherInputSchema.shape.location,
       response_format: GetWeatherInputSchema.shape.response_format,
     },
-    // MCP Best Practice: Tool annotations (when SDK supports them)
-    // readOnlyHint: true      - This tool only reads data
-    // destructiveHint: false  - Never modifies anything
-    // idempotentHint: true    - Same location returns same weather (cached)
-    // openWorldHint: true     - Calls external weather API
     async (rawParams: Record<string, unknown>): Promise<WeatherResponse> => {
       // Validate and parse input
       const params = GetWeatherInputSchema.parse(rawParams);
@@ -97,7 +99,11 @@ Returns current conditions (temperature, humidity, wind) and 3-day forecast.`,
             lastUpdated: new Date().toISOString(),
           },
           {
+            // Widget rendering configuration
             "openai/outputTemplate": "ui://widget/weather.html",
+            "openai/widgetAccessible": false, // Weather widget is display-only
+            // Status messages shown in ChatGPT UI
+            "openai/toolInvocation/invoking": "Fetching weather data...",
             "openai/toolInvocation/invoked": "Weather loaded",
           }
         );

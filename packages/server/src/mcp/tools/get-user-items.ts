@@ -6,12 +6,19 @@
  *
  * MCP Best Practices implemented:
  * - Tool naming with {service}_ prefix placeholder
- * - All four tool annotations (readOnlyHint, destructiveHint, idempotentHint, openWorldHint)
  * - Pagination with limit/offset and has_more/next_offset
  * - Response format support (markdown/json)
  * - Strict Zod schema validation
+ * - Full OpenAI Apps SDK metadata (outputTemplate, widgetAccessible, invoking/invoked)
+ *
+ * Tool Annotations (for model reasoning):
+ * - readOnlyHint: true      - This tool only reads data
+ * - destructiveHint: false  - Never deletes or modifies data
+ * - idempotentHint: true    - Same input always returns same output
+ * - openWorldHint: false    - Only queries internal database
  *
  * See: docs/mcp-builder/reference/mcp_best_practices.md
+ * See: https://developers.openai.com/apps-sdk/reference
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -93,11 +100,6 @@ Returns pagination metadata including:
       offset: GetUserItemsInputSchema.shape.offset,
       response_format: GetUserItemsInputSchema.shape.response_format,
     },
-    // MCP Best Practice: Tool annotations (when SDK supports them)
-    // readOnlyHint: true      - This tool only reads data
-    // destructiveHint: false  - Never deletes or modifies data
-    // idempotentHint: true    - Same input always returns same output
-    // openWorldHint: false    - Only queries internal database
     async (rawParams: Record<string, unknown>): Promise<UserItemsResponse> => {
       // Validate and parse input with defaults
       const params = GetUserItemsInputSchema.parse(rawParams);
@@ -152,7 +154,11 @@ Returns pagination metadata including:
             pagination,
           },
           {
+            // Widget rendering configuration
             "openai/outputTemplate": "ui://widget/user-items.html",
+            "openai/widgetAccessible": true, // Allow widget to call tools (e.g., refresh, manage)
+            // Status messages shown in ChatGPT UI
+            "openai/toolInvocation/invoking": "Loading your items...",
             "openai/toolInvocation/invoked": `Loaded ${pagination.count} items`,
           }
         );
