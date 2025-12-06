@@ -12,11 +12,48 @@ import { NextRequest } from "next/server";
 const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://localhost:3001/mcp";
 
 export async function GET(request: NextRequest) {
-  return Response.json({
-    status: "active",
-    service: "MCP GPT Proxy",
-    timestamp: new Date().toISOString(),
-  });
+  try {
+    // Extract base URL by removing /mcp suffix if present
+    const baseUrl = MCP_SERVER_URL.replace(/\/mcp$/, "");
+
+    // Check if the actual MCP server is reachable
+    const healthCheck = await fetch(`${baseUrl}/health`, {
+      method: "GET",
+      signal: AbortSignal.timeout(5000), // 5 second timeout
+    });
+
+    if (healthCheck.ok) {
+      const serverStatus = await healthCheck.json();
+      return Response.json({
+        status: "healthy",
+        proxy: "active",
+        server: serverStatus,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      return Response.json(
+        {
+          status: "degraded",
+          proxy: "active",
+          server: "unreachable",
+          serverStatus: healthCheck.status,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 503 }
+      );
+    }
+  } catch (error) {
+    return Response.json(
+      {
+        status: "unhealthy",
+        proxy: "active",
+        server: "down",
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 503 }
+    );
+  }
 }
 
 export async function OPTIONS(request: NextRequest) {
