@@ -33,11 +33,14 @@ const getWidgetHtml = async (path: string) => {
 
 const tools = {
   hello_world: {
+    title: "Say Hello",
     description: "Say hello to the world. A simple example to start with.",
     inputSchema: {
       name: z.string().optional().describe("Your name"),
     },
     widgetPath: "/widgets/hello-world",
+    // Mark as read-only (doesn't modify data)
+    readOnly: true,
     handler: async ({ name = "World" }: { name?: string }) => {
       return {
         content: [{ type: "text" as const, text: `Hello, ${name}!` }],
@@ -97,11 +100,24 @@ const handler = withMcpAuth(auth, async (req: Request, session: any) => {
 
         logger.debug(`[MCP] Registering tool: ${name}`);
 
-        // Register the tool with mcp-handler's API
-        server.tool(
+        // Register the tool with full OpenAI metadata support
+        server.registerTool(
           name,
-          tool.description,
-          tool.inputSchema,
+          {
+            title: tool.title,
+            description: tool.description,
+            inputSchema: tool.inputSchema,
+            // Mark read-only tools so ChatGPT knows they don't modify data
+            annotations: tool.readOnly ? { readOnlyHint: true } : undefined,
+            // Link tool to its widget template
+            _meta: {
+              "openai/outputTemplate": resourceUri,
+              "openai/toolInvocation/invoking": `Running ${tool.title}...`,
+              "openai/toolInvocation/invoked": `${tool.title} complete`,
+              // Allow widget to call tools via window.openai.callTool
+              "openai/widgetAccessible": true,
+            },
+          },
           async (args: any) => {
             logger.debug(`[MCP] Tool called: ${name}`, { args });
             return tool.handler(args);
@@ -123,11 +139,13 @@ const handler = withMcpAuth(auth, async (req: Request, session: any) => {
                   text: html,
                   _meta: {
                     "openai/widgetDescription": tool.description,
-                    "openai/widgetPrefersBorder": true,
+                    "openai/widgetPrefersBorder": false,
                     "openai/widgetDomain": "https://chatgpt.com",
                     "openai/widgetCSP": {
-                      connect_domains: [],
-                      resource_domains: [],
+                      // Allow API calls to our server
+                      connect_domains: [baseURL],
+                      // Allow loading CSS/JS from our server
+                      resource_domains: [baseURL],
                     },
                   },
                 },

@@ -2,7 +2,7 @@
  * Skybridge hooks with type inference from AppType
  *
  * This is the single source of truth for all Skybridge hooks.
- * Widgets should always import from "@/src/skybridge", not "skybridge/web".
+ * Widgets should always import from "@/src/skybridge", not "skybridge/web" directly.
  */
 import {
   generateHelpers,
